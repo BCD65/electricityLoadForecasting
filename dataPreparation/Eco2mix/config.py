@@ -7,11 +7,9 @@ import os
 LEVEL = 'France' # 'France' # 'administrative_regions' 
 YEARS_WEATHER = range(2010, 2020)
 YEARS_LOADS   = range(2013, 2019)
-
-### Paths ###
-root_folder           = os.path.join(os.path.expanduser("~"),
-                                     'Eco2mix_forecasting',
-                                     )
+#
+#### Paths ###
+#root_folder           = os.path.expanduser("~")
 
 ### Activation plots ###
 bool_plot = True
