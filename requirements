@@ -1,0 +1,1 @@
+conda create -n py37 python=3.7 anaconda conda h5py termcolor matplotlib scipy scikit-learn pytz ipdb python-spams pandas spyder seaborn chardet unidecode
