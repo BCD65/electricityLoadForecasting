@@ -14,7 +14,7 @@ import electricityLoadForecasting.dataPreparation.Eco2mix         as Eco2mix
 def download_raw_load_data(site = None, year = None):
     assert type(year) == int and year >= 2013, year
     assert type(site) == str, site
-    prefix = src.dikt_folders['sites']
+    prefix = Eco2mix.src.dikt_folders['sites']
     os.makedirs(prefix, exist_ok = True)
     zip_file_url = os.path.join(Eco2mix.src.dikt_url['sites'], 
                                 Eco2mix.src.dikt_files['sites.load_site_year'].format(site = Eco2mix.src.URL_TRANSCODING.get(site, site), 
