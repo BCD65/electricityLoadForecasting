@@ -1,8 +1,0 @@
-
-
-
-
-
-
-latitude  = 'latitude'
-longitude = 'longitude'

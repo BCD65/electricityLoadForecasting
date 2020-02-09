@@ -1,14 +1,14 @@
 
 import os
 #
-import electricityLoadForecasting.config  as config
+from electricityLoadForecasting.config import root_folder
 
 dikt_folders = {
-                'sites'               : os.path.join(config.root_folder, 'Eco2mix', 'raw_data', 'load'), 
-                'weather'             : os.path.join(config.root_folder, 'Eco2mix', 'raw_data', 'weather'),  
-                'tmp_data'            : os.path.join(config.root_folder, 'Eco2mix', 'transformed_data/tmp'),
-                'transformed_data'    : os.path.join(config.root_folder, 'Eco2mix', 'transformed_data'),
-                'plots'               : os.path.join(config.root_folder, 'Eco2mix', 'plots'),
+                'sites'               : os.path.join(root_folder, 'Eco2mix', 'raw_data', 'load'), 
+                'weather'             : os.path.join(root_folder, 'Eco2mix', 'raw_data', 'weather'),  
+                'tmp_data'            : os.path.join(root_folder, 'Eco2mix', 'transformed_data/tmp'),
+                'transformed_data'    : os.path.join(root_folder, 'Eco2mix', 'transformed_data'),
+                'plots'               : os.path.join(root_folder, 'Eco2mix', 'plots'),
                 }
 dikt_files = {
               #

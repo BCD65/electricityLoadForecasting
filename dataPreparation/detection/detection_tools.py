@@ -71,7 +71,7 @@ def detection_errors(df_load, prefix = None):
             ind_zero_values   = np.where(df_load[site] == 0)[0]
             ind_neg_values    = np.where(df_load[site] <0)[0]
             nb_detections = dates_null_values.shape[0] + dates_zero_values.shape[0] + dates_neg_values.shape[0]
-            print('{0:25} -> {1:5} detection{2}'.format(site, nb_detections, 's'*(nb_detections>1)))
+            print('{0:25} -> {1:5} detection{2}'.format(str(site), nb_detections, 's'*(nb_detections>1)))
             if dates_null_values.shape[0] > 0:
                 dikt_errors['null'][site] = list(zip(ind_null_values, dates_null_values))
             if dates_zero_values.shape[0] > 0:
@@ -104,7 +104,7 @@ def detection_errors(df_load, prefix = None):
                 elif too_low:
                     detections_too_low.append((ind, date))
             nb_detections = len(detections_bad_window) + len(detections_too_low)
-            print('{0:25} -> {1:5} detection{2}'.format(site, nb_detections, 's'*(nb_detections>1)))
+            print('{0:25} -> {1:5} detection{2}'.format(str(site), nb_detections, 's'*(nb_detections>1)))
             if len(detections_bad_window):
                 dikt_errors['bad_win'][site] = detections_bad_window
             if len(detections_too_low):

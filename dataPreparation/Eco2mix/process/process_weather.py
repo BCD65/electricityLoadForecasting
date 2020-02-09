@@ -9,10 +9,9 @@ import urllib
 import gzip
 #
 import electricityLoadForecasting.tools as tools
-import electricityLoadForecasting.src.global_var as global_var
-import electricityLoadForecasting.dataPreparation.plot_tools      as plot_tools
-import electricityLoadForecasting.dataPreparation.Eco2mix.config  as config
-import electricityLoadForecasting.dataPreparation.Eco2mix.src     as src
+import electricityLoadForecasting.src   as src
+import electricityLoadForecasting.dataPreparation.plot_tools as plot_tools
+import electricityLoadForecasting.dataPreparation.Eco2mix    as Eco2mix
 
 
 
@@ -22,18 +21,18 @@ import electricityLoadForecasting.dataPreparation.Eco2mix.src     as src
 def download_raw_weather_data(year = None, month = None):
     assert type(year)  == int and year > 2000, year
     assert type(month) == int and month in np.arange(1,13), month
-    os.makedirs(src.dikt_folders['weather'], exist_ok = True)
-    gzip_file_url = os.path.join(src.dikt_url['weather'],
-                                 src.dikt_files['weather.file_year_month'].format(year = year, month = month),
+    os.makedirs(Eco2mix.src.dikt_folders['weather'], exist_ok = True)
+    gzip_file_url = os.path.join(Eco2mix.src.dikt_url['weather'],
+                                 Eco2mix.src.dikt_files['weather.file_year_month'].format(year = year, month = month),
                                  ) + '.csv.gz'
-    gz_file_path  = os.path.join(src.dikt_folders['weather'],
-                                 src.dikt_files['weather.file_year_month'].format(year = year, month = month),
+    gz_file_path  = os.path.join(Eco2mix.src.dikt_folders['weather'],
+                                 Eco2mix.src.dikt_files['weather.file_year_month'].format(year = year, month = month),
                                  ) + '.csv.gz'
     urllib.request.urlretrieve(gzip_file_url,
                                gz_file_path,
                                )
-    csv_file_path = os.path.join(src.dikt_folders['weather'],
-                                 src.dikt_files['weather.file_year_month'].format(year = year, month = month),
+    csv_file_path = os.path.join(Eco2mix.src.dikt_folders['weather'],
+                                 Eco2mix.src.dikt_files['weather.file_year_month'].format(year = year, month = month),
                                  ) + '.csv'
     with gzip.open(gz_file_path, 'rb') as f_in:
         with open(csv_file_path, 'wb') as f_out:
@@ -43,18 +42,18 @@ def download_raw_weather_data(year = None, month = None):
 def read_raw_weather_data(year = None, month = None):
     assert type(year)  == int and year > 2000, year
     assert type(month) == int and month in np.arange(1,13), month
-    csv_file_path = os.path.join(src.dikt_folders['weather'],
-                                 src.dikt_files['weather.file_year_month'].format(year = year, month = month),
+    csv_file_path = os.path.join(Eco2mix.src.dikt_folders['weather'],
+                                 Eco2mix.src.dikt_files['weather.file_year_month'].format(year = year, month = month),
                                  ) + '.csv'    
     df        = pd.read_csv(csv_file_path,
                             sep = ';',
                             na_values = ['mq'],
                             )
-    df[src.user_dt_UTC] = pd.to_datetime(df[src.MeteoFrance_dt_UTC], format = '%Y%m%d%H%M%S')  
-    df = df.rename({src.MeteoFrance_temperature  : src.user_temperature, 
-                    src.MeteoFrance_nebulosity   : src.user_nebulosity,
-                    src.MeteoFrance_wind_speed   : src.user_wind_speed,
-                    src.MeteoFrance_weather_id   : src.user_weather_id,
+    df[src.user_dt_UTC] = pd.to_datetime(df[Eco2mix.src.MeteoFrance_dt_UTC], format = '%Y%m%d%H%M%S')  
+    df = df.rename({Eco2mix.src.MeteoFrance_temperature : src.user_temperature, 
+                    Eco2mix.src.MeteoFrance_nebulosity  : src.user_nebulosity,
+                    Eco2mix.src.MeteoFrance_wind_speed  : src.user_wind_speed,
+                    Eco2mix.src.MeteoFrance_weather_id  : src.user_weather_id,
                     }, 
                    axis = 1,
                    )
@@ -109,7 +108,7 @@ def load_raw_weather_data(prefix = None, prefix_plot = None):
         print('\n{0}'.format(colored(e,'red')))
         print('df_weather and trash_weather not loaded')
         dikt_weather = {}
-        for year in config.YEARS_WEATHER:
+        for year in Eco2mix.config.YEARS_WEATHER:
             for month in range(1,13):
                 print('\ryear = {0:2} - month = {1:2}'.format(year, month), end = '')
                 try:
@@ -119,7 +118,7 @@ def load_raw_weather_data(prefix = None, prefix_plot = None):
                     dikt_weather[year, month] = read_raw_weather_data(year = year, month = month)
         print()
         df_weather = pd.concat([dikt_weather[year,month] 
-                                for year in config.YEARS_WEATHER
+                                for year in Eco2mix.config.YEARS_WEATHER
                                 for month in range(1,13)
                                 ], 
                                axis = 0,
@@ -153,40 +152,40 @@ def load_raw_weather_data(prefix = None, prefix_plot = None):
     common_names = sorted(set(coordinates_weather.index).intersection(df_weather.columns.levels[0]))
     df_weather          = df_weather.loc[:,common_names]
     coordinates_weather = coordinates_weather.loc[common_names]
-    if config.bool_plot_meteo:
+    if Eco2mix.config.bool_plot_meteo:
         plot_tools.plot_meteo(df_weather, 
                               os.path.join(prefix_plot,
                                            'meteo',
                                            ),
                               )
-    print('done : df_weather.shape = {0}\n{1}'.format(df_weather.shape, '#'*global_var.NB_SIGNS))
+    print('done : df_weather.shape = {0}\n{1}'.format(df_weather.shape, '#'*src.global_var.NB_SIGNS))
     return df_weather, coordinates_weather, trash_weather
 
 ###############################################################################
 
 def download_weather_description():
-    os.makedirs(src.dikt_folders['weather'], exist_ok = True)
-    csv_file_path = os.path.join(src.dikt_folders['weather'],
-                                 src.dikt_files['weather.description'],
+    os.makedirs(Eco2mix.src.dikt_folders['weather'], exist_ok = True)
+    csv_file_path = os.path.join(Eco2mix.src.dikt_folders['weather'],
+                                 Eco2mix.src.dikt_files['weather.description'],
                                  ) + '.csv'
-    csv_file_url  = os.path.join(src.dikt_url['weather.stations'],
-                                 src.dikt_files['weather.description'],
+    csv_file_url  = os.path.join(Eco2mix.src.dikt_url['weather.stations'],
+                                 Eco2mix.src.dikt_files['weather.description'],
                                  ) + '.csv'
     urllib.request.urlretrieve(csv_file_url,
                                csv_file_path,
                                )
 
 def read_weather_description():
-    csv_file_path = os.path.join(src.dikt_folders['weather'],
-                                 src.dikt_files['weather.description'],
+    csv_file_path = os.path.join(Eco2mix.src.dikt_folders['weather'],
+                                 Eco2mix.src.dikt_files['weather.description'],
                                  ) + '.csv'
     df        = pd.read_csv(csv_file_path,
                             sep = ';',
                             )
-    df = df.rename({src.MeteoFrance_weather_id2 : src.user_weather_id,
-                    src.MeteoFrance_name        : src.user_weather_name,
-                    src.MeteoFrance_latitude    : src.user_latitude,
-                    src.MeteoFrance_longitude   : src.user_longitude,
+    df = df.rename({Eco2mix.src.MeteoFrance_weather_id2 : src.user_weather_id,
+                    Eco2mix.src.MeteoFrance_name        : src.user_weather_name,
+                    Eco2mix.src.MeteoFrance_latitude    : src.user_latitude,
+                    Eco2mix.src.MeteoFrance_longitude   : src.user_longitude,
                     },
                    axis = 1,
                    )

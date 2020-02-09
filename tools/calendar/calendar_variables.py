@@ -6,30 +6,10 @@ import pandas as pd
 import datetime as dt
 import astral
 #
-from .calendar_infos import EasterMondays, Ascensions, Pentecosts, smr_intervals
+from .calendar_infos import EasterMondays, Ascensions, Pentecosts, smr_intervals, xmas_intervals
 
 
 def binary_christmas(date):
-    xmas_intervals = [
-                      (dt.date(year = 2012, month = 12, day = 22), 
-                       dt.date(year = 2013, month =  1, day =  6),
-                       ),
-                      (dt.date(year = 2013, month = 12, day = 21), 
-                       dt.date(year = 2014, month =  1, day =  5),
-                       ),
-                      (dt.date(year = 2014, month = 12, day = 20), 
-                       dt.date(year = 2015, month =  1, day =  4),
-                       ),
-                      (dt.date(year = 2015, month = 12, day = 19), 
-                       dt.date(year = 2016, month =  1, day =  3),
-                       ),
-                      (dt.date(year = 2016, month = 12, day = 17),
-                       dt.date(year = 2017, month =  1, day =  1),
-                       ),
-                      (dt.date(year = 2017, month = 12, day = 23), 
-                       dt.date(year = 2018, month =  1, day =  7),
-                       ),
-                      ]
     for db, de in xmas_intervals:
         assert db.weekday() == 5
         assert de.weekday() == 6
@@ -99,7 +79,7 @@ def compute_calendar_variables(dates):
     calendar_variables = pd.DataFrame({
                                        'year_day'      : dates.dayofyear,
                                        'week_day'      : dates.dayofweek,
-                                       'weekend'       : dates.dayofweek > 4,
+                                       'weekend'       : (dates.dayofweek > 4).astype(int),
                                        'week_hour'     : dates.hour + 24 * dates.dayofweek,
                                        'hour'          : dates.hour,
                                        'timestamp'     : list(map(lambda dd : dd.timestamp(), dates)),                                       
@@ -109,5 +89,5 @@ def compute_calendar_variables(dates):
                                        'daylight'      : binary_daytime(dates),
                                        }, 
                                       index = dates,
-                                      )      
+                                      )  
     return calendar_variables 

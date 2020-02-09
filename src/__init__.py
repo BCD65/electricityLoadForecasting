@@ -1,6 +1,7 @@
 
 
 
-from .global_names import *
+from .global_var import *
+from .transcoding import *
 
 

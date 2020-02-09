@@ -25,11 +25,17 @@ if dataset == 'RTE':
                                'RTE', 
                                'transformed_data',
                                )
+    path_extras = os.path.join(root_folder, 
+                               'additional_data',
+                               )
 elif dataset == 'RTE_quick_test':
     path_inputs = os.path.join(root_folder, 
                                'RTE', 
                                'transformed_data', 
                                'quick_test',
+                               )
+    path_extras = os.path.join(root_folder, 
+                               'additional_data',
                                )
 elif dataset == 'Eco2mix_administrative_regions':
     path_inputs =  os.path.join(root_folder,
@@ -44,7 +50,6 @@ elif dataset == 'Eco2mix_France':
                                 'France',
                                 )
 
-path_extras = os.path.join(root_folder, 'Additional_data')
 
 ###
 

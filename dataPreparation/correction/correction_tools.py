@@ -30,8 +30,8 @@ def correct_with_regression(df_load, dikt_errors, prefix = None, prefix_plot = N
     fname_trash = os.path.join(prefix, 'trash_sites.pkl')
     try:
         df_corrected_load = pd.read_csv(fname_load,
-                                        index_col = [0],
-                                        header    = [0],
+                                        index_col = 0,
+                                        #header    = [0],
                                         )
         df_corrected_load.index = pd.to_datetime(df_corrected_load.index)
         with open(fname_trash, 'rb') as f:
@@ -48,7 +48,6 @@ def correct_with_regression(df_load, dikt_errors, prefix = None, prefix_plot = N
         trash_sites       = []
         X                 = df_load[sorted(set(df_load.columns) - set(bad_sites))]
         assert not pd.isnull(X).sum().sum()
-        assert not pd.isnull(df_load).sum().sum()
         for ii, site in enumerate(bad_sites):  
             print('\r{0:6} / {1:6} - '.format(ii, len(bad_sites)), end = '')
             y             = df_load[site]
@@ -63,7 +62,8 @@ def correct_with_regression(df_load, dikt_errors, prefix = None, prefix_plot = N
             ind_unknown, dates_unknown = list(zip(*samples_unkown))
             ind_unknown   = sorted(ind_unknown)
             dates_unknown = sorted(dates_unknown)
-            ind_known     =   [ii for ii in range(y.shape[0]) if ii not in ind_unknown] # Indices corresponding to sane observations
+            ind_known     = [ii for ii in range(y.shape[0]) if ii not in ind_unknown] # Indices corresponding to sane observations
+            assert not pd.isnull(y.iloc[ind_known]).sum()
             if len(ind_known) == 0:
                 trash_sites.append((site, 'dates_known empty'))
                 df_corrected_load = df_corrected_load.drop(site, axis = 1)
@@ -175,7 +175,7 @@ def correct_with_regression(df_load, dikt_errors, prefix = None, prefix_plot = N
                                                                                                                ))
             df_corrected_load[site].iloc[ind_unknown] = y_hat_pred  
         df_corrected_load.to_csv(fname_load, 
-                                 index_label = df_load.columns.name,
+                                 #index_label = df_load.columns.name,
                                  )
         with open(fname_trash, 'wb') as f:
             pickle.dump(trash_sites, f)

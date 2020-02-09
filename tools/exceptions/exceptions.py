@@ -21,6 +21,7 @@ loading_errors = tuple_errors = (
                                  OSError, 
                                  KeyError, 
                                  EOFError,
+                                 NotImplementedError,
                                  subprocess.TimeoutExpired, 
                                  subprocess.CalledProcessError, 
                                  pickle.UnpicklingError,
