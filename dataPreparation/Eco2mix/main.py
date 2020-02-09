@@ -3,11 +3,9 @@ import os
 import shutil
 from termcolor import colored
 #
-import electricityLoadForecasting.tools                       as tools
-import electricityLoadForecasting.dataPreparation.correction  as correction
-import electricityLoadForecasting.dataPreparation.detection   as detection
-import electricityLoadForecasting.dataPreparation.files       as files
-import electricityLoadForecasting.dataPreparation.Eco2mix     as Eco2mix
+import electricityLoadForecasting.tools as tools
+from electricityLoadForecasting.dataPreparation import correction, detection, files
+import electricityLoadForecasting.dataPreparation.Eco2mix as Eco2mix
 
 
 """

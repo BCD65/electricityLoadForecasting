@@ -1,14 +1,14 @@
 
 import pandas as pd
-import electricityLoadForecasting
+import electricityLoadForecasting.src as src
 
 
 coordinates_sites = {'France'                 : pd.DataFrame(data    = [[46,2]], 
                                                              index   = pd.Index(['France'], 
-                                                                                name = electricityLoadForecasting.src.user_site_name,
+                                                                                name = src.user_site_name,
                                                                                 ),
-                                                             columns = [electricityLoadForecasting.src.user_latitude, 
-                                                                        electricityLoadForecasting.src.user_longitude,
+                                                             columns = [src.user_latitude, 
+                                                                        src.user_longitude,
                                                                         ],
                                                              ),
                      'administrative_regions' : pd.DataFrame(data    = [[45.5, 4.6],
@@ -37,10 +37,10 @@ coordinates_sites = {'France'                 : pd.DataFrame(data    = [[46,2]],
                                                                                  'PACA',
                                                                                  'Pays-de-la-Loire',
                                                                                  ],
-                                                                                name = electricityLoadForecasting.src.user_site_name,
+                                                                                name = src.user_site_name,
                                                                                 ),
-                                                                        columns = [electricityLoadForecasting.src.user_latitude,
-                                                                                   electricityLoadForecasting.src.user_longitude,
+                                                                        columns = [src.user_latitude,
+                                                                                   src.user_longitude,
                                                                                    ],
                                                              ),
                      }

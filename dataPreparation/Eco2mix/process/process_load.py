@@ -1,5 +1,4 @@
 
-
 import pandas as pd
 import os
 from termcolor import colored
@@ -7,8 +6,7 @@ import urllib
 import zipfile
 import unidecode
 #
-import electricityLoadForecasting.tools                           as tools
-import electricityLoadForecasting.src                             as src
+from electricityLoadForecasting import tools, src
 import electricityLoadForecasting.dataPreparation.Eco2mix         as Eco2mix
 
 ###############################################################################
