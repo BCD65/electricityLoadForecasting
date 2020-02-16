@@ -2,5 +2,6 @@ conda create -n py37 python=3.7 anaconda conda h5py termcolor matplotlib scipy s
 
 conda install -c conda-forge xgboost
 conda install -c conda-forge sklearn-contrib-py-earth
+conda install -c r rpy2
 
 
