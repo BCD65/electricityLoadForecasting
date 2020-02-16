@@ -1,6 +1,6 @@
 
 
 
-from .activation_IO    import *
-from .activation_plots import *
+from .config_IO    import *
+from .config_plots import *
 

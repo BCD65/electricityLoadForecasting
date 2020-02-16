@@ -98,9 +98,9 @@ def call_fitter(X_training, Y_training, X_validation, method):
     elif method in {'xgboost', 'svr', 'mars'}:
         assert Y_training.ndim == 1
         
-    if method == 'random_forests':
+    if   method == 'random_forests':
         model = RandomForestRegressor()
-    elif method == 'regression_trees':
+    elif method == 'regression_tree':
         model = DecisionTreeRegressor()
     elif method == 'xgboost':
         model = XGBRegressor()

@@ -4,11 +4,11 @@
 import os
 import pandas as pd
 #
-import electricityLoadForecasting.config as config
+import electricityLoadForecasting.paths as paths
 
 
 def load_coordinates_sites():
-    coordinates_sites = pd.read_csv(os.path.join(config.path_inputs,
+    coordinates_sites = pd.read_csv(os.path.join(paths.inputs,
                                                  'df_coordinates_sites.csv',
                                                  ), 
                                     index_col = [0],
@@ -18,7 +18,7 @@ def load_coordinates_sites():
 
 
 def load_coordinates_weather():
-    coordinates_weather = pd.read_csv(os.path.join(config.path_inputs,
+    coordinates_weather = pd.read_csv(os.path.join(paths.inputs,
                                                    'df_coordinates_weather.csv',
                                                    ), 
                                       index_col = [0],
@@ -28,7 +28,7 @@ def load_coordinates_weather():
 
 
 def load_target():
-    df_sites = pd.read_csv(os.path.join(config.path_inputs,
+    df_sites = pd.read_csv(os.path.join(paths.inputs,
                                         'df_sites.csv',
                                         ), 
                            index_col = [0],
@@ -39,7 +39,7 @@ def load_target():
 
 
 def load_weather():
-    df_weather = pd.read_csv(os.path.join(config.path_inputs,
+    df_weather = pd.read_csv(os.path.join(paths.inputs,
                                           'df_weather.csv',
                                           ), 
                              index_col = [0],

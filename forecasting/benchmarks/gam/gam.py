@@ -6,7 +6,7 @@ import pandas as pd
 import subprocess
 from rpy2.robjects import pandas2ri, r
 #
-import electricityLoadForecasting.config as config
+import electricityLoadForecasting.paths as paths
 
 
 def fit_and_predict(inputs_training, Y_training, inputs_validation, hprm, assignments = {}):
@@ -45,7 +45,7 @@ def fit_and_predict(inputs_training, Y_training, inputs_validation, hprm, assign
 
 def call_fitter(inputs_training, y_training, inputs_validation, hprm):
     assert y_training.ndim == 1
-    path_R_files = os.path.join(config.path_outputs, 
+    path_R_files = os.path.join(paths.outputs, 
                                 'R_files/', 
                                 )
     os.makedirs(path_R_files,

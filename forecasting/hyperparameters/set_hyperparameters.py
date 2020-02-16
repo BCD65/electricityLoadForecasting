@@ -37,7 +37,7 @@ def set_hyperparameters(method = None):
 #        param.update(set_approx_tf(param))
 #        param.update(set_self_reg())
 #    
-    if hprm['method'] == 'gam':
+    if hprm['learning.method'] == 'gam':
         hprm.update(set_gam(hprm))
 #
 #    param.update(pre_treatment())                                         
