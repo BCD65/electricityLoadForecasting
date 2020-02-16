@@ -5,4 +5,4 @@ conda install -c conda-forge python-spams ipdb xgboost sklearn-contrib-py-earth 
 conda install -c r rpy2
 conda install -c omnia termcolor
 
-
+# Library mgcv for R
