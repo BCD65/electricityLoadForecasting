@@ -2,8 +2,8 @@
 import os
 import pandas as pd
 #
-import electricityLoadForecasting.config as config
-import electricityLoadForecasting.tools  as transcoding
+import electricityLoadForecasting.paths as paths
+import electricityLoadForecasting.tools as tools
 
 
 
@@ -15,9 +15,9 @@ def aggregation_weather(df_weather, df_coordinates, aggregation_level):
         agg_df_weather          = pd.DataFrame(df_weather.mean(axis = 1), columns = ['mean'])
         agg_coordinates_weather = pd.DataFrame(df_coordinates.mean(axis = 0), index = ['mean'])
     else:
-        df_weights                = pd.read_csv(os.path.join(config.path_extras, 'poids_stations_meteo.csv'), sep = ';', decimal=',')
+        df_weights                = pd.read_csv(os.path.join(paths.extras, 'poids_stations_meteo.csv'), sep = ';', decimal=',')
         df_weights                = df_weights.fillna(0)
-        df_weights['Nom station'] = df_weights['Nom station'].apply(transcoding.format_weather_station_name)
+        df_weights['Nom station'] = df_weights['Nom station'].apply(tools.format_weather_station_name)
         df_weights                = df_weights.set_index('Nom station')
         df_weights                = df_weights.astype(float)
         df_weights                = df_weights.loc[df_weather.columns]

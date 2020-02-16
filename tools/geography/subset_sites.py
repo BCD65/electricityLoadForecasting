@@ -4,7 +4,7 @@
 
 import numpy as np
 #
-import electricityLoadForecasting.config as config
+import electricityLoadForecasting.paths as paths
 import electricityLoadForecasting.src    as src
 from .aggregation_sites import get_dikt_districts, get_dikt_regions_admin, get_dikt_regions_rte
 
@@ -33,7 +33,7 @@ def subset_sites(coordinates_sites, zone):
             
 
 def subsample_Normandie(list_sites):
-    with open(config.path_extras + 'Postes_Normandie_Paris.npy', 'rb') as f_normandie:
+    with open(paths.extras + 'Postes_Normandie_Paris.npy', 'rb') as f_normandie:
         posts_normandie = np.load(f_normandie)
     subset = sorted(set(list_sites).intersection(posts_normandie))
     return subset

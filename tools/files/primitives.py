@@ -10,14 +10,14 @@ import importlib
 #import socket
 #import scipy as sp
 import pickle
-from termcolor  import colored
+#from termcolor  import colored
 #from scipy      import sparse
 #from subprocess import CalledProcessError, TimeoutExpired, PIPE
 
 
 #from custom_exception import custex
 #from cluster_cermics  import hive
-import str_make; importlib.reload(str_make)
+#import str_make; importlib.reload(str_make)
 
 len_str = 25
 #max_len = 1e4

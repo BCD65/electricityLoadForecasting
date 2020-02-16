@@ -1,7 +1,7 @@
 
 import os
 #
-from electricityLoadForecasting.config import root_folder
+from electricityLoadForecasting.paths import root_folder
 
 dikt_folders = {
                 'sites'               : os.path.join(root_folder, 'Eco2mix', 'raw_data', 'load'), 
