@@ -7,7 +7,7 @@ import zipfile
 import unidecode
 #
 from electricityLoadForecasting import tools, src
-import electricityLoadForecasting.dataPreparation.Eco2mix         as Eco2mix
+import electricityLoadForecasting.dataPreparation.Eco2mix as Eco2mix
 
 ###############################################################################
 
