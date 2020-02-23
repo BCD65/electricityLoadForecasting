@@ -60,11 +60,10 @@ def make_dikt_files(hprm, nb_sites = None, nb_weather = None, dt_training = None
     #=========================================#
     ###         Model                       ###
     #=========================================#
-    str_learning = '_'.join([hprm['learning.method'],
-                             'coupled_models' if not hprm['learning.independent_models'] else '',
-                             'individual_designs' if hprm['learning.individual_designs'] else '',
-                             ])    
-    import ipdb; ipdb.set_trace()
+    str_learning = '_'.join(filter(None, [hprm['learning.method'],
+                                          'coupled_models' if not hprm['learning.independent_models'] else '',
+                                          'individual_designs' if hprm['learning.individual_designs'] else '',
+                                          ]))    
     
     
     #=========================================#

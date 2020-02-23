@@ -38,7 +38,7 @@ tuple3errors = (TimeoutExpired, CalledProcessError, custex)
 #
 #
 def file_delete(path, param): 
-    raise NotImplementedError
+    raise NotImplementedError('delete')
 #    #to delete local copy after transfer
 #    s =  os.path.basename(path)
 #    msg = '{0:20.20}'.format('deleting') + '{0:20.20}'.format(s)
@@ -58,7 +58,7 @@ def file_delete(path, param):
 #  
 ##profile    
 def file_download(files_to_include, to = t_out):
-    raise NotImplementedError
+    raise NotImplementedError('download')
 #    # transfer from origin to destination
 #    msg = '{0:20.20}'.format('downloading') + '{0:20.20}'.format(', '.join([os.path.basename(k) for k in files_to_include]))
 #    try:
@@ -139,7 +139,7 @@ def file_fetch(local_folder, files_to_fetch, t_o = t_out): #dist__folder, local_
         data += [file_load(path, data_type = v) 
                  for path, v in local_paths.items()
                  ]
-    except (*tuple3errors, FileNotFoundError):
+    except (*tuple3errors, FileNotFoundError, NotImplementedError):
         file_download(files_to_fetch, 
                       to = t_o,
                       )
@@ -368,7 +368,7 @@ def file_save(path, data, data_type = None):
 
 ##profile    
 def file_upload(files_to_include, t_o = t_out): 
-    raise NotImplementedError
+    raise NotImplementedError('upload')
     # transfer from origin to destination
 #    msg = '{0:20.20}'.format('uploading') + '{0:20.20}'.format(', '.join([k.replace('/', '_').split('_')[-2] +'_'+ k.replace('/', '_').split('_')[-1] \
 #                                                                for k in files_to_include]))
@@ -449,7 +449,9 @@ def file_upload(files_to_include, t_o = t_out):
 
 ##profile    
 def batch_load(local_folder, prefix = None, data_name = None, data_type = None):
-    fpath = os.path.join(prefix, data_name)
+    fpath = os.path.join(prefix,
+                         data_name,
+                         )
     files_to_fetch    = {
                          fpath    : data_type,
                          }

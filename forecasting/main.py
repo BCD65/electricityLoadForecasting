@@ -56,7 +56,6 @@ def main(hprm = None, data = None):
     #%%
     except exceptions.loading_errors as e:
         print(repr(e))
-        import ipdb; ipdb.set_trace()
         print('performances not loaded')
         try:
             print('load_predictions')
