@@ -27,8 +27,8 @@ delete   = False*save*upload
 ###############################################################################
 save_data           = False*save
 save_model          = False*save
-save_predictions    = False*save
-save_performances   = False*save
+save_predictions    = True*save
+save_performances   = True*save
 ###############################################################################
 upload_data         = False*upload
 upload_model        = False*upload
@@ -37,8 +37,8 @@ upload_performances = False*upload
 ###############################################################################
 load_data           = False*load
 load_model          = False*load
-load_predictions    = False*load
-load_performances   = False*load
+load_predictions    = True*load
+load_performances   = True*load
 ###############################################################################
 download_data         = False*download
 download_model        = False*download

@@ -165,10 +165,9 @@ class Experience(object):
         self.performances = tools.batch_load(os.path.join(paths.outputs,
                                                           'Saved/Performances',
                                                           ), 
-                                             self.dikt['exp'], 
-                                             self.hprm, 
+                                             self.dikt_files['exp'], 
                                              data_name = 'performances', 
-                                             data_type = 'pickle',
+                                             data_type = 'dictionary',
                                              )
 
     #profile
@@ -179,10 +178,9 @@ class Experience(object):
         self.predictions = tools.batch_load(os.path.join(paths.outputs,
                                                          'Saved/Predictions',
                                                          ), 
-                                            self.dikt['exp'], 
-                                            self.hprm, 
+                                            self.dikt_files['exp'], 
                                             data_name = 'predictions', 
-                                            data_type = 'dict_np',
+                                            data_type = 'dictionary',
                                             )
         self.target_training       = self.predictions['target_training']
         self.prediction_training   = self.predictions['prediction_training']
@@ -283,7 +281,7 @@ class Experience(object):
         tools.batch_save(os.path.join(paths.outputs, 
                                       'Saved/Predictions',
                                       ), 
-                         prefix    = self.dikt['exp'], 
+                         prefix    = self.dikt_files['exp'], 
                          data      = self.prediction_dikt, 
                          data_name = 'predictions', 
                          data_type = 'dictionary',
@@ -340,7 +338,7 @@ class Experience(object):
         tools.batch_save(os.path.join(paths.outputs,
                                       'Saved/Performances',
                                       ), 
-                         prefix    = self.dikt['exp'], 
+                         prefix    = self.dikt_files['exp'], 
                          data      = self.performances, 
                          data_name = 'performances', 
                          data_type = 'dictionary',
@@ -348,7 +346,7 @@ class Experience(object):
         
         
     def print_performances(self):
-        #print('Exp : ' + self.dikt['exp'])
+        print('Exp : ' + self.dikt_files['exp'].replace('/', '/\n\t'))
         print()
         print('Quantiles MAPE TEST : ')
         performances.print_quantiles(self.performances['model']['validation']['mapes'])

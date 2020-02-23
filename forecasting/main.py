@@ -49,22 +49,23 @@ def main(hprm = None, data = None):
                                                 )
     #%%
     try:
-        print('load_perf')
+        print('load_performances')
         exp.load_performances()
 #        exp.pre_treatment_adjust()
-        print('perf loaded')
+        print('performances loaded')
     #%%
     except exceptions.loading_errors as e:
-        print(e)
+        print(repr(e))
+        import ipdb; ipdb.set_trace()
         print('performances not loaded')
         try:
-            print('load_pred')
+            print('load_predictions')
             exp.load_predictions()
 #            exp.model, exp.beta, exp.obj_train, exp.obj_test  = ['pred_loaded' for k in range(4)]
-            print('pred loaded')
+            print('predictions loaded')
     #%%
         except exceptions.loading_errors as e:
-            print(e)
+            print(repr(e))
             print('predictions not loaded')
             #%%
             if meta_model.bool_meta_model(exp.hprm):

@@ -2,48 +2,48 @@
 # -*- coding: utf-8 -*-
 
 
-#import numpy as np
-#import json
+import numpy as np
+import scipy as sp
+import json
 import os
 #import subprocess
-import importlib
 #import socket
-#import scipy as sp
 import pickle
 #from termcolor  import colored
-#from scipy      import sparse
-#from subprocess import CalledProcessError, TimeoutExpired, PIPE
+from scipy      import sparse
+from subprocess import CalledProcessError, TimeoutExpired#, PIPE
 
-
-#from custom_exception import custex
+from electricityLoadForecasting.tools.exceptions import custex
+import electricityLoadForecasting.forecasting.config     as config
 #from cluster_cermics  import hive
 #import str_make; importlib.reload(str_make)
 
 len_str = 25
-#max_len = 1e4
+max_len = 1e4
 
 #
 #
 #dist__folder_data    =  hive + 'Saved/Data/'
-#dist__folder_betas   =  hive + 'Saved/Betas/'
+#dist__folder_model   =  hive + 'Saved/models/'
 #dist__folder_f_estim =  hive + 'Saved/Final_estimates/'
 #dist__folder_weights =  hive + 'Saved/Weights/'
 #dist__folder_perf    =  hive + 'Saved/Performances/'
 #dist__folder_pred    =  hive + 'Saved/Predictions/'
 #dist__folder_results =  hive + 'Results/'
 ###########################
-#t_out                = 30
+t_out                = 30
 ###########################
 #
-#tuple3errors = (TimeoutExpired, CalledProcessError, custex) 
+tuple3errors = (TimeoutExpired, CalledProcessError, custex) 
 #
 #
-#def file_delete(path, param): 
+def file_delete(path, param): 
+    raise NotImplementedError
 #    #to delete local copy after transfer
 #    s =  os.path.basename(path)
 #    msg = '{0:20.20}'.format('deleting') + '{0:20.20}'.format(s)
 #    try:
-#        if not param['delete']:
+#        if not config.delete']:
 #            raise custex('on purpose ' + msg)
 #        else:
 #            print('{0:{len_str}}'.format(msg, len_str = len_str), end = ' - ')
@@ -57,18 +57,28 @@ len_str = 25
 #            
 #  
 ##profile    
-#def file_download(dist_folder, local_folder, files_to_include, param, to = t_out): 
+def file_download(files_to_include, to = t_out):
+    raise NotImplementedError
 #    # transfer from origin to destination
 #    msg = '{0:20.20}'.format('downloading') + '{0:20.20}'.format(', '.join([os.path.basename(k) for k in files_to_include]))
 #    try:
-#        if not param['download']:
+    ##########################
+#    if   'data'  in path.lower():
+#        if not config.download_data:
 #            raise custex('on purpose ' + msg)
-#        if (   ('data'  in dist_folder.lower() and not param['download_data'])
-#            or ('betas' in dist_folder.lower() and not param['download_model'])
-#            or ('pred'  in dist_folder.lower() and not param['download_pred'])
-#            or ('perf'  in dist_folder.lower() and not param['download_perf'])
-#            ):
+#    elif 'model' in path.lower():
+#        if not config.download_model:
+#            raise custex('on purpose ' + msg)              
+#    elif 'pred'  in path.lower():
+#        if not config.download_pred:
+#            raise custex('on purpose ' + msg)            
+#    elif 'perf'  in path.lower():
+#        if not config.download_perf:
 #            raise custex('on purpose ' + msg)
+#    else:
+#        if not config.download: 
+#            raise custex('on purpose ' + msg)            
+    ##########################
 #        else:
 #            if socket.gethostname() in hive:
 #                raise custex('no dl on hive')
@@ -114,145 +124,169 @@ len_str = 25
 #        print(colored('fail', 'red'), colored(repr(e)[:30], 'red'))
 #    except Exception as e:
 #        raise e
-#
-#
+
+
 ##profile    
-#def file_fetch(file_names, dist__folder, local_folder, param, t_o = t_out): 
-#    # Try to load, if fails try to transfer and load
-#    local_paths = {local_folder + name:v for name, v in file_names.items()}
-#    data        = []
-#    try :
-#        data += [file_load(path, param, option = v) for path, v in local_paths.items()]
-#    except (*tuple3errors, FileNotFoundError):
-#        file_download(dist__folder, local_folder, file_names, param, to = t_o)
-#        data += [file_load(path, param, option = v) for path, v in local_paths.items()]
-#    except Exception as e:
-#        raise e
-#    if len(data) == 1: 
-#        data = data[0]
-#    return data
-#
-#
-##profile    
-#def file_load(path, param, option = 'np'): 
-#    # load different formats
-#    s =  os.path.basename(path)
-#    msg = '{0:20.20}'.format('loading') + '{0:20.20}'.format(s)
-#    try:
-#        if '_data' not in path:    
-#            if not param['load']: 
-#                raise custex('on purpose ' + msg)
-#            if (   ('data'  in path.lower() and not param['load_data'])
-#                or ('betas' in path.lower() and not param['load_model'])
-#                or ('pred'  in path.lower() and not param['load_pred'])
-#                or ('perf'  in path.lower() and not param['load_perf'])
-#                ):
-#                raise custex('on purpose ' + msg)
-#
-#        print('{0:{len_str}}'.format(msg, len_str = len_str), end = ' - ')
-#        if option == 'np':
-#            f     = open(path, 'rb')
-#            data  = np.load(f, allow_pickle = True)
-#            f.close()   
-#        elif option == 'json':
-#            with open(path, 'r') as f:
-#                data  = json.load(f)
-#                if 'keys_upd' in path:
-#                    data = [tuple(tuple(e) if type(e) == list else e for e in small_list) for small_list in data]
-#        elif option == 'pickle':
-#            with open(path+'.pkl', 'rb') as f:
-#                data  = pickle.load(f)
-#        elif option == 'npz':
-#            assert 0
-#            data  = sparse.load_npz(path + '.npz')
-#        elif option == 'dict_np':
-#            with open(path + '/' + 'keys', 'rb') as f:
-#                keys = np.load(f, allow_pickle = True)
-#            data = {}
-#            print()
-#            list_files = os.listdir(path + '/')
-#            if len(list_files) >= max_len:
-#                raise custex('on purpose because list of files too long')
-#            for ii, fname in enumerate(list_files):
-#                print('\r'+str(ii), '/', len(list_files), ' - ', fname, ' '*20, end = '')
-#                if 'keys' in fname\
-#                or (    tuple(fname.split('$')) not in keys \
-#                    and fname not in keys):
-#                    continue
-#                with open(path + '/' + fname, 'rb') as f:
-#                    res = np.load(f, allow_pickle = True)
-#                    assert type(res) == np.ndarray
-#                    assert 'orig_masks' not in fname
-#                    data[tuple(fname.split('$')) if '$' in fname else fname] = res
-#            print()
-#            for k in keys:
-#                if isinstance(k, str):
-#                    assert k in data, ('pb with keys1', k, option)
-#                else:
-#                    assert tuple(k) in data, ('pb with keys1, tuple', option)
-#        elif option == 'dict_sp':
-#            with open(path + '/' + 'keys', 'rb') as f:
-#                keys = np.load(f, allow_pickle = True)
-#            data = {}
-#            print()
-#            list_files = os.listdir(path + '/')
-#            if len(list_files) >= max_len:
-#                raise custex('on purpose because list of files too long')
-#            for ii, fname in enumerate(list_files):
-#                print('\r'+str(ii), '/', len(list_files), end = '')
-#                if 'keys' in fname\
-#                or (    tuple(fname.split('$')) not in keys \
-#                    and fname.split('.')[0] not in keys):
-#                    continue
-#                res = sparse.load_npz(path + '/' + fname)
-#                assert type(res) in {sp.sparse.csr_matrix, sp.sparse.csc_matrix}
+def file_fetch(local_folder, files_to_fetch, t_o = t_out): #dist__folder, local_folder, param, 
+    # Try to load, if fails try to transfer and load
+    local_paths = {os.path.join(local_folder,
+                                name,
+                                ): v 
+                   for name, v in files_to_fetch.items()
+                   }
+    data        = []
+    try :
+        data += [file_load(path, data_type = v) 
+                 for path, v in local_paths.items()
+                 ]
+    except (*tuple3errors, FileNotFoundError):
+        file_download(files_to_fetch, 
+                      to = t_o,
+                      )
+        data += [file_load(path, data_type = v)
+                 for path, v in local_paths.items()
+                 ]
+    except Exception as e:
+        raise e
+    if len(data) == 1: 
+        data = data[0]
+    return data
+
+
+  
+def file_load(path, data_type = None): 
+    # load different formats
+    msg = '{0:20.20}'.format('loading') + '{0:20.20}'.format(os.path.basename(path))
+    ##########################
+    if   'data'  in path.lower():
+        if not config.load_data:
+            raise custex('on purpose ' + msg)
+    elif 'model' in path.lower():
+        if not config.load_model:
+            raise custex('on purpose ' + msg)              
+    elif 'pred'  in path.lower():
+        if not config.load_predictions:
+            raise custex('on purpose ' + msg)            
+    elif 'perf'  in path.lower():
+        if not config.load_performances:
+            raise custex('on purpose ' + msg)
+    else:
+        if not config.load: 
+            raise custex('on purpose ' + msg)            
+    ##########################
+    print('{0:{len_str}}'.format(msg, len_str = len_str), end = ' - ')
+#    if option == 'np':
+#        f     = open(path, 'rb')
+#        data  = np.load(f, allow_pickle = True)
+#        f.close()   
+#    elif option == 'json':
+#        with open(path, 'r') as f:
+#            data  = json.load(f)
+#            if 'keys_upd' in path:
+#                data = [tuple(tuple(e) if type(e) == list else e for e in small_list) for small_list in data]
+    if data_type == 'dictionary':
+        with open(path+'.pkl', 'rb') as f:
+            data  = pickle.load(f)
+#    elif option == 'npz':
+#        assert 0
+#        data  = sparse.load_npz(path + '.npz')
+#    elif option == 'dict_np':
+#        with open(path + '/' + 'keys', 'rb') as f:
+#            keys = np.load(f, allow_pickle = True)
+#        data = {}
+#        print()
+#        list_files = os.listdir(path + '/')
+#        if len(list_files) >= max_len:
+#            raise custex('on purpose because list of files too long')
+#        for ii, fname in enumerate(list_files):
+#            print('\r'+str(ii), '/', len(list_files), ' - ', fname, ' '*20, end = '')
+#            if 'keys' in fname\
+#            or (    tuple(fname.split('$')) not in keys \
+#                and fname not in keys):
+#                continue
+#            with open(path + '/' + fname, 'rb') as f:
+#                res = np.load(f, allow_pickle = True)
+#                assert type(res) == np.ndarray
 #                assert 'orig_masks' not in fname
-#                fname = fname.split('.')[0]
 #                data[tuple(fname.split('$')) if '$' in fname else fname] = res
-#            print()
-#            for k in keys:
-#                if isinstance(k, str):
-#                    assert k in data, ('pb with keys1', option, k)
-#                else:
-#                    assert tuple(k) in data, ('pb with keys1, tuple', option)
-#        elif option == 'dict_tup':
-#            with open(path + '/' + 'keys', 'rb') as f:
-#                keys = np.load(f, allow_pickle = True)
-#            data = {}
-#            print()
-#            list_files = os.listdir(path + '/')
-#            if len(list_files) >= max_len:
-#                raise custex('on purpose because list of files too long')
-#            for ii, fname in enumerate(list_files):
-#                print('\r'+str(ii), '/', len(list_files), end = '')
-#                if 'keys' in fname\
-#                or (fname not in keys):
-#                    continue
-#                with open(path + '/' + fname, 'rb') as f:
-#                    res = np.load(f, allow_pickle = True)
-#                assert type(res) == np.ndarray, 'pb array'
-#                data[eval(fname)] = res
-#            print()
-#            for k in keys:
-#                assert eval(k) in data, (k, 'pb with keys', option)
-#        else : 
-#            assert 0
-#        print('{0:{len_str}}'.format('loaded', len_str = len_str))
-#    except IOError as e:
-#        print(colored('fail', 'red'), repr(e))
-#        raise e
-#    except tuple3errors as e:
-#        print(colored('fail', 'red'), colored(repr(e), 'red'))
-#        raise e
-#    except Exception as e:
-#        raise e
-#    return data
-#
-#
+#        print()
+#        for k in keys:
+#            if isinstance(k, str):
+#                assert k in data, ('pb with keys1', k, option)
+#            else:
+#                assert tuple(k) in data, ('pb with keys1, tuple', option)
+#    elif option == 'dict_sp':
+#        with open(path + '/' + 'keys', 'rb') as f:
+#            keys = np.load(f, allow_pickle = True)
+#        data = {}
+#        print()
+#        list_files = os.listdir(path + '/')
+#        if len(list_files) >= max_len:
+#            raise custex('on purpose because list of files too long')
+#        for ii, fname in enumerate(list_files):
+#            print('\r'+str(ii), '/', len(list_files), end = '')
+#            if 'keys' in fname\
+#            or (    tuple(fname.split('$')) not in keys \
+#                and fname.split('.')[0] not in keys):
+#                continue
+#            res = sparse.load_npz(path + '/' + fname)
+#            assert type(res) in {sp.sparse.csr_matrix, sp.sparse.csc_matrix}
+#            assert 'orig_masks' not in fname
+#            fname = fname.split('.')[0]
+#            data[tuple(fname.split('$')) if '$' in fname else fname] = res
+#        print()
+#        for k in keys:
+#            if isinstance(k, str):
+#                assert k in data, ('pb with keys1', option, k)
+#            else:
+#                assert tuple(k) in data, ('pb with keys1, tuple', option)
+#    elif option == 'dict_tup':
+#        with open(path + '/' + 'keys', 'rb') as f:
+#            keys = np.load(f, allow_pickle = True)
+#        data = {}
+#        print()
+#        list_files = os.listdir(path + '/')
+#        if len(list_files) >= max_len:
+#            raise custex('on purpose because list of files too long')
+#        for ii, fname in enumerate(list_files):
+#            print('\r'+str(ii), '/', len(list_files), end = '')
+#            if 'keys' in fname\
+#            or (fname not in keys):
+#                continue
+#            with open(path + '/' + fname, 'rb') as f:
+#                res = np.load(f, allow_pickle = True)
+#            assert type(res) == np.ndarray, 'pb array'
+#            data[eval(fname)] = res
+#        print()
+#        for k in keys:
+#            assert eval(k) in data, (k, 'pb with keys', option)
+    else : 
+        raise ValueError('wrong data_type')
+    print('{0:{len_str}}'.format('loaded', len_str = len_str))
+    return data
+
+
    
 def file_save(path, data, data_type = None): 
     # save locally before transfer
+    ##########################
     msg = '{0:20.20}'.format('saving') + '{0:20.20}'.format(path.replace('/', '_').split('_')[-2] + '_' + path.replace('/', '_').split('_')[-1])
+    if   'data'  in path.lower():
+        if not config.save_data:
+            raise custex('on purpose ' + msg)
+    elif 'model' in path.lower():
+        if not config.save_model:
+            raise custex('on purpose ' + msg)              
+    elif 'pred'  in path.lower():
+        if not config.save_predictions:
+            raise custex('on purpose ' + msg)            
+    elif 'perf'  in path.lower():
+        if not config.save_performances:
+            raise custex('on purpose ' + msg)
+    else:
+        if not config.save: 
+            raise custex('on purpose ' + msg)            
+    ##########################
     dirname = os.path.dirname(path)
     os.makedirs(dirname, exist_ok = True)
     print('{0:{len_str}}'.format(msg, len_str = len_str), end = ' - ')
@@ -333,17 +367,18 @@ def file_save(path, data, data_type = None):
 
 
 ##profile    
-#def file_upload(local_folder, dist_folder, files_to_include, param, t_o = t_out): 
-#    # transfer from origin to destination
+def file_upload(files_to_include, t_o = t_out): 
+    raise NotImplementedError
+    # transfer from origin to destination
 #    msg = '{0:20.20}'.format('uploading') + '{0:20.20}'.format(', '.join([k.replace('/', '_').split('_')[-2] +'_'+ k.replace('/', '_').split('_')[-1] \
 #                                                                for k in files_to_include]))
 #    try:
-#        if not param['upload']:
+#        if not config.upload']:
 #            raise custex('on purpose ' + msg)
-#        if (   ('data'  in dist_folder.lower() and not param['upload_data'])
-#            or ('betas' in dist_folder.lower() and not param['upload_model'])
-#            or ('pred'  in dist_folder.lower() and not param['upload_pred'])
-#            or ('perf'  in dist_folder.lower() and not param['upload_perf'])
+#        if (   ('data'  in dist_folder.lower() and not config.upload_data'])
+#            or ('model' in dist_folder.lower() and not config.upload_model'])
+#            or ('pred'  in dist_folder.lower() and not config.upload_pred'])
+#            or ('perf'  in dist_folder.lower() and not config.upload_perf'])
 #            ):
 #            raise custex('on purpose ' + msg)
 #        else:
@@ -413,28 +448,32 @@ def file_save(path, data, data_type = None):
 ###############################################################################
 
 ##profile    
-#def tf_data_load(local_folder, file_prefix, param, obj_name = '', mod = 'np'):
-#    assert obj_name
-#    fname = file_prefix + '/' + obj_name
-#    fname = str_make.format_string(fname)
-#    files_to_fetch    = {
-#                         fname    : mod,
-#                         }
-#    dist__folder = dist_from_local_folder(local_folder)
-#    file = file_fetch(files_to_fetch, dist__folder, local_folder, param)
-#    if mod == 'np':
-#        file  = file[()]
-#    return file
+def batch_load(local_folder, prefix = None, data_name = None, data_type = None):
+    fpath = os.path.join(prefix, data_name)
+    files_to_fetch    = {
+                         fpath    : data_type,
+                         }
+    #dist__folder = None#dist_from_local_folder(local_folder)
+    file = file_fetch(local_folder,
+                      files_to_fetch,
+                      )#, dist__folder, local_folder, param)
+    if data_type == 'np':
+        file  = file[()]
+    return file
 
 
 def batch_save(local_folder, prefix = None, data = None, data_name = None, data_type = None):   
-    fpath = os.path.join(prefix, data_name)
+    fpath = os.path.join(prefix, 
+                         data_name,
+                         )
     #fpath = str_make.format_string(fpath) 
     files_to_save     = {
                          fpath : (data, data_type), 
                          }
     for k, v in files_to_save.items():
-        file_save(local_folder + k, 
+        file_save(os.path.join(local_folder,
+                               k,
+                               ), 
                   v[0], 
                   data_type = v[1],
                   )
@@ -455,8 +494,8 @@ def batch_save(local_folder, prefix = None, data = None, data_name = None, data_
 #    
 #    
 #def dist_from_local_folder(local_folder):
-#    if   'Betas' in local_folder: 
-#        dist__folder = dist__folder_betas
+#    if   'model' in local_folder: 
+#        dist__folder = dist__folder_model
 #    elif 'Data' in local_folder: 
 #        dist__folder = dist__folder_data
 #    elif 'Perf' in local_folder: 

@@ -1,8 +1,6 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 
-#import default_config
-#import copy as cp
+
+
 import pandas as pd
 
 

@@ -22,14 +22,14 @@ def make_dikt_files(hprm, nb_sites = None, nb_weather = None, dt_training = None
     #=========================================#
     str_dataset = '_'.join([hprm['database'],
                             'sites',
-                            str(nb_sites),
                             hprm['sites.zone'],
+                            str(nb_sites),
                             hprm['sites.aggregation'] if bool(hprm['sites.aggregation']) else '',
                             'weather',
-                            str(nb_weather), 
                             hprm['weather.zone'],
-                            hprm['weather.aggregation'] if bool(hprm['weather.aggregation']) else '',
                             hprm['weather.source'],
+                            str(nb_weather), 
+                            hprm['weather.aggregation'] if bool(hprm['weather.aggregation']) else '',
                             ])
     str_split_training   = '_'.join([
                                      'training',
@@ -56,69 +56,15 @@ def make_dikt_files(hprm, nb_sites = None, nb_weather = None, dt_training = None
                 else:
                     list_attr.append(str(e))
         str_inputs[variable] = '_'.join(list_attr)
-    
-#    ### Instantaneous variables
-#    inst_variables          = [k 
-#                               for k in hprm['selected_variables'] 
-#                               if 'lag' not in k
-#                               ]
-#    str_inst_variables      = format_string('_'.join(inst_variables))
-#    #### Lags variables
-#    lag_variables           = [k 
-##                               for k in hprm['selected_variables'] 
-#                               if (   'lag' in k 
-#                                   or 'dif' in k 
-#                                   or 'min' in k 
-#                                   or 'max' in k
-#                                   ) 
-#                                  and hprm['lag'][k]!=()
-#                               ]
-#    str_lag                 = {}
-#    for k in lag_variables:
-#        L = []
-#        for i in range(len(hprm['lag'][k])):
-#            if len(hprm['lag'][k][i]) == 1:
-#                L += [str(hprm['lag'][k][i][0])]
-#            else :
-#                L += [str(np.min(hprm['lag'][k][i])) + '__' + str(np.max(hprm['lag'][k][i])) + ('_' + str(len(hprm['lag'][k][i])))*bool(len(hprm['lag'][k][i]) != np.max(hprm['lag'][k][i]) - np.min(hprm['lag'][k][i]) +1)]
-#        str_lag[k] = '_'.join(L)
-    
-#    posts_for_lag = 'all' + str(hprm['nb_posts'])
-#    for s in ['targetlag', 'meteodiftargetlag']:
-#        if s in str_lag:
-#            t = s.replace('lag', 'lag' + posts_for_lag)
-#            str_lag[t] = str_lag[s]
-#            del str_lag[s]
-#    str_lag_variables       = format_string('_'.join(sorted([k+'_'+v for k,v in str_lag.items()])))
-#    ### Smoothed variables
-#    smo_variables           = [k for k in hprm['selected_variables'] if ('smo' in k) and hprm['smo'][k]!=()]
-#    str_smo                 = {}
-#    for k in smo_variables:
-#        L = []
-#        for i in range(len(hprm['smo'][k])):
-#            L += [str(hprm['smo'][k][i])]
-#        str_smo[k] = '_'.join(L)    
-#    str_smo_variables       = format_string('_'.join(sorted([k+'_'+v for k, v in str_smo.items()])))    
-#    #####
-#    variables               = '_'.join([e for e in [str_inst_variables, str_lag_variables, str_smo_variables] if e != ''])
-#    order_variables         = inst_variables + lag_variables + smo_variables
-    #### Time
-#    if 'stamp' in hprm['selected_variables']:
-#        time = ('_TOPT_'+str(hprm['time_only_polynomial_term']))* (hprm['time_only_polynomial_term'] != 0)
-#    else:
-#        time = ''
 
     #=========================================#
     ###         Model                       ###
     #=========================================#
     str_learning = '_'.join([hprm['learning.method'],
-                             'independent_models' if hprm['learning.independent_models'] else '',
-                             'individual_designs' if hprm['learning.independent_models'] else '',
+                             'coupled_models' if not hprm['learning.independent_models'] else '',
+                             'individual_designs' if hprm['learning.individual_designs'] else '',
                              ])    
-    
-#    separated  = ''+(method in {'rf', 'xgb'})*hprm.get('sep_model', False)*('sep' + '_uc'*(hprm.get('different_designs', False) == True)) # For qo, separated is done below
-#    separated2 = ('_sv_' + hprm.get('separation_var')[0] + str(hprm.get('separation_var')[1])) if hprm.get('separation_var') else ''
-#    separated3 = '_sepo_'*hprm.get('separation_post')
+    import ipdb; ipdb.set_trace()
     
     
     #=========================================#
@@ -367,8 +313,8 @@ def make_dikt_files(hprm, nb_sites = None, nb_weather = None, dt_training = None
                                str_dataset,
                                str_split_training,
                                str_split_validation,
-                               *list(str_inputs.values()),
                                str_learning,
+                               *list(str_inputs.values()),
                                )
     
     for key, ss in dikt.items():
@@ -387,7 +333,7 @@ def make_dikt_files(hprm, nb_sites = None, nb_weather = None, dt_training = None
     return dikt
 
 
-########################################################## #
+###############################################################################
 
 
 def dikt_gam_to_str(dikt_uni, dikt_bi, data_cat):
@@ -428,30 +374,3 @@ def dikt_gam_to_str(dikt_uni, dikt_bi, data_cat):
     return '_'.join(s)  
 
 
-#def format_prm(s):
-#    m = len(s) - 1
-#    while s[m-1] == s[m] and m> 0:
-#        m -= 1
-#    return s[:m + 1]
- 
-
-#def join_strings(a):
-#    s = ' '.join(a)
-#    s = s.replace('/ ', '/')
-#    s = "_".join(s.split())
-#    return s
-
-       
-
-
-
-#def merge_active_keys_with_underscore(dikt):
-#    s = '_'.join([k for k,v in dikt.items() if v == 1])
-#    return s
-
-
-#def remove_strs_from_dict(L, dikt):
-#    for k in L:
-#        if k in dikt:
-#            del dikt[k]
-#    return dikt
