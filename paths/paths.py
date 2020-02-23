@@ -5,45 +5,48 @@ import socket
 
 
 ### Paths ###
+
 if socket.gethostname() == 'MB6.local':
     root_folder = '/Volumes/_TData'
 else:
     root_folder = os.path.expanduser("~")
+    
 ###############################################################################
 
-dataset     = 'Eco2mix_administrative_regions'
+def path_inputs(database):
+    assert database in {
+                       'Eco2mix_administrative_regions',
+                       'Eco2mix_France',
+                       'RTE',
+                       'RTE_quick_test',
+                       }
+    
+    if database == 'RTE':
+        path_inputs = os.path.join(root_folder, 
+                                   'RTE', 
+                                   'transformed_data',
+                                   )
+    elif database == 'RTE_quick_test':
+        path_inputs = os.path.join(root_folder, 
+                                   'RTE', 
+                                   'transformed_data', 
+                                   'quick_test',
+                                   )
+    elif database == 'Eco2mix_administrative_regions':
+        path_inputs =  os.path.join(root_folder,
+                                    'Eco2mix',
+                                    'transformed_data',
+                                    'administrative_regions',
+                                    )
+    elif database == 'Eco2mix_France':
+        path_inputs =  os.path.join(root_folder,
+                                    'Eco2mix',
+                                    'transformed_data',
+                                    'France',
+                                    )
+    return path_inputs
 
-assert dataset in {
-                   'Eco2mix_administrative_regions',
-                   'Eco2mix_France',
-                   'RTE',
-                   'RTE_quick_test',
-                   }
-
-if dataset == 'RTE':
-    inputs = os.path.join(root_folder, 
-                          'RTE', 
-                          'transformed_data',
-                          )
-elif dataset == 'RTE_quick_test':
-    inputs = os.path.join(root_folder, 
-                          'RTE', 
-                          'transformed_data', 
-                          'quick_test',
-                          )
-elif dataset == 'Eco2mix_administrative_regions':
-    inputs =  os.path.join(root_folder,
-                           'Eco2mix',
-                           'transformed_data',
-                           'administrative_regions',
-                           )
-elif dataset == 'Eco2mix_France':
-    inputs =  os.path.join(root_folder,
-                           'Eco2mix',
-                           'transformed_data',
-                           'France',
-                           )
-
+###############################################################################
 
 extras   = os.path.join(root_folder, 
                         'additional_data',
@@ -51,7 +54,9 @@ extras   = os.path.join(root_folder,
 outputs = os.path.join(os.path.expanduser("~"),
                        'forecasting_outputs',
                        )
-###
+
+###############################################################################
+
 
 
 

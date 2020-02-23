@@ -63,31 +63,32 @@ def binary_summer_break(date):
     return 0
 
 
-def binary_daytime(dates):
+#@profile
+def binary_daytime(samples_dt):
     city_name          = 'Paris'
     a                  = astral.Astral()
     a.solar_depression = 'civil'
     city               = a[city_name]
-    daylights = np.zeros(dates.shape)
-    for ii, dd in enumerate(dates):
-        sun           = city.sun(date=dd.date(), local = False)
-        daylights[ii] = (dd>sun['sunrise'])*(dd<sun['sunset'])
+    sun          = pd.DataFrame(list(map(lambda dd : city.sun(date = dd, local = False), samples_dt.date))) # This takes a lot of time !!!
+    daylights    = np.logical_and(samples_dt > sun['sunrise'],
+                                  samples_dt < sun['sunset'],
+                                  )
     return daylights
  
-
-def compute_calendar_variables(dates):
+    
+def compute_calendar_variables(samples_dt):
     calendar_variables = pd.DataFrame({
-                                       'year_day'      : dates.dayofyear,
-                                       'week_day'      : dates.dayofweek,
-                                       'weekend'       : (dates.dayofweek > 4).astype(int),
-                                       'week_hour'     : dates.hour + 24 * dates.dayofweek,
-                                       'hour'          : dates.hour,
-                                       'timestamp'     : list(map(lambda dd : dd.timestamp(), dates)),                                       
-                                       'holidays'      : list(map(binary_holidays,     dates)),
-                                       'summer_break'  : list(map(binary_summer_break, dates)),
-                                       'xmas'          : list(map(binary_christmas,    dates)),
-                                       'daylight'      : binary_daytime(dates),
+                                       'year_day'      :  samples_dt.dayofyear,
+                                       'week_day'      :  samples_dt.dayofweek,
+                                       'weekend'       : (samples_dt.dayofweek > 4).astype(int),
+                                       'week_hour'     :  samples_dt.hour + 24 * samples_dt.dayofweek,
+                                       'hour'          :  samples_dt.hour,
+                                       'timestamp'     : list(map(lambda dd : dd.timestamp(), samples_dt)),                                       
+                                       'holidays'      : list(map(binary_holidays,     samples_dt)),
+                                       'summer_break'  : list(map(binary_summer_break, samples_dt)),
+                                       'xmas'          : list(map(binary_christmas,    samples_dt)),
+                                       'daylight'      : binary_daytime(samples_dt),
                                        }, 
-                                      index = dates,
+                                      index = samples_dt,
                                       )  
     return calendar_variables 

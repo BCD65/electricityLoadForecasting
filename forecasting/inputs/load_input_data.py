@@ -4,11 +4,10 @@
 import os
 import pandas as pd
 #
-import electricityLoadForecasting.paths as paths
 
 
-def load_coordinates_sites():
-    coordinates_sites = pd.read_csv(os.path.join(paths.inputs,
+def load_coordinates_sites(path_inputs):
+    coordinates_sites = pd.read_csv(os.path.join(path_inputs,
                                                  'df_coordinates_sites.csv',
                                                  ), 
                                     index_col = [0],
@@ -17,8 +16,8 @@ def load_coordinates_sites():
     return coordinates_sites
 
 
-def load_coordinates_weather():
-    coordinates_weather = pd.read_csv(os.path.join(paths.inputs,
+def load_coordinates_weather(path_inputs):
+    coordinates_weather = pd.read_csv(os.path.join(path_inputs,
                                                    'df_coordinates_weather.csv',
                                                    ), 
                                       index_col = [0],
@@ -27,8 +26,8 @@ def load_coordinates_weather():
     return coordinates_weather
 
 
-def load_target():
-    df_sites = pd.read_csv(os.path.join(paths.inputs,
+def load_target(path_inputs):
+    df_sites = pd.read_csv(os.path.join(path_inputs,
                                         'df_sites.csv',
                                         ), 
                            index_col = [0],
@@ -38,8 +37,8 @@ def load_target():
     return df_sites
 
 
-def load_weather():
-    df_weather = pd.read_csv(os.path.join(paths.inputs,
+def load_weather(path_inputs):
+    df_weather = pd.read_csv(os.path.join(path_inputs,
                                           'df_weather.csv',
                                           ), 
                              index_col = [0],
@@ -47,20 +46,18 @@ def load_weather():
                              )
     df_weather.index = pd.to_datetime(df_weather.index).tz_localize('UTC') 
     return df_weather
-    
-
 
 
 ###############################################################################
 
 #profile
-def load_input_data():
+def load_input_data(path_inputs):
     
     data = {
-            'df_sites'               : load_target(),
-            'df_weather'             : load_weather(),
-            'df_coordinates_sites'   : load_coordinates_sites(),
-            'df_coordinates_weather' : load_coordinates_weather(),
+            'df_sites'               : load_target(path_inputs),
+            'df_weather'             : load_weather(path_inputs),
+            'df_coordinates_sites'   : load_coordinates_sites(path_inputs),
+            'df_coordinates_weather' : load_coordinates_weather(path_inputs),
             }
     
     common_dates       = sorted(set(data['df_sites'].index).intersection(data['df_weather'].index))

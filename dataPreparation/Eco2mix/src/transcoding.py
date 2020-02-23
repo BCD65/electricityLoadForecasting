@@ -17,7 +17,7 @@ XLS_TRANSCODING = {
 
 
 Eco2mix_date     = 'Date'
-Eco2mix_time_UTC = 'Heures'
+Eco2mix_time_CET = 'Heures'
 Eco2mix_load     = 'Consommation'
 
 MeteoFrance_dt_UTC      = 'date'

@@ -39,7 +39,7 @@ def read_raw_load_data(site = None, year = None):
                                     Eco2mix.src.dikt_files['sites.load_site_year'].format(site = Eco2mix.src.XLS_TRANSCODING.get(site, site),
                                                                                           year = year,
                                                                                           ).replace('__', '_'),
-                                ) + '.xls'    
+                                    ) + '.xls'    
     df        = pd.read_csv(xls_file_path,
                             sep        = '\t',
                             encoding   = 'ISO-8859-1',
@@ -49,8 +49,9 @@ def read_raw_load_data(site = None, year = None):
                             #skiprows  = 1,
                             na_values = ['ND'],
                             )
-    df[src.user_dt_UTC] = pd.to_datetime(df[Eco2mix.src.Eco2mix_date] + ' ' + df[Eco2mix.src.Eco2mix_time_UTC], format = '%Y/%m/%d %H:%M')  
-    print(colored('It is assumed that the data from Eco2mix is in UTC - to be checked', 'red', 'on_cyan'))
+    df[src.user_dt_UTC] = (  pd.to_datetime(   df[Eco2mix.src.Eco2mix_date] + ' ' + df[Eco2mix.src.Eco2mix_time_CET], format = '%Y/%m/%d %H:%M')
+                           + pd.DateOffset(hours = 1) #  data from Eco2mix is in CET
+                           ).dt.tz_localize('UTC')
     df = df.set_index(src.user_dt_UTC)[[Eco2mix.src.Eco2mix_load]]
     df = df.rename({Eco2mix.src.Eco2mix_load : unidecode.unidecode(site) if site else 'France'}, axis = 1)
     #df.columns = pd.MultiIndex.from_arrays([df.columns], names=[src.user_site_name]) 

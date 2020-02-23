@@ -7,14 +7,6 @@ import numpy    as np
 import pandas   as pd
 import datetime as dt
 import os
-#import importlib
-#import time
-#import pickle
-#import socket
-#import platform
-#import re
-#import types
-#from multiprocessing.pool import ThreadPool
 from termcolor import colored
 
 #
@@ -68,7 +60,9 @@ class Experience(object):
 
 ###############################################################################
   
-    def select_sites(self, ):      
+    def select_sites(self, ):   
+        self.nb_input_sites = self.data['df_sites'].shape[1]
+        
         # Discard sites in TRASH_SITES
         self.data['df_sites']            .drop(labels = self.hprm['sites.trash'], axis = 1, inplace = True)
         self.data['df_coordinates_sites'].drop(labels = self.hprm['sites.trash'], axis = 0, inplace = True)
@@ -95,16 +89,19 @@ class Experience(object):
 ###############################################################################
 
     def assign_weather(self, ):
-        
+
         # Choose weather source
-        self.data['df_weather'] = self.data['df_weather'].xs(key = self.hprm['weather.source'], axis = 1, level = src.user_source)
+        self.data['df_weather'] = self.data['df_weather'].xs(key   = self.hprm['weather.source'],
+                                                             axis  = 1,
+                                                             level = src.user_source,
+                                                             )
         
         # Restrict the weather stations to a rectangle defined by the sites
         subset_weather = tools.geography.subset_weather(self.data['df_coordinates_weather'],
-                                                  self.data['df_coordinates_sites'],
-                                                  self.hprm['weather.extra_latitude'],
-                                                  self.hprm['weather.extra_longitude'],
-                                                  )
+                                                        self.data['df_coordinates_sites'],
+                                                        self.hprm['weather.extra_latitude'],
+                                                        self.hprm['weather.extra_longitude'],
+                                                        )
         self.data['df_weather']             = self.data['df_weather']                [subset_weather]
         self.data['df_coordinates_weather'] = self.data['df_coordinates_weather'].loc[subset_weather]        
         
@@ -113,7 +110,6 @@ class Experience(object):
                                                                                                            self.data['df_coordinates_weather'], 
                                                                                                            self.hprm['weather.aggregation'],
                                                                                                            )
-        
         # Compute distance-related orders
         self.rolling_away_weather = tools.geography.rolling_away(self.data['df_coordinates_sites'], 
                                                                  self.data['df_coordinates_weather'], 
@@ -125,7 +121,7 @@ class Experience(object):
         self.data['df_weather'] = self.data['df_weather'][sorted(np.unique(self.assignment_weather_stations))]
 
 ###############################################################################
-        
+
     def unfold_data(self, ):
         self.data['df_calendar'] = tools.calendar.compute_calendar_variables(self.data['df_sites'].index)
         basket_original_data     = {**{key : self.data['df_calendar'][[key]] for key in self.data['df_calendar']} , 
@@ -169,7 +165,7 @@ class Experience(object):
         self.performances = tools.batch_load(os.path.join(paths.outputs,
                                                           'Saved/Performances',
                                                           ), 
-                                             '_'.join([self.dikt['exp']]), 
+                                             self.dikt['exp'], 
                                              self.hprm, 
                                              data_name = 'performances', 
                                              data_type = 'pickle',
@@ -183,7 +179,7 @@ class Experience(object):
         self.predictions = tools.batch_load(os.path.join(paths.outputs,
                                                          'Saved/Predictions',
                                                          ), 
-                                            '_'.join([self.dikt['exp']]), 
+                                            self.dikt['exp'], 
                                             self.hprm, 
                                             data_name = 'predictions', 
                                             data_type = 'dict_np',
@@ -287,7 +283,7 @@ class Experience(object):
         tools.batch_save(os.path.join(paths.outputs, 
                                       'Saved/Predictions',
                                       ), 
-                         prefix    = '_'.join([self.dikt['exp']]), 
+                         prefix    = self.dikt['exp'], 
                          data      = self.prediction_dikt, 
                          data_name = 'predictions', 
                          data_type = 'dictionary',
@@ -308,18 +304,21 @@ class Experience(object):
                              'good_days'     : {},
                              'lag_168'       : {},
                              }
+        # Model performances
         self.performances['model']['training']   = performances.get_performances(self.target_training, 
                                                                                  self.prediction_training,
                                                                                  )
-        self.performances['model']['validation'] = performances.get_performances(self.target_training,
-                                                                                 self.prediction_training,
+        self.performances['model']['validation'] = performances.get_performances(self.target_validation,
+                                                                                 self.prediction_validation,
                                                                                  )
+        # Model performances on the aggregated load
         self.performances['aggregated']['training']   = performances.get_performances(self.target_training.sum(axis=1)[:,None],
                                                                                       self.prediction_training.sum(axis=1)[:,None],
                                                                                       )
         self.performances['aggregated']['validation'] = performances.get_performances(self.target_validation.sum(axis=1)[:,None],
                                                                                       self.prediction_validation.sum(axis=1)[:,None],
                                                                                       )
+        # Model performances on good_days
         self.good_days = ~(self.data['df_calendar']['holidays'] + self.data['df_calendar']['xmas']).astype(bool)
         self.performances['good_days']['training']   = performances.get_performances(self.target_training[self.good_days[self.dt_training]],
                                                                                      self.prediction_training[self.good_days[self.dt_training]],
@@ -327,6 +326,7 @@ class Experience(object):
         self.performances['good_days']['validation'] = performances.get_performances(self.target_validation[self.good_days[self.dt_validation]],
                                                                                      self.prediction_validation[self.good_days[self.dt_validation]],
                                                                                      )
+        # Naive benchmark model
         self.performances['lag_168']['training']   = performances.get_performances(self.target_training.loc[self.target_training.index.min() + pd.DateOffset(hours = 168):],
                                                                                    self.target_training.set_index(self.target_training.index + pd.DateOffset(hours = 168)).loc[:self.target_training.index.max()],
                                                                                    )
@@ -340,7 +340,7 @@ class Experience(object):
         tools.batch_save(os.path.join(paths.outputs,
                                       'Saved/Performances',
                                       ), 
-                         prefix    = '_'.join([self.dikt['exp']]), 
+                         prefix    = self.dikt['exp'], 
                          data      = self.performances, 
                          data_name = 'performances', 
                          data_type = 'dictionary',

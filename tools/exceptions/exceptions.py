@@ -27,3 +27,5 @@ loading_errors = tuple_errors = (
                                  pickle.UnpicklingError,
                                  custex,  
                                  )
+
+saving_errors = loading_errors

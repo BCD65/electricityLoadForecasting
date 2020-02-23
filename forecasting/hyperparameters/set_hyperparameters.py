@@ -40,7 +40,6 @@ def set_hyperparameters(method = None):
     if hprm['learning.method'] == 'gam':
         hprm.update(set_gam(hprm))
 #
-#    param.update(pre_treatment())                                         
 #    
     hprm = check_hyperparameters(hprm)
     

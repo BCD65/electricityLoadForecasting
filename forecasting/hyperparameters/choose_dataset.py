@@ -8,6 +8,13 @@ import pandas as pd
 def choose_dataset(hprm):
    
     hprm.update({
+                 # Choose the database
+                 'database'             : 'Eco2mix_administrative_regions',
+                                            # 'Eco2mix_administrative_regions'
+                                            # 'Eco2mix_France'
+                                            # 'RTE'
+                                            # 'RTE_quick_test'
+                                        
                  # Choose the load data
                  'sites.zone'           : 'all', 
                  'sites.aggregation'    : None,

@@ -17,6 +17,7 @@ def choose_inputs(hprm):
                  'inputs.selection' : {
                                        ('temperature',   None,         None), 
                                        ('week_hour',     None,         None), 
+                                       ('timestamp',     None,         None), 
                                        ('target',        'lag',        pd.DateOffset(hours = 24)),
                                        ('temperature',   'smoothing',  0.99),
                                        ('temperature',   'minimum',    '1D'),
