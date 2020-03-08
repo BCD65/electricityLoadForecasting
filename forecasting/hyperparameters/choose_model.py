@@ -3,12 +3,12 @@
 
 
 
-def choose_method(hprm, method = None):
+def choose_model(hprm, model = None):
     
-    if method is not None:
-        hprm['learning.method'] = method
+    if model is not None:
+        hprm['learning.model'] = model
     else:
-        hprm['learning.method'] = 'regression_tree'
+        hprm['learning.model'] = 'additive_features_model'
                                    # 'additive_features_model'  Main standard bivariate linear model
                                    # 'xgboost' 
                                    # 'random_forests' 

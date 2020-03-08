@@ -4,7 +4,7 @@
 #from .partial_computations import partial_computations
 from .choose_dataset       import choose_dataset
 from .choose_inputs        import choose_inputs
-from .choose_method        import choose_method
+from .choose_model         import choose_model
 from .set_gam              import set_gam
 #from .select_variables     import select_variables
 #from .set_approx_tf        import set_approx_tf
@@ -20,7 +20,7 @@ Set default parameters
 Returns a dictionary containing all the parameters
 """
 
-def set_hyperparameters(method = None):
+def set_hyperparameters(model = None):
 
     hprm = {}
 
@@ -28,7 +28,7 @@ def set_hyperparameters(method = None):
 #    param.update(partial_computations())
     hprm.update(choose_dataset(hprm)) 
     hprm.update(choose_inputs(hprm)) 
-    hprm.update(choose_method(hprm, method = method))                
+    hprm.update(choose_model(hprm, model = model))                
 #    param.update(select_variables(param))  
 #    param.update(rules_plot()) 
 #    param.update(extra_parameters()) 
@@ -37,10 +37,18 @@ def set_hyperparameters(method = None):
 #        param.update(set_approx_tf(param))
 #        param.update(set_self_reg())
 #    
-    if hprm['learning.method'] == 'gam':
+    if   hprm['learning.model'] == 'additive_features_model':
         hprm.update(set_gam(hprm))
-#
-#    
+   
+    elif hprm['learning.model'] == 'gam':
+        hprm.update(set_gam(hprm))
+           
+    elif hprm['learning.model'] in {'random_forests', 'regression_tree', 'xgboost', 'svr'}:
+        pass
+    
+    else:
+        raise ValueError
+    
     hprm = check_hyperparameters(hprm)
     
     return hprm 

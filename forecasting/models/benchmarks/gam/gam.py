@@ -20,18 +20,17 @@ def fit_and_predict(inputs_training, Y_training, inputs_validation, hprm, assign
                                     )
     for ii, site_name in enumerate(Y_training.columns):
         print('\r{0}/{1}'.format(ii, Y_training.shape[1]), end = '\n')
-        
-        site_inputs_training = {(qty, *prm) : (data
+        site_inputs_training = {(qty, *prm) : (inputs_training[(qty, *prm)]
                                                if (qty not in assignments)
                                                else
-                                               data[assignments[qty][site_name]]
+                                               inputs_training[(qty, *prm)][assignments[qty][site_name]]
                                                ) 
                                 for (qty, *prm), data in inputs_training.items()
                                 }
-        site_inputs_validation = {(qty, *prm) : (data
+        site_inputs_validation = {(qty, *prm) : (inputs_validation[(qty, *prm)]
                                                  if (qty not in assignments)
                                                  else
-                                                 data[assignments[qty][site_name]]
+                                                 inputs_validation[(qty, *prm)][assignments[qty][site_name]]
                                                  ) 
                                   for (qty, *prm), data in inputs_validation.items()
                                   }

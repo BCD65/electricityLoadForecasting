@@ -25,11 +25,13 @@ def make_dikt_files(hprm, nb_sites = None, nb_weather = None, dt_training = None
                             hprm['sites.zone'],
                             str(nb_sites),
                             hprm['sites.aggregation'] if bool(hprm['sites.aggregation']) else '',
+                            'mask{0}'.format(hprm['inputs.nb_sites_per_site']),
                             'weather',
                             hprm['weather.zone'],
                             hprm['weather.source'],
                             str(nb_weather), 
                             hprm['weather.aggregation'] if bool(hprm['weather.aggregation']) else '',
+                            'mask{0}'.format(hprm['inputs.nb_weather_per_site']),
                             ])
     str_split_training   = '_'.join([
                                      'training',
@@ -45,7 +47,6 @@ def make_dikt_files(hprm, nb_sites = None, nb_weather = None, dt_training = None
     #=========================================#
     ###         Variables                   ###
     #=========================================#
-    
     str_inputs = {}
     for variable in hprm['inputs.selection']:
         list_attr = []
@@ -60,16 +61,24 @@ def make_dikt_files(hprm, nb_sites = None, nb_weather = None, dt_training = None
     #=========================================#
     ###         Model                       ###
     #=========================================#
-    str_learning = '_'.join(filter(None, [hprm['learning.method'],
+    str_learning = '_'.join(filter(None, [hprm['learning.model'],
                                           'coupled_models' if not hprm['learning.independent_models'] else '',
                                           'individual_designs' if hprm['learning.individual_designs'] else '',
                                           ]))    
     
     
     #=========================================#
+    ###             GAM                     ###
+    #=========================================#    
+    if hprm['learning.model'] in {'gam'}:
+        # dikt_gam_to_str(dikt_uni, dikt_bi, data_cat)
+        pass
+    
+    
+    #=========================================#
     ###       approx tf                     ###
     #=========================================#    
-    if hprm['learning.method'] in {'approx_tf'}:
+    elif hprm['learning.model'] in {'approx_tf'}:
         
         ##########
         # Design
@@ -308,14 +317,39 @@ def make_dikt_files(hprm, nb_sites = None, nb_weather = None, dt_training = None
     #         Final model                     #
     #=========================================#
         
-    dikt['exp'] = os.path.join(
-                               str_dataset,
-                               str_split_training,
-                               str_split_validation,
-                               str_learning,
-                               *list(str_inputs.values()),
-                               )
+    dikt['experience.modeling'] = os.path.join(
+                                               str_dataset,
+                                               str_learning,
+                                               *list(str_inputs.values()),
+                                               )
+        
+    dikt['experience.training'] = os.path.join(
+                                               str_dataset,
+                                               str_split_training,
+                                               str_learning,
+                                               *list(str_inputs.values()),
+                                               )
+        
+    dikt['experience.validation'] = os.path.join(
+                                                 str_dataset,
+                                                 str_split_training,
+                                                 str_learning,
+                                                 *list(str_inputs.values()),
+                                                 )
+        
+    dikt['experience.whole'] = os.path.join(
+                                            str_dataset,
+                                            str_split_training,
+                                            str_split_validation,
+                                            str_learning,
+                                            *list(str_inputs.values()),
+                                            )
+            
+    #=========================================#
+    #            Format                       #
+    #=========================================#
     
+    # Format strings that are too long - it should no longer occur
     for key, ss in dikt.items():
         too_long = np.sum([len(ee) > 250 for ee in ss.split('/')])
         if too_long:
@@ -327,7 +361,7 @@ def make_dikt_files(hprm, nb_sites = None, nb_weather = None, dt_training = None
             dikt[key] = '/'.join(new_list_chunks)
         dikt[key] = tools.format_file_names(dikt[key])
         
-    print(dikt['exp'].replace('/', '/\n\t'))    
+    print(dikt['experience.whole'].replace('/', '/\n\t'))    
         
     return dikt
 

@@ -14,14 +14,13 @@ from pyearth          import Earth
 def fit_and_predict(inputs_training, Y_training, inputs_validation, hprm, assignments = {}):
     assert type(hprm['learning.independent_models']) == bool
     assert type(hprm['learning.individual_designs']) == bool
-    sorted_inputs = sorted(list(inputs_training.keys()), key = lambda x : str(x)) 
-    
+    #sorted_inputs = sorted(list(inputs_training.keys()), key = lambda x : str(x)) 
     if not hprm['learning.independent_models']:
-        array_inputs_training   = np.concatenate([inputs_training  [key] for key in sorted_inputs], axis = 1)
-        array_inputs_validation = np.concatenate([inputs_validation[key] for key in sorted_inputs], axis = 1)
-        Y_hat_training, Y_hat_validation, model = call_fitter(array_inputs_training, 
+        #array_inputs_training   = np.concatenate([inputs_training  [key] for key in sorted_inputs], axis = 1)
+        #array_inputs_validation = np.concatenate([inputs_validation[key] for key in sorted_inputs], axis = 1)
+        Y_hat_training, Y_hat_validation, model = call_fitter(inputs_training, 
                                                               Y_training, 
-                                                              array_inputs_validation, 
+                                                              inputs_validation, 
                                                               hprm['learning.method'],
                                                               )
         
@@ -30,7 +29,7 @@ def fit_and_predict(inputs_training, Y_training, inputs_validation, hprm, assign
                                         columns = Y_training.columns,
                                         )
         Y_hat_validation = pd.DataFrame(Y_hat_validation, 
-                                        index   = next(iter(inputs_validation.values())).index, 
+                                        index   = inputs_validation.index, 
                                         columns = Y_training.columns,
                                         )
     else:
@@ -39,44 +38,52 @@ def fit_and_predict(inputs_training, Y_training, inputs_validation, hprm, assign
                                         columns = Y_training.columns,
                                         )
         Y_hat_validation = pd.DataFrame(0, 
-                                        index   = next(iter(inputs_validation.values())).index, 
+                                        index   = inputs_validation.index, 
                                         columns = Y_training.columns,
                                         )
         model = {}
         if hprm['learning.individual_designs']:
             for ii, site_name in enumerate(Y_training.columns):
                 print('\r{0}/{1}'.format(ii, Y_training.shape[1]), end = '\r')
-                array_inputs_training   = np.concatenate([(data
-                                                           if (qty not in assignments)
-                                                           else
-                                                           data[assignments[qty][site_name]]
-                                                           )
-                                                          for qty, data in inputs_training.items()
-                                                          ], 
-                                                         axis = 1,
-                                                         )
-                array_inputs_validation = np.concatenate([(data
-                                                           if (qty not in assignments)
-                                                           else
-                                                           data[assignments[qty][site_name]]
-                                                           )
-                                                          for qty, data in inputs_validation.items()
-                                                          ], 
-                                                         axis = 1,
-                                                         )
-                Y_hat_training[site_name], Y_hat_validation[site_name], model[site_name] = call_fitter(array_inputs_training,
+                columns_to_keep = [
+                                   (name_input, transformation, parameter, location)
+                                   for (name_input, transformation, parameter, location) in inputs_training.columns
+                                   if (   name_input not in assignments
+                                       or location in assignments[name_input]
+                                       )
+                                   ]
+                # Need to filter the columns depending on the rule below
+#                array_inputs_training   = np.concatenate([(data
+#                                                           if (qty not in assignments)
+#                                                           else
+#                                                           data[assignments[qty][site_name]]
+#                                                           )
+#                                                          for qty, data in inputs_training.items()
+#                                                          ], 
+#                                                         axis = 1,
+#                                                         )
+#                array_inputs_validation = np.concatenate([(data
+#                                                           if (qty not in assignments)
+#                                                           else
+#                                                           data[assignments[qty][site_name]]
+#                                                           )
+#                                                          for qty, data in inputs_validation.items()
+#                                                          ], 
+#                                                         axis = 1,
+#                                                         )
+                Y_hat_training[site_name], Y_hat_validation[site_name], model[site_name] = call_fitter(inputs_training[columns_to_keep],
                                                                                                        Y_training[site_name],
-                                                                                                       array_inputs_validation,
+                                                                                                       inputs_validation[columns_to_keep],
                                                                                                        hprm['learning.method'],
                                                                                                        )
         else :
-            array_inputs_training   = np.concatenate([inputs_training  [key] for key in sorted_inputs], axis = 1)
-            array_inputs_validation = np.concatenate([inputs_validation[key] for key in sorted_inputs], axis = 1)
+            #array_inputs_training   = np.concatenate([inputs_training  [key] for key in sorted_inputs], axis = 1)
+            #array_inputs_validation = np.concatenate([inputs_validation[key] for key in sorted_inputs], axis = 1)
             for ii, site_name in enumerate(Y_training.columns):
                 print('\r{0}/{1}'.format(ii, Y_training.shape[1]), end = '\r')
-                Y_hat_training[site_name], Y_hat_validation[site_name], model[site_name] = call_fitter(array_inputs_training, 
+                Y_hat_training[site_name], Y_hat_validation[site_name], model[site_name] = call_fitter(inputs_training, 
                                                                                                        Y_training[site_name],
-                                                                                                       array_inputs_validation,
+                                                                                                       inputs_validation,
                                                                                                        hprm['learning.method'],
                                                                                                        )
     return Y_hat_training, Y_hat_validation, model

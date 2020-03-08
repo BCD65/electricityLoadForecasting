@@ -15,8 +15,8 @@ import electricityLoadForecasting.src    as src
 import electricityLoadForecasting.tools  as tools
 from .. import performances, hyperparameters, inputs
 #
-import electricityLoadForecasting.forecasting.benchmarks as benchmarks
-import electricityLoadForecasting.forecasting.config     as config
+import electricityLoadForecasting.forecasting.models as models
+import electricityLoadForecasting.forecasting.config as config
 
 #import munging;                 importlib.reload(munging)
 #import parameters;              importlib.reload(parameters)
@@ -82,6 +82,9 @@ class Experience(object):
                                                                self.data['df_coordinates_sites'], 
                                                                )
         # Assign weather stations
+        assert (   self.hprm['inputs.nb_sites_per_site'] is None
+                or type(self.hprm['inputs.nb_sites_per_site']) == int
+                )
         self.assignment_sites = pd.DataFrame({k:v[:self.hprm['inputs.nb_sites_per_site']]
                                               for k, v in self.rolling_away_sites.items()
                                               })
@@ -115,6 +118,9 @@ class Experience(object):
                                                                  self.data['df_coordinates_weather'], 
                                                                  )
         # Assign weather stations
+        assert (   self.hprm['inputs.nb_weather_per_site'] is None
+                or type(self.hprm['inputs.nb_weather_per_site']) == int
+                )
         self.assignment_weather_stations = pd.DataFrame({k:v[:self.hprm['inputs.nb_weather_per_site']]
                                                          for k, v in self.rolling_away_weather.items()
                                                          })
@@ -130,18 +136,41 @@ class Experience(object):
                                        },
                                     'target' : self.data['df_sites'], 
                                     }
-        self.assignments = {'target' : self.assignment_sites,
-                            **{physical_quantity : self.assignment_weather_stations
-                               for physical_quantity in self.data['df_weather'].columns.get_level_values(src.user_physical_quantity)
-                               },
-                            }
-
-        self.inputs = {}
+        self.dikt_assignments = {'target' : self.assignment_sites,
+                                 **{physical_quantity : self.assignment_weather_stations
+                                    for physical_quantity in self.data['df_weather'].columns.get_level_values(src.user_physical_quantity)
+                                    },
+                                 }
+        
+        self.inputs = pd.DataFrame(index   = (next(iter(self.data.values()))).index,
+                                   columns = pd.MultiIndex(levels=[[],[],[],[]],
+                                                           labels=[[],[],[],[]],
+                                                           names=['name_input',
+                                                                  'transformation',
+                                                                  'parameter',
+                                                                  'location',
+                                                                  ],
+                                                           ))
         for name_input, transformation, parameter in self.hprm['inputs.selection']:
-            self.inputs[name_input, transformation, parameter] = inputs.transform_input(basket_original_data[name_input], 
+            transformed_inputs = inputs.transform_input(basket_original_data[name_input], 
                                                                                         transformation,
                                                                                         parameter,
                                                                                         )
+            self.inputs = self.inputs.join(pd.DataFrame(transformed_inputs.values,
+                                                        columns = pd.MultiIndex.from_product([[name_input], [transformation], [parameter], transformed_inputs.columns]),
+                                                        index   = transformed_inputs.index,
+                                                        ))
+                             
+                             
+                             
+#        import ipdb; ipdb.set_trace()
+#            
+#        self.inputs = {}
+#        for name_input, transformation, parameter in self.hprm['inputs.selection']:
+#            self.inputs[name_input, transformation, parameter] = inputs.transform_input(basket_original_data[name_input], 
+#                                                                                        transformation,
+#                                                                                        parameter,
+#                                                                                        )
         self.target    = self.data['df_sites']
   
 ###############################################################################
@@ -151,8 +180,8 @@ class Experience(object):
                                                                              freq = pd.infer_freq(self.target.index),
                                                                              tz   = self.target.index.tz,
                                                                              )
-        self.inputs_training   = {k : v.loc[self.dt_training]   for k, v in self.inputs.items()}
-        self.inputs_validation = {k : v.loc[self.dt_validation] for k, v in self.inputs.items()}
+        self.inputs_training   = self.inputs.loc[self.dt_training]#   for k, v in self.inputs.items()}
+        self.inputs_validation = self.inputs.loc[self.dt_validation]# for k, v in self.inputs.items()}
         self.target_training   = self.target.loc[self.dt_training]
         self.target_validation = self.target.loc[self.dt_validation]
 
@@ -165,7 +194,7 @@ class Experience(object):
         self.performances = tools.batch_load(os.path.join(paths.outputs,
                                                           'Saved/Performances',
                                                           ), 
-                                             self.dikt_files['exp'], 
+                                             self.dikt_files['experience.whole'], 
                                              data_name = 'performances', 
                                              data_type = 'dictionary',
                                              )
@@ -178,7 +207,7 @@ class Experience(object):
         self.predictions = tools.batch_load(os.path.join(paths.outputs,
                                                          'Saved/Predictions',
                                                          ), 
-                                            self.dikt_files['exp'], 
+                                            self.dikt_files['experience.whole'], 
                                             data_name = 'predictions', 
                                             data_type = 'dictionary',
                                             )
@@ -190,6 +219,7 @@ class Experience(object):
             
     #profile
     def learning_process(self, ):   
+        # 
         print('learning_process')
         
         # normalize
@@ -197,69 +227,33 @@ class Experience(object):
         self.Y_training   = (self.target_training   - self.target_mean)/self.target_mean
         self.Y_validation = (self.target_validation - self.target_mean)/self.target_mean  
         
-        
-        if self.hprm['learning.method'] == 'additive_features_model': # Standard bivariate linear model - the main focus of our work
-            #path_Saved  = param['path_outputs'] + 'Saved/' 
-            assert len(data_train) == len(data_test)
-            # Compute the masks (indicator of which substations should access which covariates)
-            cmask1 = approx_tf.get_mask1(param, data_train, dikt, self.coor_posts, self.coor_stations, path = path_Saved + 'Data/') 
-            if bool([e for coef, list_keys in param['tf_config_coef'].items() for e in list_keys if '#'     in e]):
-                cmask2 = approx_tf.get_mask2(param, data_train, dikt, self.coor_posts, self.coor_stations, path = path_Saved + 'Data/') 
-            else:
-                cmask2 = None
-            if not param['just_get_tf_coef']:
-                assert len(data_train) == len(data_test)
-                # Compute the design for the training and the test set
-                design      = approx_tf.compute_design(data_train, 
-                                                       param, 
-                                                       path_Saved + 'Data/', 
-                                                       dikt, 
-                                                       db    = 'train',
-                                                       given_mask1 = cmask1, 
-                                                       given_mask2 = cmask2
-                                                       )
-                design.update(approx_tf.compute_design (data_test, param, 
-                                                        path_Saved+ 'Data/', dikt, 
-                                                        dikt_func        = design['dikt_func'], 
-                                                        given_mask1      = design.get('mask1'),
-                                                        dikt_func12      = design.get('dikt_func12'),
-                                                        given_mask2      = design.get('mask2'),
-                                                        size2            = design.get('size2'),
-                                                        size_tensor2     = design.get('size_tensor2'),
-                                                        db               = 'test',
-                                                        ))
-                assert len(set(design['X_test'].keys())) == len(set(design['X_train'].keys())), 'error len X train X test'
-            if param['just_build_features'] : 
-                return 0    
-            # Call the module for optimization
-            model_pred       = approx_tf.tf_reg(param, path_Saved, dikt, 
-                                                target_train, target_test, 
-                                                design,
-                                                )
-            self.Y_hat_training   = model_pred.predict(data = 'train', adjust_A = False, verbose = True)
-            self.Y_hat_validation = model_pred.predict(data = 'test',  adjust_A = False, verbose = True)
-            ans_kw.update({
-                           'design'       : design,
-                           })
-            
-        
-        elif self.hprm['learning.method'] == 'gam': # Gam models
-            self.Y_hat_training, self.Y_hat_validation = benchmarks.gam.fit_and_predict(self.inputs_training, 
-                                                                                        self.Y_training, 
-                                                                                        self.inputs_validation,
-                                                                                        self.hprm,
-                                                                                        self.assignments,
-                                                                                        )
+        # learn model
+        if self.hprm['learning.model'] == 'additive_features_model': # Standard bivariate linear model - the main focus of our work
+            self.Y_hat_training, self.Y_hat_validation, self.model = models.additive_features_model.fit_and_predict(self.inputs_training, 
+                                                                                                                    self.Y_training, 
+                                                                                                                    self.inputs_validation,
+                                                                                                                    self.hprm,
+                                                                                                                    self.dikt_assignments,
+                                                                                                                    self.dikt_files,
+                                                                                                                    ) 
             self.model = None
             
             
-        elif self.hprm['learning.method'] in {'random_forests', 'regression_tree', 'xgboost', 'svr'}:
-            self.Y_hat_training, self.Y_hat_validation, self.model = benchmarks.classical.fit_and_predict(self.inputs_training, 
-                                                                                                          self.Y_training, 
-                                                                                                          self.inputs_validation,
-                                                                                                          self.hprm,
-                                                                                                          self.assignments,
-                                                                                                          )
+        elif self.hprm['learning.model'] in {'random_forests', 'regression_tree', 'xgboost', 'svr'}:
+            self.Y_hat_training, self.Y_hat_validation, self.model = models.benchmarks.classical.fit_and_predict(self.inputs_training, 
+                                                                                                                 self.Y_training, 
+                                                                                                                 self.inputs_validation,
+                                                                                                                 self.hprm,
+                                                                                                                 self.dikt_assignments,
+                                                                                                                 )         
+        
+        elif self.hprm['learning.model'] == 'gam': # Gam models
+            self.Y_hat_training, self.Y_hat_validation = models.benchmarks.gam.fit_and_predict(self.inputs_training, 
+                                                                                               self.Y_training, 
+                                                                                               self.inputs_validation,
+                                                                                               self.hprm,
+                                                                                               self.dikt_assignments,
+                                                                                               )
         else:
             raise ValueError
             
@@ -281,7 +275,7 @@ class Experience(object):
         tools.batch_save(os.path.join(paths.outputs, 
                                       'Saved/Predictions',
                                       ), 
-                         prefix    = self.dikt_files['exp'], 
+                         prefix    = self.dikt_files['experience.whole'], 
                          data      = self.prediction_dikt, 
                          data_name = 'predictions', 
                          data_type = 'dictionary',
@@ -338,7 +332,7 @@ class Experience(object):
         tools.batch_save(os.path.join(paths.outputs,
                                       'Saved/Performances',
                                       ), 
-                         prefix    = self.dikt_files['exp'], 
+                         prefix    = self.dikt_files['experience.whole'], 
                          data      = self.performances, 
                          data_name = 'performances', 
                          data_type = 'dictionary',
@@ -346,7 +340,7 @@ class Experience(object):
         
         
     def print_performances(self):
-        print('Exp : ' + self.dikt_files['exp'].replace('/', '/\n\t'))
+        print('Exp : ' + self.dikt_files['experience.whole'].replace('/', '/\n\t'))
         print()
         print('Quantiles MAPE TEST : ')
         performances.print_quantiles(self.performances['model']['validation']['mapes'])
