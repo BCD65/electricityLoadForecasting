@@ -40,7 +40,7 @@ def format_file_names(s):
                     ')'         : '_',
                     '+'         : 'p',
                     '//'        : '/',
-                    '__'        : '_',
+                    #'__'        : '_',
                     'meteosmo'  : 'ms',
                     'meteodif'  : 'md',
                     'meteomin'  : 'mi',
@@ -56,4 +56,5 @@ def format_file_names(s):
     for key, value in dikt_replace.items():
         s = s.replace(key, value)
     v = re.sub(r'__*', '_', s)
+    v = re.sub('(_/)+', '/', v)
     return v.lower()

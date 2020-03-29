@@ -8,7 +8,7 @@ def choose_model(hprm, model = None):
     if model is not None:
         hprm['learning.model'] = model
     else:
-        hprm['learning.model'] = 'additive_features_model'
+        hprm['learning.model'] = 'afm' # additive_features_model
                                    # 'additive_features_model'  Main standard bivariate linear model
                                    # 'xgboost' 
                                    # 'random_forests' 

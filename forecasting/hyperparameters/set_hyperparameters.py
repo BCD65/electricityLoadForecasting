@@ -6,6 +6,7 @@ from .choose_dataset       import choose_dataset
 from .choose_inputs        import choose_inputs
 from .choose_model         import choose_model
 from .set_gam              import set_gam
+from .set_afm              import set_afm
 #from .select_variables     import select_variables
 #from .set_approx_tf        import set_approx_tf
 #from .pre_treatment        import pre_treatment
@@ -37,8 +38,8 @@ def set_hyperparameters(model = None):
 #        param.update(set_approx_tf(param))
 #        param.update(set_self_reg())
 #    
-    if   hprm['learning.model'] == 'additive_features_model':
-        hprm.update(set_gam(hprm))
+    if   hprm['learning.model'] == 'afm':
+        hprm.update(set_afm(hprm))
    
     elif hprm['learning.model'] == 'gam':
         hprm.update(set_gam(hprm))

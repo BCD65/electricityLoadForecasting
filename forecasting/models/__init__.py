@@ -1,4 +1,4 @@
 
 
-from .additive_features_model import *
+from .afm import *
 from .benchmarks import *

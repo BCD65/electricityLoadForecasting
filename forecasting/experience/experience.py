@@ -143,13 +143,13 @@ class Experience(object):
                                  }
         
         self.inputs = pd.DataFrame(index   = (next(iter(self.data.values()))).index,
-                                   columns = pd.MultiIndex(levels=[[],[],[],[]],
-                                                           labels=[[],[],[],[]],
-                                                           names=['name_input',
-                                                                  'transformation',
-                                                                  'parameter',
-                                                                  'location',
-                                                                  ],
+                                   columns = pd.MultiIndex(levels = [[],[],[],[]],
+                                                           codes  = [[],[],[],[]],
+                                                           names  = ['name_input',
+                                                                     'transformation',
+                                                                     'parameter',
+                                                                     'location',
+                                                                     ],
                                                            ))
         for name_input, transformation, parameter in self.hprm['inputs.selection']:
             transformed_inputs = inputs.transform_input(basket_original_data[name_input], 
@@ -161,16 +161,6 @@ class Experience(object):
                                                         index   = transformed_inputs.index,
                                                         ))
                              
-                             
-                             
-#        import ipdb; ipdb.set_trace()
-#            
-#        self.inputs = {}
-#        for name_input, transformation, parameter in self.hprm['inputs.selection']:
-#            self.inputs[name_input, transformation, parameter] = inputs.transform_input(basket_original_data[name_input], 
-#                                                                                        transformation,
-#                                                                                        parameter,
-#                                                                                        )
         self.target    = self.data['df_sites']
   
 ###############################################################################
@@ -228,7 +218,7 @@ class Experience(object):
         self.Y_validation = (self.target_validation - self.target_mean)/self.target_mean  
         
         # learn model
-        if self.hprm['learning.model'] == 'additive_features_model': # Standard bivariate linear model - the main focus of our work
+        if self.hprm['learning.model'] == 'afm': # Standard bivariate linear model - the main focus of our work
             self.Y_hat_training, self.Y_hat_validation, self.model = models.additive_features_model.fit_and_predict(self.inputs_training, 
                                                                                                                     self.Y_training, 
                                                                                                                     self.inputs_validation,
