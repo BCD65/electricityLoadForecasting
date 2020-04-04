@@ -56,13 +56,13 @@ dikt_formula = {
                  ) : {
                       'tmp'   : pd.DataFrame([
                                               ('B', ('target',        'lag',        pd.DateOffset(hours = 24)), 4,    'r2sm', 1e-4),
-                                              ('B', ('temperature',   None,         None),                      16,   'r2sm', 1e-4),
+                                              ('B', ('temperature',   '',           ''),                        16,   'r2sm', 1e-4),
                                               ('B', ('temperature',   'difference', pd.DateOffset(hours = 24)), 16,   'r2sm', 1e-2),
                                               ('B', ('temperature',   'maximum',    '1D'),                      16,   'r2sm', 1e-2),
                                               ('B', ('temperature',   'minimum',    '1D'),                      16,   'r2sm', 1e-1),
                                               ('B', ('temperature',   'smoothing',  0.99),                      16,   'r2sm', 1e-1),
-                                              ('B', ('timestamp',     None,         None),                      'p1', 'rsm',  1e-3),
-                                              ('B', ('week_hour',     None,         None),                      168,  'rsm',  1e-8),
+                                              ('B', ('timestamp',     '',           ''),                        'p1', 'rsm',  1e-3),
+                                              ('B', ('week_hour',     '',           ''),                        168,  'rsm',  1e-8),
                                               ],
                                              columns = ['coefficient',
                                                         'input',

@@ -84,9 +84,13 @@ def make_dikt_files(hprm, nb_sites = None, nb_weather = None, dt_training = None
     ###       approx tf                     ###
     #=========================================#    
     elif hprm['learning.model'] in {'afm'}:
-        boundary_scaling = 'bds'*hprm.get('afm.boundary_scaling', 0)
-        natural_splines  = 'nat'*hprm.get('afm.natural_splines',  0)
+        ############
+        # Features #
+        ############        
         order_splines    = ('order' +str(hprm.get('afm.order_splines', 1)))*(hprm.get('order_splines', 1)!=1)
+        natural_splines  = 'nat'*hprm.get('afm.natural_splines',  0)
+        boundary_scaling = 'bds'*hprm.get('afm.boundary_scaling', 0)
+        all_products     = 'apr'*(hprm.get('gp_pen',0) > 0 and hprm.get('gp_matrix','') != '') # When apr, x1tx1 containes all interactions  
         univariate_func  = hprm['afm.formula'].loc[hprm['afm.formula']['nb_intervals'].apply(lambda x : type(x) != tuple)].astype(str)
         univariate_data  = [tuple(univariate_func[['input', 'nb_intervals']].iloc[ii])
                             for ii in range(univariate_func.shape[0])
@@ -101,7 +105,6 @@ def make_dikt_files(hprm, nb_sites = None, nb_weather = None, dt_training = None
         bivariate_model  = [tuple(bivariate_func.iloc[ii])
                             for ii in range(bivariate_func.shape[0])
                             ]
-        all_products = 'apr'*(hprm.get('gp_pen',0) > 0 and hprm.get('gp_matrix','') != '') # When apr, x1tx1 containes all interactions  
         str_inter    = (str(hprm['afm.bivariate.combine_function']) if bool(bivariate_data) else '')
         str_data     = [str_dataset,
                         str_learning, 
@@ -112,17 +115,17 @@ def make_dikt_files(hprm, nb_sites = None, nb_weather = None, dt_training = None
                          ),
                         str_split_training,
                         ]
-        dikt['training.univariate_data']   = str_data + univariate_data
-        dikt['validation.univariate_data'] = str_data + univariate_data + [str_split_validation]
-        dikt['training.bivariate_data']    = str_data + [(str_inter,)] + bivariate_data if str_inter else []
-        dikt['validation.bivariate_data']  = str_data + [(str_inter,)] + bivariate_data + [str_split_validation] if str_inter else []
-        dikt['training.univariate_bivariate_data']   = str_data + univariate_data + ([(str_inter,)] + bivariate_data if str_inter else [])
-        dikt['validation.univariate_bivariate_data'] = str_data + univariate_data + ([(str_inter,)] + bivariate_data if str_inter else []) + [str_split_validation]
-        dikt['validation.model'] = str_data + univariate_model + ([(str_inter,)] + bivariate_model if str_inter else []) + [str_split_validation]
+        dikt['features.training.univariate']   =  str_data + univariate_data
+        dikt['features.validation.univariate'] =  str_data + univariate_data  + [str_split_validation]
+        dikt['features.training.bivariate']    = (str_data + [(str_inter,)]   + bivariate_data) if str_inter else []
+        dikt['features.validation.bivariate']  = (str_data + [(str_inter,)]   + bivariate_data + [str_split_validation]) if str_inter else []
+        dikt['features.training.all']          =  str_data + univariate_data  + ([(str_inter,)] + bivariate_data if str_inter else [])
+        dikt['features.validation.all']        =  str_data + univariate_data  + ([(str_inter,)] + bivariate_data if str_inter else []) + [str_split_validation]
+        dikt['experience.model']               =  str_data + univariate_model + ([(str_inter,)] + bivariate_model if str_inter else []) + [str_split_validation]
         
-        ##########
-        # Algorithm
-        ##########
+        #############
+        # Algorithm #
+        #############
         no_warmstart   = 'nws'  *(1-hprm['afm.algorithm.try_warmstart'])
         gp_reg         = (('gp', str(hprm.get('gp_matrix')), str(hprm.get('gp_pen')))
                           if (hprm.get('gp_pen', 0)!=0 and hprm.get('gp_matrix','') != '')
@@ -145,59 +148,19 @@ def make_dikt_files(hprm, nb_sites = None, nb_weather = None, dt_training = None
                              'noesi'*(1-hprm['afm.algorithm.early_stop_ind_test']),
                              str(hprm['afm.algorithm.tol']), 
                              ])                   
-        #var_model = var_12 if str_inter else var1
-        #dikt['model_wo_hyperp']  = dikt['validation.univariate_bivariate_parts']
-        dikt['experience.whole'] = dikt['validation.model'] + [(no_warmstart, stop), gp_reg]
+            
+        dikt['experience.whole'] = dikt['experience.model'] + [(no_warmstart, stop), gp_reg]
+        
 
         for k in dikt: 
-            if bool(dikt[k]):
+            if bool(dikt[k]) and type(dikt[k]) != str:
                 dikt[k] = os.path.join(*['_'.join(sub_tuple)
                                          for sub_tuple in dikt[k]
                                          ])
             else:
-                dikt[k] = ''
-        
-        print("dikt['validation.univariate_data']", '\n', 
-              *[' '*10 + dikt['validation.univariate_data'].split(os.sep)[ii] + '\n' 
-                for ii in range(len(dikt['validation.univariate_data'].split(os.sep)))
-                ],
-              '\n',
-              )
-        print("dikt['validation.bivariate_data']", '\n', 
-              *[' '*10 + dikt['validation.bivariate_data'].split(os.sep)[ii] + '\n'
-                for ii in range(len(dikt['validation.bivariate_data'].split(os.sep)))
-                ],
-              '\n',
-              )
-        print("dikt['validation.univariate_bivariate_data']", '\n', 
-              *[' '*10 + dikt['validation.univariate_bivariate_data'].split(os.sep)[ii] + '\n'
-                for ii in range(len(dikt['validation.univariate_bivariate_data'].split(os.sep)))
-                ],
-              '\n',
-              )        
-#            
-#    #=========================================#
-#    #         Final model                     #
-#    #=========================================#
-#    dikt['experience.modeling'] = os.path.join(
-#                                               str_dataset,
-#                                               str_learning,
-#                                               *list(str_inputs.values()),
-#                                               )
-#    dikt['experience.training'] = os.path.join(
-#                                               str_dataset,
-#                                               str_split_training,
-#                                               str_learning,
-#                                               *list(str_inputs.values()),
-#                                               )
-#    dikt['experience.validation'] = os.path.join(
-#                                                 str_dataset,
-#                                                 str_split_validation,
-#                                                 str_learning,
-#                                                 *list(str_inputs.values()),
-#                                                 )
+                dikt[k] = ''             
 
-            
+          
     #=========================================#
     #            Format                       #
     #=========================================#
@@ -212,9 +175,18 @@ def make_dikt_files(hprm, nb_sites = None, nb_weather = None, dt_training = None
                     new_list_chunks.append(ee[250*ii:250*(ii+1)])
             dikt[key] = os.sep.join(new_list_chunks)
         dikt[key] = tools.format_file_names(dikt[key])
-        
-    print(dikt['experience.whole'].replace(os.sep, '/\n\t')) 
     
+    for ss in [#'features.validation.univariate',
+               #'features.validation.bivariate',
+               #'features.validation.all',
+               'experience.whole',
+               ]:
+        if ss in dikt:
+            print("dikt['{0}']".format(ss), '\n', 
+                  dikt[ss].replace(os.sep, '/\n\t\t\t'),
+                  '\n',
+                  )
+        
     return dikt
 
 

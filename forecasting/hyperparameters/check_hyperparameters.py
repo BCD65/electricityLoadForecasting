@@ -50,6 +50,9 @@ def check_hyperparameters(hprm):
     if hprm['learning.model'] in {'afm'}:
         ordered_index = hprm['afm.formula'].astype(str).sort_values(['coefficient', 'input']).index
         hprm['afm.formula'] = hprm['afm.formula'].loc[ordered_index]
+        
+        assert not set(hprm['afm.formula']['input'].unique()).difference(hprm['inputs.selection'])
+        
 #        if param['separation_var']:
 #            #assert 0
 #            param['tf_config_coef'] = {var:tuple(key 

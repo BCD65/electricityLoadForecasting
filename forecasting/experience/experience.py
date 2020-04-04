@@ -153,14 +153,14 @@ class Experience(object):
                                                            ))
         for name_input, transformation, parameter in self.hprm['inputs.selection']:
             transformed_inputs = inputs.transform_input(basket_original_data[name_input], 
-                                                                                        transformation,
-                                                                                        parameter,
-                                                                                        )
+                                                        transformation,
+                                                        parameter,
+                                                        )
             self.inputs = self.inputs.join(pd.DataFrame(transformed_inputs.values,
                                                         columns = pd.MultiIndex.from_product([[name_input], [transformation], [parameter], transformed_inputs.columns]),
                                                         index   = transformed_inputs.index,
                                                         ))
-                             
+        self.inputs.sort_index(axis = 1, inplace = True)
         self.target    = self.data['df_sites']
   
 ###############################################################################
@@ -219,14 +219,15 @@ class Experience(object):
         
         # learn model
         if self.hprm['learning.model'] == 'afm': # Standard bivariate linear model - the main focus of our work
-            self.Y_hat_training, self.Y_hat_validation, self.model = models.additive_features_model.fit_and_predict(self.inputs_training, 
-                                                                                                                    self.Y_training, 
-                                                                                                                    self.inputs_validation,
-                                                                                                                    self.hprm,
-                                                                                                                    self.dikt_assignments,
-                                                                                                                    self.dikt_files,
-                                                                                                                    ) 
-            self.model = None
+            self.Y_hat_training, self.Y_hat_validation, self.model = models.afm.fit_and_predict(self.inputs_training, 
+                                                                                                self.Y_training, 
+                                                                                                self.inputs_validation,
+                                                                                                self.Y_validation,
+                                                                                                self.hprm,
+                                                                                                self.dikt_assignments,
+                                                                                                self.dikt_files,
+                                                                                                ) 
+            #self.model = None
             
             
         elif self.hprm['learning.model'] in {'random_forests', 'regression_tree', 'xgboost', 'svr'}:

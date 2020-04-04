@@ -1,5 +1,6 @@
 
 import re
+import os
 #
 import electricityLoadForecasting.src as src
 
@@ -29,18 +30,19 @@ def ltx_trsfrm(s):
 
 def format_file_names(s):
     dikt_replace = {
-                    ' '         : '_',
+                    ### standard caracters
                     ','         : '',
-                    ']'         : '',
-                    '['         : '',
-                    '\''        : '',
-                    '.'         : 'd',
+                    "'"         : '',
+                    ' '         : '_',
                     '-'         : 'm',
-                    '('         : '_',
-                    ')'         : '_',
-                    '+'         : 'p',
-                    '//'        : '/',
-                    #'__'        : '_',
+                    ### special caracters
+                    '\]'        : '',
+                    '\['        : '',
+                    '\('        : '_',
+                    '\)'        : '_',
+                    '\.'        : 'd',
+                    '\+'        : 'p',
+                    ### abbreviations
                     'meteosmo'  : 'ms',
                     'meteodif'  : 'md',
                     'meteomin'  : 'mi',
@@ -52,9 +54,16 @@ def format_file_names(s):
                     'daylight'  : 'dl',
                     'approx_tf' : 'tf', 
                     'filter'    : 'fl', 
+                    ### regex
+                    '_+'                     : '_',
+                    '(_{0})+'.format(os.sep) : os.sep,
+                    '{0}_*'.format(os.sep)   : os.sep,
                     }
     for key, value in dikt_replace.items():
-        s = s.replace(key, value)
-    v = re.sub(r'__*', '_', s)
-    v = re.sub('(_/)+', '/', v)
-    return v.lower()
+        s = re.sub(key, value, s)
+    #v = re.sub(r'__*', '_', s)
+    #v = re.sub('(_/)+', '/', v)
+    return s.lower()
+
+
+

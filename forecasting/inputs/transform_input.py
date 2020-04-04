@@ -6,8 +6,8 @@ import pandas as pd
 
 
 def transform_input(data, transformation, parameter):
-    if transformation is None:
-        assert parameter is None
+    if transformation == '':
+        assert parameter == ''
         ans = data
     elif transformation == 'lag':
         assert type(parameter) == pd.DateOffset
