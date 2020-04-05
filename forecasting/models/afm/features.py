@@ -4,7 +4,7 @@
 
 
 """
-This script is used to compute from the input data all the covariates based on splines
+This script is used to compute from the input data all the covariates based on spline features
 """
 
 
@@ -13,14 +13,11 @@ import scipy as sp
 import os
 import re
 import sys
-import matplotlib.pyplot as plt
 from subprocess import CalledProcessError, TimeoutExpired
 from termcolor import colored
 #
 import electricityLoadForecasting.tools  as tools
 import electricityLoadForecasting.paths  as paths
-from electricityLoadForecasting.tools.exceptions import custex
-#from . import masks
 
 
 path_data =  os.path.join(paths.outputs,
@@ -69,14 +66,14 @@ def compute_design(inputs,
     try:
         # We try to load from the local machine or from a distant machine (in the module primitives)
         if db == 'training':
-            dikt_nodes = tools.batch_load(path_data, prefix_features_univariate, data_name = 'dikt_nodes', data_type = 'np')
-            dikt_func  = tools.batch_load(path_data, prefix_features_univariate, data_name = 'dikt_func',  data_type = 'np')
-            size1      = tools.batch_load(path_data, prefix_features_univariate, data_name = 'size1',      data_type = 'np')
-        X1       = tools.batch_load(path_data, prefix_features_univariate, data_name = 'X1_'+db, data_type = ('dict_sp'
-                                                                                                              if hprm['afm.features.sparse_x1']
-                                                                                                              else
-                                                                                                              'dict_np'
-                                                                                                              ))
+            dikt_nodes = tools.batch_load(path_data, prefix_features_univariate, data_name = 'dikt_nodes',     data_type = 'np')
+            dikt_func  = tools.batch_load(path_data, prefix_features_univariate, data_name = 'dikt_func',      data_type = 'np')
+            size1      = tools.batch_load(path_data, prefix_features_univariate, data_name = 'size_univariate',data_type = 'np')
+        X1             = tools.batch_load(path_data, prefix_features_univariate, data_name = 'X1_'+db,         data_type = ('dict_sp'
+                                                                                                                            if hprm['afm.features.sparse_x1']
+                                                                                                                            else
+                                                                                                                            'dict_np'
+                                                                                                                            ))
     except Exception as e:
         print(e)
         print('Start X1 '+db)
@@ -90,14 +87,20 @@ def compute_design(inputs,
 #                              {(k,''):v for k, v in dikt_func.items()}, 
 #                              'X1',
 #                              )
-        X1, size1     = make_X1(inputs, dikt_func, hprm, sparse_x1 = hprm['afm.features.sparse_x1']) # Compute the covariates and the size of the corresponding vectors
+        X1, size1 = make_X1(inputs, dikt_func, hprm, sparse_x1 = hprm['afm.features.sparse_x1']) # Compute the covariates and the size of the corresponding vectors
         for key in sorted(X1.keys()):
             if key in mask_univariate:
                 mm = mask_univariate[key]
-                if mm.ndim == 1 and len(mm) == 0: 
+                if type(mm) == list and len(mm) == 0: 
                     # If no substation should have access to this covariate, delete it
                     # This can happen when only a region is considered : the weather stations in other regions will not be considered
                     del X1[key], size1[key]
+                elif type(mm) == list and len(mm) > 0:
+                    pass
+                elif type(mm) == slice and mm == slice(None):
+                    pass
+                else:
+                    raise ValueError
         print('make X1 done')
         #################
         ### SAVE 
@@ -105,14 +108,14 @@ def compute_design(inputs,
                       (X1, 'X1_'+db , prefix_features_univariate, ('dict_sp'
                                                                    if hprm['afm.features.sparse_x1']
                                                                    else
-                                                                   'dict_np',
+                                                                   'dict_np'
                                                                    )),
                       ]
         if db == 'training':
             list_files += [
-                           (dikt_nodes, 'dikt_nodes', prefix_features_univariate, 'np'), 
-                           (dikt_func,  'dikt_func',  prefix_features_univariate, 'np'), 
-                           (size1,      'size1',      prefix_features_univariate, 'np'), 
+                           (dikt_nodes, 'dikt_nodes',      prefix_features_univariate, 'np'), 
+                           (dikt_func,  'dikt_func',       prefix_features_univariate, 'np'), 
+                           (size1,      'size_univariate', prefix_features_univariate, 'np'), 
                            ]
         save_list_files(list_files, path_data, hprm)
         ### FINISHED X1
@@ -124,15 +127,30 @@ def compute_design(inputs,
         # lbfgs and mfilter are two possible algorithms that do not require the precomputations of XtX
         # since it is done later for lbfgs and it is not done for mfilter.
         try:
-            X1tX1 = tools.batch_load(path_data, prefix1, hprm, 'X1tX1_'+db, mod = 'dict_sp' if hprm.get('sparse_x1') else 'dict_np')
+            X1tX1 = tools.batch_load(path_data,
+                                     prefix = prefix_features_univariate,
+                                     data_name = 'X1tX1_'+db,
+                                     data_type = ('dict_sp' 
+                                                  if hprm.get('sparse_x1')
+                                                  else
+                                                  'dict_np'
+                                                  ),
+                                     )
         except Exception as e:
             print(e)
             print('Start XtX1 '+db)
-            X1tX1 = precomputations_1(X1, given_mask1, all_products = hprm.get('gp_pen',0) > 0)
+            X1tX1 = precomputations_1(X1, mask_univariate, all_products = hprm.get('gp_pen',0) > 0)
             for key, value in {**X1tX1}.items():
                 assert type(value) in {np.ndarray, sp.sparse.csr_matrix}
             if len (X1tX1) < 1e4:
-                list_files = [(X1tX1, 'X1tX1_'+db, dikt['primitives_'+db+'1'], 'dict_sp' if hprm.get('sparse_x1') else 'dict_np'),]
+                list_files = [(X1tX1, 
+                               'X1tX1_'+db,
+                               prefix_features_univariate,
+                               ('dict_sp'
+                                if hprm.get('sparse_x1')
+                                else
+                                'dict_np'),
+                               )]
             else:
                 print('X1tX1 too large to save : len (X1tX1) = {0}'.format(len(X1tX1)))
                 list_files = []
@@ -150,12 +168,13 @@ def compute_design(inputs,
         X.update({
                   'dikt_nodes'       : dikt_nodes, 
                   'dikt_func'        : dikt_func, 
-                  'mask_univariate' : mask_univariate, 
-                  'size1'            : size1, 
+                  'mask_univariate'  : mask_univariate, 
+                  'size_univariate'  : size1, 
                   })
     bool_bivariate = not hprm['afm.formula'].loc[hprm['afm.formula']['nb_intervals'].apply(lambda x : (type(x) == tuple and len(x) == 2))].empty
     if bool_bivariate: # ie if there are interactions
         prefix_features_bivariate = dikt_file_names['features.{}.bivariate'.format(db)] # string used to save/load the covariates
+        prefix_features_all       = dikt_file_names['features.{}.all'.format(db)] # string used to save/load the covariates
         if hprm['sparse_x2']:
             print(colored('X2_SPARSE', 'green'))
         try:
@@ -164,9 +183,17 @@ def compute_design(inputs,
             if db == 'training':
                 dikt_nodes12  = tools.batch_load(path_data, prefix_features_bivariate, hprm, obj_name = 'dikt_nodes12')
                 dikt_func12   = tools.batch_load(path_data, prefix_features_bivariate, hprm, obj_name = 'dikt_func12')
-                size2         = tools.batch_load(path_data, prefix_features_bivariate, hprm, obj_name = 'size2')
+                size2         = tools.batch_load(path_data, prefix_features_bivariate, hprm, obj_name = 'size_bivariate')
                 size_tensor2  = tools.batch_load(path_data, prefix_features_bivariate, hprm, obj_name = 'size_tensor2')
-            X2 = tools.batch_load(path_data, prefix_features_bivariate, hprm, 'X2_' + db, mod = 'dict_sp' if hprm['sparse_x2'] else 'dict_np')
+            X2 = tools.batch_load(path_data,
+                                  prefix    = prefix_features_bivariate,
+                                  data_name = 'X2_' + db,
+                                  data_type = ('dict_sp'
+                                               if hprm['sparse_x2']
+                                               else
+                                               'dict_np'
+                                               ),
+                                  )
         except Exception:
             if db == 'training':
                 # Compute the nodes for the univariate functions used to compute the interactions
@@ -195,8 +222,8 @@ def compute_design(inputs,
             X2, size2, size_tensor2 = make_X2(X12, hprm)
             for k in sorted(X2.keys()):
                 ord_key = '#'.join(sorted(k.split('#')))
-                if ord_key in given_mask2:
-                    mm = given_mask2[ord_key]
+                if ord_key in mask_bivariate:
+                    mm = mask_bivariate[ord_key]
                     if mm.ndim == 1 and len(mm) == 0:
                         # Discard interactions that are used by zero substations
                         del X2[k], size2[k], size_tensor2[k]
@@ -205,22 +232,37 @@ def compute_design(inputs,
                           ] if len (X2) < 1e4 else []
             if db == 'training':
                 list_files += [ 
-                               (dikt_nodes12, 'dikt_nodes12', prefix_features_bivariate, 'np'), 
-                               (dikt_func12,  'dikt_func12',  prefix_features_bivariate, 'np'), 
-                               (size2,        'size2',        prefix_features_bivariate, 'np'),
-                               (size_tensor2, 'size_tensor2', prefix_features_bivariate, 'np'),
+                               (dikt_nodes12, 'dikt_nodes12',   prefix_features_bivariate, 'np'), 
+                               (dikt_func12,  'dikt_func12',    prefix_features_bivariate, 'np'), 
+                               (size2,        'size_bivariate', prefix_features_bivariate, 'np'),
+                               (size_tensor2, 'size_tensor2',   prefix_features_bivariate, 'np'),
                                ]
             save_list_files(list_files, path_data, hprm)
         for k in X2:
             hprm['data_cat'][k] = re.sub(r'\d+', '', k) 
-        precompute = not (lbfgs or mfilter or (db=='validation' and not hprm['tf_precompute_test']))
+        precompute = not (lbfgs or (db=='validation' and not hprm['tf_precompute_validation']))
         if precompute:
             # Compute the empirical covariance between the univariate/bivariate covariates
             try:
-                X1tX2 = tools.batch_load(path_data, dikt['primitives_'+db+'12'], hprm, 'X1tX2_'+db, mod = 'dict_sp' if hprm.get('sparse_x1') and hprm['sparse_x2'] else 'dict_np')
-                X2tX2 = tools.batch_load(path_data, dikt['primitives_'+db+'2'],  hprm, 'X2tX2_'+db, mod = 'dict_sp' if hprm['sparse_x2'] else 'dict_np')
+                X1tX2 = tools.batch_load(path_data,
+                                         prefix    = prefix_features_all,
+                                         data_name = 'X1tX2_'+db,
+                                         data_type = ('dict_sp'
+                                                      if hprm.get('sparse_x1') and hprm['sparse_x2']
+                                                      else
+                                                      'dict_np'
+                                                      ),
+                                         )
+                X2tX2 = tools.batch_load(path_data,
+                                         prefix    = prefix_features_bivariate,
+                                         data_name = 'X2tX2_'+db,
+                                         data_type = ('dict_sp'
+                                                      if hprm['sparse_x2']
+                                                      else 'dict_np'
+                                                      ),
+                                         )
             except Exception:
-                X1tX2, X2tX2 = precomputations_2(X1, X2, given_mask1, given_mask2, hprm, all_products = (hprm.get('gp_pen',0) > 0 and hprm['gp_matrix'] != ''))
+                X1tX2, X2tX2 = precomputations_2(X1, X2, mask_univariate, mask_bivariate, hprm, all_products = (hprm.get('gp_pen',0) > 0 and hprm['gp_matrix'] != ''))
                 for key, value in {**X1tX2}.items():
                     assert type(value) in {np.ndarray, sp.sparse.csr_matrix}
                 for key, value in {**X2tX2}.items():
@@ -229,13 +271,17 @@ def compute_design(inputs,
                 if len (X1tX2) < 1e4:
                     list_files += [(X1tX2, 
                                     'X1tX2_'+db, 
-                                    dikt['primitives_'+db+'12'], 
-                                    'dict_sp' if hprm.get('sparse_x1') and hprm['sparse_x2'] else 'dict_np',
+                                    prefix_features_all, 
+                                    ('dict_sp'
+                                     if hprm.get('sparse_x1') and hprm['sparse_x2']
+                                     else
+                                     'dict_np'
+                                     ),
                                     )] if len (X1tX2) < 1e4 else []
                 if len (X1tX2) < 1e4:    
                     list_files += [(X2tX2, 
                                     'X2tX2_'+db, 
-                                    dikt['primitives_'+db+'2' ], 
+                                    prefix_features_bivariate, 
                                     'dict_sp' if hprm['sparse_x2'] else 'dict_np',
                                     )] if len (X2tX2) < 1e4 else []
                 save_list_files(list_files, path_data, hprm) 
@@ -244,7 +290,7 @@ def compute_design(inputs,
         if db == 'training':
             X.update({
                       'mask_bivariate' : mask_bivariate,
-                      'size2'          : size2,
+                      'size_bivariate'          : size2,
                       'size_tensor2'   : size_tensor2,
                       })
         X.update({'X2_'+db    : X2})
@@ -296,10 +342,16 @@ def save_list_files(list_files, path_data, hprm):
         print('\r    ', data_name, ' '*20, end = '')
         try:
             assert save_data
-            tools.batch_save(path_data, prefix, inputs, data_name, data_type = opt)
-        except (CalledProcessError, custex, TimeoutExpired, OSError, AssertionError):
-            pass 
-    print('end saving')
+            tools.batch_save(path_data,
+                             prefix    = prefix,
+                             data      = inputs,
+                             data_name = data_name,
+                             data_type = opt,
+                             )
+            print('end saving')
+        except (CalledProcessError, ValueError, TimeoutExpired, OSError, AssertionError) as e:
+            print('failed') 
+            print(e)
 
 
 #def plot_1d_functions(hprm, dikt_func, suffix_name):
@@ -373,14 +425,14 @@ def save_list_files(list_files, path_data, hprm):
 
 
 def make_dikt_func(d_nodes, hprm):
-    d_func = {}
     # Compute for each covariate the spline functions from the set of nodes
-    for inpt, *trsfm, location in d_nodes:
+    d_func = {}
+    for inpt, trsfm, prm in d_nodes:
         cyclic      = hprm['inputs.cyclic'][inpt]
-        d_func[(inpt, *trsfm, location)] = tuple([f 
-                                                  for e in d_nodes[(inpt, *trsfm, location)]
-                                                  for f in make_func(e, cyclic, hprm['afm.features.order_splines'])
-                                                  ])
+        d_func[(inpt, trsfm, prm)] = tuple([f 
+                                            for e in d_nodes[(inpt, trsfm, prm)]
+                                            for f in make_func(e, cyclic, hprm['afm.features.order_splines'])
+                                            ])
     return d_func
 
 
@@ -413,7 +465,8 @@ def make_func(nodes, cyclic, order_splines):
     if type(nodes) == tuple:
         funcs += [e for e in nodes]
     elif type(nodes) == np.ndarray:
-        for i in range(nodes.shape[0] - (1+order_splines)*(1-cyclic)):
+        assert nodes.ndim == 1
+        for i in range(nodes.shape[0] - (1+order_splines)*(1-bool(cyclic))):
             if cyclic:
                 tt = tuple([nodes[(i+j) % len(nodes)] 
                             for j in range((2+order_splines))
@@ -431,31 +484,20 @@ def make_func(nodes, cyclic, order_splines):
 def make_dikt_nodes(inputs, hprm, formula):
     dikt_nodes = {}
     # For each covariate, compute the nodes from the number of nodes chosen on the interval [0, 1]
-    for (inpt, *trsfm, location) in inputs.columns:
-        #(inpt, *trsfm), 
-        nb_itv = formula.set_index('input')['nb_intervals'][(inpt, *trsfm)] 
+    for (inpt, trsfm, prm, location) in inputs.columns:
+        nb_itv = formula.xs((inpt, trsfm, prm), level = 'input')['nb_intervals'].item()
         if bool(hprm['inputs.cyclic'][inpt]):
             min_value = 0
             max_value = hprm['inputs.cyclic'][inpt]
         else:
-            min_value = inputs.loc[:,(inpt, *trsfm, location)].min()
-            max_value = inputs.loc[:,(inpt, *trsfm, location)].max()
-        #cat = hprm['data_cat'][k] 
-#        if (    #'#' not in cat
-#            and cat not in dikt_nodes
-#            #and cat in dikt_nb_itv
-#            #and cat in sorted([e 
-#            #                   for coef, list_keys in hprm['tf_config_coef'].items() 
-#            #                   for e in list_keys
-#            #                   ])
-#            ):
-        #nb_itv = dikt_nb_itv[cat]
-        dikt_nodes[(inpt, *trsfm, location)] = [make_nodes(e,
-                                                           hprm['inputs.cyclic'][inpt],
-                                                           hprm['afm.features.order_splines'],
-                                                           min_value = min_value,
-                                                           max_value = max_value, 
-                                                           ) 
+            min_value = inputs.loc[:,(inpt, trsfm, prm, location)].min()
+            max_value = inputs.loc[:,(inpt, trsfm, prm, location)].max()
+        dikt_nodes[(inpt, trsfm, prm)] = [make_nodes(e,
+                                                     hprm['inputs.cyclic'][inpt],
+                                                     hprm['afm.features.order_splines'],
+                                                     min_value = min_value,
+                                                     max_value = max_value, 
+                                                     ) 
                                                 for e in (nb_itv 
                                                           if type(nb_itv) == tuple 
                                                           else 
@@ -501,16 +543,16 @@ def make_nodes(nb_itv, cyclic, order_splines, min_value = None, max_value = None
     # Given the number of nodes, the indicator of a cyclic variable and the degree of the wanted splines
     # Compute the associated nodes
     ######
-    def affine_trsfm(x):
-        return min_value + x*(max_value - min_value)
-    ######
     if type(nb_itv) == str and nb_itv[0] == 'p': 
         # Identity, Indicator or polynomials
         assert len(nb_itv) == 2
-        nodes = tuple([tuple([affine_trsfm(e)])
-                       for e in range(1, eval(nb_itv[1])+1)
+        nodes = tuple([tuple([e
+                              for e in range(1, int(nb_itv[1])+1)
+                              ])
                        ])
     elif type(nb_itv) == int: 
+        def affine_trsfm(x):
+            return min_value + x*(max_value - min_value)
         # Normal
         assert nb_itv != 0
         if cyclic:
@@ -527,17 +569,19 @@ def make_nodes(nb_itv, cyclic, order_splines, min_value = None, max_value = None
 
 
 def make_X1(inputs, d_func, hprm, sparse_x1 = False):
-    X1 = {(inpt, *trsfm, location):make_cov(d_func [(inpt, *trsfm, location)], 
-                                            inputs[[(inpt, *trsfm, location)]], 
-                                            sparse_x1, 
-                                            hprm,
-                                            inpt,
-                                            )
-          for inpt, *trsfm, location  in inputs.columns
-          if (inpt, *trsfm, location) in d_func 
+    X1 = {(inpt, trsfm, prm, location):make_cov(d_func [(inpt, trsfm, prm)], 
+                                                inputs[[(inpt, trsfm, prm, location)]], 
+                                                sparse_x1, 
+                                                hprm,
+                                                inpt,
+                                                )
+          for inpt, trsfm, prm, location  in inputs.columns
+          if (inpt, trsfm, prm) in d_func 
           }
     # Compute the covariates from the list of functions and the input inputs
-    size1 = {k:v.shape[1] for k, v in X1.items()}
+    size1 = {k : v.shape[1]
+             for k, v in X1.items()
+             }
     return X1, size1
 
 

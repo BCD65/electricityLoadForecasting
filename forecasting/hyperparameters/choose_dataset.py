@@ -9,26 +9,33 @@ def choose_dataset(hprm):
    
     hprm.update({
                  # Choose the database
-                 'database'             : 'Eco2mix_administrative_regions',
-                                            # 'Eco2mix_administrative_regions'
-                                            # 'Eco2mix_France'
-                                            # 'RTE'
-                                            # 'RTE_quick_test'
+                 'database' : 'Eco2mix.administrative_regions',
+                 })
+    assert hprm['database'] in [
+                                'Eco2mix.France',
+                                'Eco2mix.administrative_regions',
+                                'RTE.substations',
+                                'RTE.quick_test',
+                                ]
                                         
+    hprm.update({
                  # Choose the load data
-                 'sites.zone'           : 'all', 
-                 'sites.aggregation'    : None,
-                 'sites.trash'          : [],    # Eliminate additional sites from the dataset
+                 'sites.zone'                : 'all', 
+                 'sites.aggregation'         : None,
+                 'sites.trash'               : [],    # Eliminate additional sites from the dataset
                  
                  # Choose the weather data
-                 'weather.zone'        : 'all', 
-                 'weather.aggregation' : None,
-                 'weather.source'      : 'observed', 
-                 # If subsampling the sites, choose the weather stations
-                 # in the rectangle made by the sites plus these extra
-                 # quantities
-                 'weather.extra_latitude'   : 0.1,
-                 'weather.extra_longitude'  : 0.1,
+                 'weather.zone'              : 'all', 
+                 'weather.source'            : 'observed', 
+                 'weather.aggregation'       : {'Eco2mix.France'                 : 'mean',
+                                                'Eco2mix.administrative_regions' : None, 
+                                                }[hprm['database']],
+                 'weather.extra_latitude'    : {'Eco2mix.France'                 : 5,
+                                                'Eco2mix.administrative_regions' : 0.1, 
+                                                }[hprm['database']],
+                 'weather.extra_longitude'   : {'Eco2mix.France'                 : 8,
+                                                'Eco2mix.administrative_regions' : 0.1, 
+                                                }[hprm['database']],
                  
                  # Select the training and the test set
                  'training_set.form'         : 'continuous', #'two_sets', # Continuous/Discontinuous training sets
@@ -36,7 +43,7 @@ def choose_dataset(hprm):
                  'training_set.length'       : pd.DateOffset(years = 3),
                  'validation_set.length'     : pd.DateOffset(years = 1),
                  })
-    
+
     return hprm
 
 

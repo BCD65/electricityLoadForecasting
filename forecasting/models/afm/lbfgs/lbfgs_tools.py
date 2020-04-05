@@ -9,16 +9,17 @@ import scipy as sp
 from termcolor import colored
 from numbers   import Number
 #
-#import primitives
+import electricityLoadForecasting.tools  as tools
+
 
 
 
 def cat_bound(col_cat_matching):
     # Location of the different categories of variables in the design matrix
-    cat_bound_matching = {cat:(np.where(col_cat_matching == cat)[0].min(), 
-                               np.where(col_cat_matching == cat)[0].max()+1,
+    cat_bound_matching = {cat:(np.min([ii for ii, row in enumerate(col_cat_matching) if tuple(row) == cat]), 
+                               np.max([ii for ii, row in enumerate(col_cat_matching) if tuple(row) == cat])+1,
                                ) 
-                          for cat in sorted(set(col_cat_matching))
+                          for cat in sorted(set([tuple(e) for e in col_cat_matching]))
                           }
     # Check that the rows of the design matrix are well ordered
     for cat1, v1 in cat_bound_matching.items():
@@ -34,18 +35,18 @@ def bfgs_ridge(model, coef, alphas):
     # Compute the differentiable penalizations
     # Simple computations for Ridge
     # Computations of the convolutions first for the smoothing splines penalizations
-    for var in model.config_coef:
-        for key in set([e 
-                        for e in np.unique([model.col_key_large_matching[model.concat_masks[:,0].indices 
-                                                                         if sp.sparse.issparse(model.concat_masks) 
-                                                                         else 
-                                                                         model.concat_masks[:,0]
-                                                                         ]
-                                            ])]):
+    for var in model.formula.index.get_level_values('coefficient'):
+        for key in set([tuple(row) 
+                        for row in model.col_key_large_matching[model.concat_masks[:,0].indices 
+                                                                if sp.sparse.issparse(model.concat_masks) 
+                                                                else 
+                                                                model.concat_masks[:,0]
+                                                                ]
+                        ]):
             if (key,0) not in model.key_slice_matching_zero:
                 continue
             key_slice = model.key_slice_matching_zero[key,0]
-            cat       = model.param['data_cat'][key] 
+            cat       = model.hprm['data_cat'][key] 
             alpha     = alphas[var].get(cat,0)
             if (   type(alpha) == tuple and alpha[0] !=0
                 or isinstance(alpha, Number) and alpha != 0
@@ -66,7 +67,7 @@ def bfgs_ridge(model, coef, alphas):
                                         [[ 2],[ -1]], 
                                         [[-1],[  0]], 
                                         ])
-                    if not reshape_tensor and model.param['qo_modulo'].get(cat):
+                    if not reshape_tensor and model.hprm['qo_modulo'].get(cat):
                         conv = spim.filters.convolve(cc,ker,mode = 'wrap')
                     else:
                         conv = sig.convolve(cc, ker, mode = 'valid')
@@ -77,7 +78,7 @@ def bfgs_ridge(model, coef, alphas):
                     if not reshape_tensor:
                         if cc.shape[0] > 2:
                             ker  = np.array([[1],[-2],[1]])
-                            if model.param['qo_modulo'].get(cat):
+                            if model.hprm['qo_modulo'].get(cat):
                                 conv = spim.filters.convolve(cc,ker,mode = 'wrap')
                             else:
                                 conv = sig.convolve(cc, ker, mode = 'valid')
@@ -87,14 +88,14 @@ def bfgs_ridge(model, coef, alphas):
                         cat1, cat2 = cat.split('#')
                         if cc.shape[0] > 2:
                             ker1  = np.array([[[1]],[[-2]],[[1]]]) 
-                            if model.param['qo_modulo'].get(cat1):
+                            if model.hprm['qo_modulo'].get(cat1):
                                 conv1 = spim.filters.convolve(cc,ker1,mode = 'wrap')
                             else:
                                 conv1 = sig.convolve(cc, ker1, mode = 'valid')
                             reg += 0.5 * alpha * np.linalg.norm(conv1)**2
                         if cc.shape[1] > 2:
                             ker2  = np.array([[[1 ],[ -2 ],[ 1]]])
-                            if model.param['qo_modulo'].get(cat2):
+                            if model.hprm['qo_modulo'].get(cat2):
                                 conv2 = spim.filters.convolve(cc,ker2,mode = 'wrap')
                             else:
                                 conv2 = sig.convolve(cc, ker2, mode = 'valid')
@@ -108,7 +109,7 @@ def bfgs_ridge(model, coef, alphas):
                     if not reshape_tensor:
                         if cc.shape[0] > 2:
                             ker  = np.array([[1],[-2],[1]])
-                            if model.param['qo_modulo'].get(cat):
+                            if model.hprm['qo_modulo'].get(cat):
                                 conv = spim.filters.convolve(cc,ker,mode = 'wrap')
                             else:
                                 conv = sig.convolve(cc, ker, mode = 'valid')
@@ -118,14 +119,14 @@ def bfgs_ridge(model, coef, alphas):
                         cat1, cat2 = cat.split('#')
                         if cc.shape[0] > 2:
                             ker1  = np.array([[[1]],[[-2]],[[1]]]) 
-                            if model.param['qo_modulo'].get(cat1):
+                            if model.hprm['qo_modulo'].get(cat1):
                                 conv1 = spim.filters.convolve(cc,ker1,mode = 'wrap')
                             else:
                                 conv1 = sig.convolve(cc, ker1, mode = 'valid')
                             reg += 0.5 * aa * (np.linalg.norm(conv1, axis = 2)**pp).sum()
                         if cc.shape[1] > 2:
                             ker2  = np.array([[[1 ],[ -2 ],[ 1]]])
-                            if model.param['qo_modulo'].get(cat2):
+                            if model.hprm['qo_modulo'].get(cat2):
                                 conv2 = spim.filters.convolve(cc,ker2,mode = 'wrap')
                             else:
                                 conv2 = sig.convolve(cc, ker2, mode = 'valid')
@@ -141,17 +142,18 @@ def grad_bfgs_ridge(model, coef, alphas):
     # Compute the gradient of the differentiable plenalizations
     # The slmoothing spline regularizations require the computations of the convolutions first
     grad = np.zeros(coef.shape)
-    for var in model.config_coef:
-        for key in set([e 
-                        for e in np.unique([model.col_key_large_matching[model.concat_masks[:,0].indices 
-                                                                         if sp.sparse.issparse(model.concat_masks) 
-                                                                         else 
-                                                                         model.concat_masks[:,0]
-                                                                         ]])]):
+    for var in model.formula.index.get_level_values('coefficient'):
+        for key in set([tuple(row) 
+                        for row in model.col_key_large_matching[model.concat_masks[:,0].indices 
+                                                                if sp.sparse.issparse(model.concat_masks) 
+                                                                else 
+                                                                model.concat_masks[:,0]
+                                                                ]
+                        ]):
             if (key,0) not in model.key_slice_matching_zero:
                 continue
             key_slice = model.key_slice_matching_zero[key,0]
-            cat       = model.param['data_cat'][key] 
+            cat       = model.hprm['data_cat'][key] 
             alpha     = alphas[var].get(cat,0)
             if (   type(alpha) == tuple and alpha[0] !=0
                 or isinstance(alpha, Number) and alpha != 0
@@ -165,7 +167,7 @@ def grad_bfgs_ridge(model, coef, alphas):
                     reshape_tensor = '#' in cat and np.all([e > 1 for e in model.size_tensor2[key]]) 
                     if reshape_tensor:
                         cc = cc.reshape(*model.size_tensor2[key], -1)
-                    if not reshape_tensor and model.param['qo_modulo'].get(cat):
+                    if not reshape_tensor and model.hprm['qo_modulo'].get(cat):
                         ker  = np.array([[-1],[2],[-1]])
                         conv = spim.filters.convolve(cc,ker,mode = 'wrap')
                         grad[key_slice] = alpha * conv
@@ -193,7 +195,7 @@ def grad_bfgs_ridge(model, coef, alphas):
                     assert key_slice.stop >= key_slice.start+2
                     if not reshape_tensor:
                         if cc.shape[0] > 2:
-                            if model.param['qo_modulo'].get(cat):
+                            if model.hprm['qo_modulo'].get(cat):
                                 ker  = np.array([[1],[-4],[6],[-4],[1]])
                                 conv = spim.filters.convolve(cc,ker,mode = 'wrap')
                                 grad[key_slice] = alpha * conv
@@ -209,7 +211,7 @@ def grad_bfgs_ridge(model, coef, alphas):
                         grad_tmp = np.zeros(cc.shape)
                         cat1, cat2 = cat.split('#')
                         if cc.shape[0] > 2:
-                            if model.param['qo_modulo'].get(cat1):
+                            if model.hprm['qo_modulo'].get(cat1):
                                 ker1  = np.array([[[1],[-4],[6],[-4],[1]]])
                                 conv1     = spim.filters.convolve(cc,ker1,mode = 'wrap')
                                 grad_tmp += alpha * conv1
@@ -220,7 +222,7 @@ def grad_bfgs_ridge(model, coef, alphas):
                                 grad_tmp[1:-1,:] -= alpha * 2*conv1
                                 grad_tmp[2:  ,:] += alpha * conv1
                         if cc.shape[1] > 2: 
-                            if model.param['qo_modulo'].get(cat2):
+                            if model.hprm['qo_modulo'].get(cat2):
                                 ker2  = np.array([[[1],[-4],[6],[-4],[1]]])
                                 conv2 = spim.filters.convolve(cc,ker2,mode = 'wrap')
                                 grad_tmp += alpha * conv2
@@ -240,7 +242,7 @@ def grad_bfgs_ridge(model, coef, alphas):
                     assert key_slice.stop >= key_slice.start+2
                     if not reshape_tensor:
                         if cc.shape[0] > 2:
-                            if model.param['qo_modulo'].get(cat):
+                            if model.hprm['qo_modulo'].get(cat):
                                 ker  = np.array([[1],[-2],[1]])
                                 conv = spim.filters.convolve(cc,ker,mode = 'wrap')
                                 norm_conv     = np.linalg.norm(conv, axis = 1)
@@ -275,7 +277,7 @@ def grad_bfgs_ridge(model, coef, alphas):
                         grad_tmp = np.zeros(cc.shape)
                         cat1, cat2 = cat.split('#')
                         if cc.shape[0] > 2:
-                            if model.param['qo_modulo'].get(cat1):
+                            if model.hprm['qo_modulo'].get(cat1):
                                 ker1           = np.array([[[ 1],
                                                             [-4],
                                                             [ 6],
@@ -323,7 +325,7 @@ def grad_bfgs_ridge(model, coef, alphas):
                                 grad_tmp[1:-1,:] -= (0.5 * aa * pp) * 2*conv1 * norm_conv1_pm2
                                 grad_tmp[2:  ,:] += (0.5 * aa * pp) *   conv1 * norm_conv1_pm2
                         if cc.shape[1] > 2: 
-                            if model.param['qo_modulo'].get(cat2):
+                            if model.hprm['qo_modulo'].get(cat2):
                                 ker2           = np.array([[[ 1],
                                                             [-4],
                                                             [ 6],
@@ -380,23 +382,21 @@ def make_coef(model, loss, grad_loss, vec_coef_0):
     # Optimization of the differentiable objectives with the function sp.optimize.fmin_l_bfgs_b
     try:
         # Try to load
-        assert model.param['load'] and model.param['load_model']
-        ans_lbfgs = primitives.tf_data_load(model.path_betas, 
-                                                  model.dikt['model_pred'], 
-                                                  model.param, 
-                                                  obj_name = 'ans_lbfgs', 
-                                                  mod      = 'np',
-                                                  )
+        ans_lbfgs = tools.batch_load(model.path_betas, 
+                                     model.dikt['experience.whole'], 
+                                     obj_name = 'ans_lbfgs', 
+                                     mod      = 'np',
+                                     )
         print(colored('ans_lbfgs loaded', 'green'))
     except:
         # Compute and save
         print(colored('ans_lbfgs not loaded', 'red'))
         model.machine_precision = np.finfo(float).eps
-        model.tol_lbfgs         = model.param['tf_tol_lbfgs']
+        model.tol_lbfgs         = model.hprm['afm.algorithm.lbfgs.tol']
         model.factr             = model.k*model.tol_lbfgs/model.machine_precision
-        print('{0:20.20}{1}{2:.3e}\n{3:20.20}{4}{5:.3e}\n{6:20.20}{7}{8:.3e}'.format('machine_precision', ' : ', model.machine_precision, 
-                                                                                     'model.tol_lbfgs',   ' : ', model.tol_lbfgs, 
-                                                                                     'model.factr',       ' : ', model.factr,
+        print('{0:20.20}{1}{2:.3e}\n{3:20.20}{4}{5:.3e}\n{6:20.20}{7}{8:.3e}'.format('machine_precision',       ' : ', model.machine_precision, 
+                                                                                     'afm.algorithm.lbfgs.tol', ' : ', model.tol_lbfgs, 
+                                                                                     'model.factr',             ' : ', model.factr,
                                                                                      )) 
         ans_lbfgs  = sp.optimize.fmin_l_bfgs_b(
                                                loss, 
@@ -405,40 +405,45 @@ def make_coef(model, loss, grad_loss, vec_coef_0):
                                                args    = (model,),
                                                iprint  = 99, 
                                                factr   = model.factr,
-                                               maxfun  = model.param['tf_maxiter_lbfgs'],
-                                               maxiter = model.param['tf_maxfun_lbfgs'],
-                                               pgtol   = model.param['tf_pgtol_lbfgs'],
+                                               maxfun  = model.hprm['afm.algorithm.lbfgs.maxfun'],
+                                               maxiter = model.hprm['afm.algorithm.lbfgs.maxiter'],
+                                               pgtol   = model.hprm['afm.algorithm.lbfgs.pgtol'],
                                                )
         try:
-            primitives.tf_data_save(
-                                    model.path_betas, 
-                                    model.dikt['model_pred'], 
-                                    model.param, 
-                                    ans_lbfgs, 
-                                    obj_name = 'ans_lbfgs', 
-                                    mod = 'np',
-                                    )      
-            
+            tools.batch_save(
+                             model.path_betas, 
+                             data      = ans_lbfgs, 
+                             prefix    = model.dikt['experience.whole'], 
+                             data_name = 'ans_lbfgs', 
+                             data_type = 'np',
+                             )      
             print(colored('ans_lbfgs saved', 'green'))
         except Exception as e:
             print(e)
     return ans_lbfgs
         
         
-def sort_keys(keys, masks, cats): # No reason to be lbfgs specific
+def sort_keys(keys, masks): # No reason to be lbfgs specific
     cat_owned = {}
     # Sort the categories of covariates
     for key in keys: 
+        inpt, trsfm, prm, location = key
         cond = (    key in masks
                 and not (type(masks[key]) == type(slice(None)) and masks[key] == slice(None))
                 )
         if cond:
-            cat_owned[cats[key]] = True
+            cat_owned[inpt, trsfm, prm] = True
         else:
-            if cats[key] not in cat_owned:
-                cat_owned[cats[key]] = False
-    aaa = sorted([e for e in keys if not cat_owned.get(cats[e])], key = lambda x : (cats[x],x))
-    ccc = sorted([e for e in keys if     cat_owned.get(cats[e])], key = lambda x : (cats[x],x))
+            if (inpt, trsfm, prm) not in cat_owned:
+                cat_owned[inpt, trsfm, prm] = False
+    aaa = sorted([(inpt, trsfm, prm, location)
+                  for inpt, trsfm, prm, location in keys
+                  if not cat_owned.get((inpt, trsfm, prm))
+                  ])#, key = lambda x : (cats[x],x))
+    ccc = sorted([(inpt, trsfm, prm, location)
+                  for inpt, trsfm, prm, location in keys
+                  if cat_owned.get((inpt, trsfm, prm))]
+                    )#, key = lambda x : (cats[x],x))
     print('    {0} cats shared - {1} cats owned'.format(len(aaa), len(ccc)))
     # The shared variables are in the top rows of the design matrix
     # The individual covariates come after

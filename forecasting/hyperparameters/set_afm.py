@@ -34,8 +34,8 @@ def set_afm(hprm):
                   'afm.formula'             : cp.deepcopy(default.afm.dikt_formula.get((hprm['database'], 
                                                                                         hprm['sites.aggregation'],
                                                                                         ),
-                                                                                      None, #default.afm.dikt_formula['nat'], 
-                                                                                      )['tmp']
+                                                                                       None, #default.afm.dikt_formula['nat'], 
+                                                                                       )['tmp']
                                                           ), # Choose the granularity for the different inputs ie the number of splines
 #                  'afm.formula'            : {var:tuple([key 
 #                                                            for key in list_keys 
@@ -74,7 +74,6 @@ def set_afm(hprm):
                             # Cb         for independent models and the univariate part of the sesquivariate constraint
                             # Cbm        for independent models and the sesquivariate constraint for the interactions
                   })
-    
     #regularization_setting = 'row2sm'
     # Choose the regularization   
     # Possible values
@@ -101,14 +100,14 @@ def set_afm(hprm):
             
             
     hprm.update({
-                  'afm.regularization.gp_matrix'          : '', # Form of the sum-consistent matrix
+                  'afm.regularization.gp_matrix'   : '', # Form of the sum-consistent matrix
                                                  # '' not to consider the sum-consistent model
                                                  # 'cst' penalize the nationally aggregated predictions
                                                  # 'nat' penalize the nationally aggregated predictions
                                                  # 'rteReg' penalize the aggregated predictions in each RTE regions
                                                  # 'admReg' penalize the aggregated predictions in each administrative regions
                                                  # 'districts' penalize the aggregated predictions in each districts
-                  'afm.regularization.gp_pen'             : 1, # Coefficient for the sum-consistent model
+                  'afm.regularization.gp_pen'      : 1, # Coefficient for the sum-consistent model
                   })
     # Algorithm
     hprm.update({
@@ -118,19 +117,14 @@ def set_afm(hprm):
                   'afm.algorithm.bcd'              : True, # Use block coordinate descent
                   'afm.algorithm.active_set'       : True, # Use an active set strategy
                   'afm.algorithm.prop_active_set'  : 0.2,
-                  'afm.algorithm.column_update'    : {**{k:False  
-                                                         for k in set([e 
-                                                           for coef, list_keys in hprm['afm.formula'].items() 
-                                                           for e in list_keys
-                                                           ])
-                                            }, # Ine the BCD procedure, activate to have column update instead of larger block updates
-                                          #'wh':True,
-                                          #'yd':True,
-                                         },
-                  'afm.features.sparse_x1'          : True, # Store the univariate covariates in a sparse format
-                  'afm.features.sparse_x2'          : True, # Store the interaction covariates in a sparse format
-                  'afm.algorithm.sparse_coef'           : False, # Memory size of coef does not seem to be a problem, at least when there is no interactions
-                  'afm.algorithm.sparse_coef_after_optim' : True,  # After the optimization, store the coefficients in a sparse format
+                  'afm.algorithm.column_update'    : {**{(coef, keys) : False  
+                                                         for coef, keys in hprm['afm.formula'].index
+                                                         }
+                                                      }, # In the BCD procedure, activate to have column update instead of larger block updates
+                                                      #'wh':True,
+                                                      #'yd':True,
+                  'afm.features.sparse_x1'                : True, # Store the univariate covariates in a sparse format
+                  'afm.features.sparse_x2'                : True, # Store the interaction covariates in a sparse format
                   #'tf_init_B'                 : False,
                   #'trunc_svd'                 : -1,
                   #'tol_B'                     : 1e-10,
@@ -138,25 +132,29 @@ def set_afm(hprm):
                   #'tol_C'                     : 1e-10,
                   #'tf_sesq'                   : False, # Optimization in two steps to introduce 2nd order interactions
                   #'tf_method_init_UV'         : 'w_uni', # 'haar' 'random' 'w_uni'
-                  #'freeze_B'             : False, # 
                   })
         
-    hprm.update({ # EARLY STOPPING CRITERIA
-                  'afm.precompute.precompute_test'       : True,  
-                  'afm.algorithm.early_stop_test'       : False, # Use performance on test basis as a stopping criteria 
-                  'afm.algorithm.early_stop_ind_test'   : False, # Use performance on test basis as a stopping criteria 
-                  'afm.algorithm.early_small_decrease'  : True,  # Use decrease of objective as a stopping criteria 
-                  'afm.algorithm.early_stop_small_grad' : True,  # Use norm of grad as a stopping criteria 
-                  'afm.algorithm.tol'                   : 1e-8,  # Is compared with the decrease of the objective
-                  'afm.algorithm.norm_grad_min'         : 1e-8, 
-                  'afm.algorithm.dist_min'              : 1e-8,
-                  'afm.algorithm.max_iter'              : 1e6, 
-                  'afm.algorithm.early_stop_period'     : 10 ,
+    hprm.update({ # CRITERIA RELATED TO THE ALGORITHM
+                  'afm.algorithm.sparse_coef'               : False, # Memory size of coef does not seem to be a problem, at least when there is no interactions
+                  'afm.algorithm.sparse_coef_after_optim'   : True,  # After the optimization, store the coefficients in a sparse format
+                  'afm.algorithm.frozen_variables'          : {}, # 
+                  #'afm.algorithm.precompute_validation'     : True,  
+                  'afm.algorithm.early_stop_validation'     : False, # Use performance on validation set as a stopping criteria 
+                  'afm.algorithm.early_stop_ind_validation' : False, # Use performance on validation set as a stopping criteria 
+                  'afm.algorithm.early_small_decrease'      : True,  # Use decrease of objective as a stopping criteria 
+                  'afm.algorithm.early_stop_small_grad'     : True,  # Use norm of grad as a stopping criteria 
+                  'afm.algorithm.tol'                       : 1e-8,  # Is compared with the decrease of the objective
+                  'afm.algorithm.norm_grad_min'             : 1e-8, 
+                  'afm.algorithm.dist_min'                  : 1e-8,
+                  'afm.algorithm.max_iter'                  : 1e6, 
+                  'afm.algorithm.early_stop_period'         : 10 ,
                   ### LBFGS
                   **cp.deepcopy(default.afm.stopping_criteria.get((hprm['database'], 
                                                                    hprm['sites.aggregation'],
                                                                    ), 
-                                                                  default.afm.stopping_criteria['nat'], 
+                                                                  default.afm.stopping_criteria['Eco2mix.France',
+                                                                                                None,
+                                                                                                ], 
                                                                   )
                                 ),
                   })
@@ -164,7 +162,7 @@ def set_afm(hprm):
     if (hprm['database'], 
         hprm['sites.aggregation'],
         ) not in default.afm.stopping_criteria:
-        print(colored('NO PARAMETRIZATION SET FOR {0}'.format(hprm['zone']), 'red', 'on_cyan'))
+        print(colored('NO PARAMETRIZATION SET FOR {0}'.format(hprm['database']), 'red', 'on_cyan'))
 
 
 ###############################################################################

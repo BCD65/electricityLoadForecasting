@@ -21,17 +21,20 @@ import electricityLoadForecasting.tools as tools
 #tupleErrors = (CalledProcessError, custex, TimeoutExpired, OSError, AssertionError)
 
 
+path_data = os.path.join(paths.outputs,
+                         'Saved',
+                         'Data',
+                         )
+
 def get_mask_univariate(hprm, inputs, dikt_assignments, file_path = None):
     # Compute the mask for univariate covariates (ie binary indicators to define which covariates each task has access to)
     #prefix1 = dikt['primitives_train1']
     try:
         mask_univariate = tools.batch_load(
-                                           os.path.join(paths.outputs,
-                                                        'Saved/Masks',
-                                                        ), 
+                                           path_data, 
                                            prefix    = file_path,
                                            data_name = 'mask_univariate', 
-                                           data_type = 'dictionary',
+                                           data_type = 'pickle',
                                            )
     except tools.exceptions.loading_errors:
         mask_univariate = make_mask(
@@ -40,13 +43,11 @@ def get_mask_univariate(hprm, inputs, dikt_assignments, file_path = None):
                                     ) 
         try:
             tools.batch_save(
-                             os.path.join(paths.outputs,
-                                          'Saved/Masks',
-                                          ), 
+                             path_data, 
                              prefix    = file_path,
                              data      = mask_univariate,
                              data_name = 'mask_univariate', 
-                             data_type = 'dictionary',
+                             data_type = 'pickle',
                              )
         except tools.exceptions.saving_errors:
             pass
@@ -60,24 +61,20 @@ def get_mask_bivariate(hprm, inputs, dikt_assignments, file_path = None):
     #prefix2 = dikt['primitives_train2']
     try:
         mask_bivariate = tools.batch_load(
-                                          os.path.join(paths.outputs,
-                                                       'Saved/Masks',
-                                                       ), 
+                                          path_data, 
                                           prefix    = file_path,
                                           data_name = 'mask_bivariate', 
-                                          data_type = 'dictionary',
+                                          data_type = 'pickle',
                                           )
     except tools.exceptions.loading_errors:
         mask_bivariate = build_mask_bivariate(inputs, dikt_assignments)  
         try:
             tools.batch_save(
-                             os.path.join(paths.outputs,
-                                          'Saved/Masks',
-                                          ), 
+                             path_data, 
                              prefix    = file_path,
                              data      = mask_bivariate,
                              data_name = 'mask_bivariate', 
-                             data_type = 'dictionary',
+                             data_type = 'pickle',
                              )
         except tools.exceptions.saving_errors:
             pass
@@ -197,14 +194,13 @@ def make_mask(inputs, dikt_assignments):
 #        if len(mask_ow) != len(posts_names):
 #            cmask.update({key : mask_ow})
                 # otherwise the covariate is accessed by all substations and is not added to the cmask
-                
     cmask =  {
               (name_input,
-               #transformation,
-               #parameter,
+               transformation,
+               parameter,
                location,
-               ) : ([name_site
-                     for name_site in dikt_assignments[name_input].columns
+               ) : ([ii
+                     for ii, name_site in enumerate(dikt_assignments[name_input].columns)
                      if (dikt_assignments[name_input][name_site] == location).any()
                      ]
                     if (    name_input in dikt_assignments # Input in the assignments
@@ -214,9 +210,9 @@ def make_mask(inputs, dikt_assignments):
                     slice(None)
                     )
               for (name_input, transformation, parameter, location) in inputs.columns
-              }           
+              }  
     
-    print('\nend make_mask')
+    print('end make_mask')
     return cmask
 
 def combine_masks(keyleft, mask12left, keyright, mask12right, posts_names):

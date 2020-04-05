@@ -1,7 +1,6 @@
 
 
 
-import copy as cp   
 import pandas as pd
 
 
@@ -41,6 +40,46 @@ Default hyperparameters for additive features model
 #                           )
 
 
+             
+###############################################################################
+                     
+###                       Stopping Criteria                                 ###
+
+###############################################################################
+              
+stopping_criteria = {
+                     ('Eco2mix.administrative_regions',
+                      None,
+                      ) : {
+                               'afm.algorithm.lbfgs.maxfun'          : 1e8,
+                               'afm.algorithm.lbfgs.maxiter'         : 1e8,                             
+                               'afm.algorithm.lbfgs.pgtol'           : 1e-6,
+                               'afm.algorithm.lbfgs.tol'             : 1e-12,
+                               },
+                     ('Eco2mix.France',
+                      None,
+                      ) : {
+                               'afm.algorithm.lbfgs.tol'             : 1e-12,
+                               'afm.algorithm.lbfgs.pgtol'           : 1e-6,
+                               'afm.algorithm.lbfgs.maxfun'          : 1e8,
+                               'afm.algorithm.lbfgs.maxiter'         : 1e8,                             
+                               },
+#                     'full' : {
+#                               'tf_tol_lbfgs'             : 1e-9,
+#                               'tf_pgtol_lbfgs'           : 1e-5,
+#                               'tf_maxfun_lbfgs'          : 1e8,
+#                               'tf_maxiter_lbfgs'         : 1e8,                             
+#                               }
+                     }
+#stopping_criteria.update({
+#                          'e2m'       : cp.deepcopy(stopping_criteria['nat']),
+#                          'rteReg'    : cp.deepcopy(stopping_criteria['nat']),
+#                          'admReg'    : cp.deepcopy(stopping_criteria['nat']),
+#                          'districts' : cp.deepcopy(stopping_criteria['nat']),
+#                          })
+                     
+                     
+             
      
               
 ###############################################################################
@@ -51,7 +90,32 @@ Default hyperparameters for additive features model
 
 dikt_formula = {
                 ###
-                ('Eco2mix_administrative_regions',
+                ('Eco2mix.France',
+                 None,
+                 ) : {
+                      'tmp'   : pd.DataFrame([
+                                              # Univariate features
+                                              ('B', ('target',        'lag',        pd.DateOffset(hours = 24)), 4,    'r2sm', 1e-4),
+                                              ('B', ('temperature',   '',           ''),                        16,   'r2sm', 1e-4),
+                                              ('B', ('temperature',   'difference', pd.DateOffset(hours = 24)), 16,   'r2sm', 1e-2),
+                                              ('B', ('temperature',   'maximum',    '1D'),                      16,   'r2sm', 1e-2),
+                                              ('B', ('temperature',   'minimum',    '1D'),                      16,   'r2sm', 1e-1),
+                                              ('B', ('temperature',   'smoothing',  0.99),                      16,   'r2sm', 1e-1),
+                                              ('B', ('timestamp',     '',           ''),                        'p1', 'rsm',  1e-3),
+                                              ('B', ('week_hour',     '',           ''),                        168,  'rsm',  1e-8),
+                                              # Bivariate features
+                                              
+                                              ],
+                                             columns = ['coefficient',
+                                                        'input',
+                                                        'nb_intervals',
+                                                        'regularization_func',
+                                                        'regularization_coef',
+                                                        ],
+                                             ).set_index(['coefficient', 'input'])
+                      },
+                ###
+                ('Eco2mix.administrative_regions',
                  None,
                  ) : {
                       'tmp'   : pd.DataFrame([
@@ -70,8 +134,8 @@ dikt_formula = {
                                                         'regularization_func',
                                                         'regularization_coef',
                                                         ],
-                                             )
-                      }
+                                             ).set_index(['coefficient', 'input'])
+                      },
                 }
                                                                                         
 
@@ -472,7 +536,7 @@ dikt_formula = {
 ###############################################################################
 
 #nb_itv  =  {
-#            ('Eco2mix_administrative_regions',
+#            ('Eco2mix.administrative_regions',
 #             None,
 #             ) : {
 #                     'dado'               : 'p1',
@@ -677,7 +741,7 @@ dikt_formula = {
 
 #pen_tmp = 'rsm'
 #regularization_func = {
-#                       ('Eco2mix_administrative_regions',
+#                       ('Eco2mix.administrative_regions',
 #                        None,
 #                        ) : {
 #                             'A'   : {'y'         :'rsm'}, 
@@ -1059,7 +1123,7 @@ dikt_formula = {
 #factor_nb_posts = 4e2
 ##alpha_lbfgs_uni = 1e-8
 #regularization_coef = {
-#                       ('Eco2mix_administrative_regions',
+#                       ('Eco2mix.administrative_regions',
 #                        None,
 #                        ): {
 #                               'A'     : {'y' : 1e-2},
@@ -1284,44 +1348,7 @@ dikt_formula = {
 #             }
               
              
-             
-###############################################################################
-                     
-###                       Stopping Criteria                                 ###
-
-###############################################################################
-              
-stopping_criteria = {
-                     ('Eco2mix_administrative_regions',
-                      None,
-                      ) : {
-                               'afm.algorithm.lbfgs.tol'             : 1e-12,
-                               'afm.algorithm.lbfgs.pgtol'           : 1e-6,
-                               'afm.algorithm.lbfgs.maxfun'          : 1e8,
-                               'afm.algorithm.lbfgs.maxiter'         : 1e8,                             
-                               },
-                     'nat' : {
-                               'afm.algorithm.lbfgs.tol'             : 1e-12,
-                               'afm.algorithm.lbfgs.pgtol'           : 1e-6,
-                               'afm.algorithm.lbfgs.maxfun'          : 1e8,
-                               'afm.algorithm.lbfgs.maxiter'         : 1e8,                             
-                               },
-#                     'full' : {
-#                               'tf_tol_lbfgs'             : 1e-9,
-#                               'tf_pgtol_lbfgs'           : 1e-5,
-#                               'tf_maxfun_lbfgs'          : 1e8,
-#                               'tf_maxiter_lbfgs'         : 1e8,                             
-#                               }
-                     }
-#stopping_criteria.update({
-#                          'e2m'       : cp.deepcopy(stopping_criteria['nat']),
-#                          'rteReg'    : cp.deepcopy(stopping_criteria['nat']),
-#                          'admReg'    : cp.deepcopy(stopping_criteria['nat']),
-#                          'districts' : cp.deepcopy(stopping_criteria['nat']),
-#                          })
-                     
-                     
-                     
+        
                      
                      
                      

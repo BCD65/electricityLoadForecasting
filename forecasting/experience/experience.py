@@ -10,10 +10,10 @@ import os
 from termcolor import colored
 
 #
+from .. import performances, hyperparameters, inputs
 import electricityLoadForecasting.paths  as paths
 import electricityLoadForecasting.src    as src
 import electricityLoadForecasting.tools  as tools
-from .. import performances, hyperparameters, inputs
 #
 import electricityLoadForecasting.forecasting.models as models
 import electricityLoadForecasting.forecasting.config as config
@@ -92,7 +92,6 @@ class Experience(object):
 ###############################################################################
 
     def assign_weather(self, ):
-
         # Choose weather source
         self.data['df_weather'] = self.data['df_weather'].xs(key   = self.hprm['weather.source'],
                                                              axis  = 1,
@@ -184,9 +183,9 @@ class Experience(object):
         self.performances = tools.batch_load(os.path.join(paths.outputs,
                                                           'Saved/Performances',
                                                           ), 
-                                             self.dikt_files['experience.whole'], 
+                                             prefix    = self.dikt_files['experience.whole'], 
                                              data_name = 'performances', 
-                                             data_type = 'dictionary',
+                                             data_type = 'pickle',
                                              )
 
     #profile
@@ -197,9 +196,9 @@ class Experience(object):
         self.predictions = tools.batch_load(os.path.join(paths.outputs,
                                                          'Saved/Predictions',
                                                          ), 
-                                            self.dikt_files['experience.whole'], 
+                                            prefix    = self.dikt_files['experience.whole'], 
                                             data_name = 'predictions', 
-                                            data_type = 'dictionary',
+                                            data_type = 'pickle',
                                             )
         self.target_training       = self.predictions['target_training']
         self.prediction_training   = self.predictions['prediction_training']
@@ -219,14 +218,14 @@ class Experience(object):
         
         # learn model
         if self.hprm['learning.model'] == 'afm': # Standard bivariate linear model - the main focus of our work
-            self.Y_hat_training, self.Y_hat_validation, self.model = models.afm.fit_and_predict(self.inputs_training, 
-                                                                                                self.Y_training, 
-                                                                                                self.inputs_validation,
-                                                                                                self.Y_validation,
-                                                                                                self.hprm,
-                                                                                                self.dikt_assignments,
-                                                                                                self.dikt_files,
-                                                                                                ) 
+            self.design, self.model, self.Y_hat_training, self.Y_hat_validation = models.afm.fit_and_predict(self.inputs_training, 
+                                                                                                             self.Y_training, 
+                                                                                                             self.inputs_validation,
+                                                                                                             self.Y_validation,
+                                                                                                             self.hprm,
+                                                                                                             self.dikt_assignments,
+                                                                                                             self.dikt_files,
+                                                                                                             ) 
             #self.model = None
             
             
@@ -247,10 +246,16 @@ class Experience(object):
                                                                                                )
         else:
             raise ValueError
-            
+        
         # de-normalize
-        self.prediction_training   = self.Y_hat_training   * self.target_mean + self.target_mean
-        self.prediction_validation = self.Y_hat_validation * self.target_mean + self.target_mean 
+        self.prediction_training   = pd.DataFrame(self.Y_hat_training, 
+                                                  columns = self.target_training.columns,
+                                                  index   = self.target_training.index,
+                                                  )* self.target_mean + self.target_mean
+        self.prediction_validation = pd.DataFrame(self.Y_hat_validation, 
+                                                  columns = self.target_validation.columns,
+                                                  index   = self.target_validation.index,
+                                                  ) * self.target_mean + self.target_mean 
         
             
     def save_predictions(self):
@@ -269,7 +274,7 @@ class Experience(object):
                          prefix    = self.dikt_files['experience.whole'], 
                          data      = self.prediction_dikt, 
                          data_name = 'predictions', 
-                         data_type = 'dictionary',
+                         data_type = 'pickle',
                          )
              
             
@@ -326,7 +331,7 @@ class Experience(object):
                          prefix    = self.dikt_files['experience.whole'], 
                          data      = self.performances, 
                          data_name = 'performances', 
-                         data_type = 'dictionary',
+                         data_type = 'pickle',
                          )
         
         

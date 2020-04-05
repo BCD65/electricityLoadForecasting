@@ -1,10 +1,8 @@
 
-import os
 #
-import electricityLoadForecasting.paths  as paths
 from . import masks
 from . import features
-from . import model
+from .model import additive_features_model
 
 
 
@@ -16,6 +14,12 @@ def fit_and_predict(inputs_training,
                     dikt_assignments,
                     dikt_file_names,
                     ):
+    """
+    Format targets
+    """
+    Y_training   = Y_training.values
+    Y_validation = Y_validation.values
+    
     """
     Masks
     """
@@ -36,6 +40,7 @@ def fit_and_predict(inputs_training,
                                                            ) 
     else:
         mask_bivariate_features = None
+
         
     """
     Design
@@ -70,33 +75,30 @@ def fit_and_predict(inputs_training,
                   for k, v in design.items() 
                   if 'training' in k
                   }
-    X_test  = {k:v 
-               for k, v in design.items() 
-               if 'validation' in k
-               }
-    config  = {k:v 
+    X_validation  = {k:v 
+                     for k, v in design.items() 
+                     if 'validation' in k
+                     }
+    specs   = {k:v 
                for k, v in design.items() 
                if (    'training'   not in k 
                    and 'validation' not in k)
                }
-    model_pred = model.afm(hprm,
-                           dikt       = dikt_file_names,
-                           path_Saved = os.path.join(paths.outputs,
-                                                     'Saved',
-                                                     ),
-                           )
-    model_pred.fit(config, 
+    model_pred = additive_features_model(hprm,
+                                         dikt_file_names = dikt_file_names,
+                                         )
+    model_pred.fit(specs, 
                    X_training, 
                    Y_training, 
-                   X_test = X_test, 
-                   Y_test = Y_validation, 
+                   X_validation = X_validation, 
+                   Y_validation = Y_validation, 
                    )
     
     """
     Predictions
     """
-    Y_hat_training   = model_pred.predict(data = 'training',    adjust_A = False, verbose = True)
-    Y_hat_validation = model_pred.predict(data = 'validation',  adjust_A = False, verbose = True)
+    Y_hat_training   = model_pred.predict(dataset = 'training',    adjust_A = False, verbose = True)
+    Y_hat_validation = model_pred.predict(dataset = 'validation',  adjust_A = False, verbose = True)
 
     
     return design, model_pred, Y_hat_training, Y_hat_validation

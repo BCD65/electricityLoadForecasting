@@ -48,10 +48,9 @@ def check_hyperparameters(hprm):
 #    Set approx_tf
 #    """
     if hprm['learning.model'] in {'afm'}:
-        ordered_index = hprm['afm.formula'].astype(str).sort_values(['coefficient', 'input']).index
-        hprm['afm.formula'] = hprm['afm.formula'].loc[ordered_index]
-        
-        assert not set(hprm['afm.formula']['input'].unique()).difference(hprm['inputs.selection'])
+        #ordered_index = hprm['afm.formula'].astype(str).sort_values(['coefficient', 'input']).index
+        hprm['afm.formula'].sort_index(inplace = True)# = hprm['afm.formula'].loc[ordered_index]
+        assert not set(hprm['afm.formula'].index.get_level_values('input').unique()).difference(hprm['inputs.selection'])
         
 #        if param['separation_var']:
 #            #assert 0

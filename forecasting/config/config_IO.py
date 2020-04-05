@@ -25,8 +25,8 @@ download = load*connect
 upload   = save*connect
 delete   = False*save*upload
 ###############################################################################
-save_data           = False*save
-save_model          = False*save
+save_data           = True*save
+save_model          = True*save
 save_predictions    = True*save
 save_performances   = True*save
 ###############################################################################
@@ -35,8 +35,8 @@ upload_model        = False*upload
 upload_predictions  = False*upload
 upload_performances = False*upload
 ###############################################################################
-load_data           = False*load
-load_model          = False*load
+load_data           = True*load
+load_model          = True*load
 load_predictions    = True*load
 load_performances   = True*load
 ###############################################################################

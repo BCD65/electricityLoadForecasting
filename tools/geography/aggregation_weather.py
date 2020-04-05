@@ -12,8 +12,14 @@ def aggregation_weather(df_weather, df_coordinates, aggregation_level):
         agg_df_weather          = df_weather
         agg_coordinates_weather = df_coordinates
     elif aggregation_level == 'mean':
-        agg_df_weather          = pd.DataFrame(df_weather.mean(axis = 1), columns = ['mean'])
-        agg_coordinates_weather = pd.DataFrame(df_coordinates.mean(axis = 0), index = ['mean'])
+        agg_df_weather          = df_weather.mean(axis = 1, level = ['physical_quantity'])
+        agg_df_weather.columns  = pd.MultiIndex.from_product([['mean'],
+                                                              agg_df_weather.columns.get_level_values('physical_quantity'),
+                                                              ],
+                                                             names = df_weather.columns.names,
+                                                             )
+        agg_coordinates_weather = df_coordinates.mean(axis = 0).to_frame().T
+        agg_coordinates_weather.index = ['mean']
     else:
         df_weights                = pd.read_csv(os.path.join(paths.extras, 'poids_stations_meteo.csv'), sep = ';', decimal=',')
         df_weights                = df_weights.fillna(0)

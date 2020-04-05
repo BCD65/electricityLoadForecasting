@@ -15,30 +15,30 @@ else:
 
 def path_inputs(database):
     assert database in {
-                       'Eco2mix_administrative_regions',
-                       'Eco2mix_France',
-                       'RTE',
-                       'RTE_quick_test',
+                       'Eco2mix.administrative_regions',
+                       'Eco2mix.France',
+                       'RTE.full',
+                       'RTE.quick_test',
                        }
     
-    if database == 'RTE':
+    if database == 'RTE.full':
         path_inputs = os.path.join(root_folder, 
                                    'RTE', 
                                    'transformed_data',
                                    )
-    elif database == 'RTE_quick_test':
+    elif database == 'RTE.quick_test':
         path_inputs = os.path.join(root_folder, 
                                    'RTE', 
                                    'transformed_data', 
                                    'quick_test',
                                    )
-    elif database == 'Eco2mix_administrative_regions':
+    elif database == 'Eco2mix.administrative_regions':
         path_inputs =  os.path.join(root_folder,
                                     'Eco2mix',
                                     'transformed_data',
                                     'administrative_regions',
                                     )
-    elif database == 'Eco2mix_France':
+    elif database == 'Eco2mix.France':
         path_inputs =  os.path.join(root_folder,
                                     'Eco2mix',
                                     'transformed_data',

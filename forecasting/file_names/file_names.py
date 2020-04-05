@@ -20,19 +20,19 @@ def make_dikt_files(hprm, nb_sites = None, nb_weather = None, dt_training = None
     #=========================================#
     ###         Dataset                     ###
     #=========================================#
-    str_dataset = (hprm['database'],
-                            'sites',
-                            hprm['sites.zone'],
-                            str(nb_sites),
-                            hprm['sites.aggregation'] if bool(hprm['sites.aggregation']) else '',
-                            'mask{0}'.format(hprm['inputs.nb_sites_per_site']),
-                            'weather',
-                            hprm['weather.source'],
-                            hprm['weather.zone'],
-                            str(nb_weather), 
-                            hprm['weather.aggregation'] if bool(hprm['weather.aggregation']) else '',
-                            'mask{0}'.format(hprm['inputs.nb_weather_per_site']),
-                            )
+    str_dataset = (hprm['database'].replace('.','_'),
+                   'sites',
+                   hprm['sites.zone'],
+                   str(nb_sites),
+                   hprm['sites.aggregation'] if bool(hprm['sites.aggregation']) else '',
+                   'mask{0}'.format(hprm['inputs.nb_sites_per_site']),
+                   'weather',
+                   hprm['weather.source'],
+                   hprm['weather.zone'],
+                   str(nb_weather), 
+                   hprm['weather.aggregation'] if bool(hprm['weather.aggregation']) else '',
+                   'mask{0}'.format(hprm['inputs.nb_weather_per_site']),
+                   )
     str_split_training   = (
                             'training',
                                      dt_training.min().strftime(format = '%Y%m%d'),
@@ -91,15 +91,15 @@ def make_dikt_files(hprm, nb_sites = None, nb_weather = None, dt_training = None
         natural_splines  = 'nat'*hprm.get('afm.natural_splines',  0)
         boundary_scaling = 'bds'*hprm.get('afm.boundary_scaling', 0)
         all_products     = 'apr'*(hprm.get('gp_pen',0) > 0 and hprm.get('gp_matrix','') != '') # When apr, x1tx1 containes all interactions  
-        univariate_func  = hprm['afm.formula'].loc[hprm['afm.formula']['nb_intervals'].apply(lambda x : type(x) != tuple)].astype(str)
-        univariate_data  = [tuple(univariate_func[['input', 'nb_intervals']].iloc[ii])
+        univariate_func  = hprm['afm.formula'].loc[hprm['afm.formula']['nb_intervals'].apply(lambda x : type(x) != tuple)].reset_index().astype(str)
+        univariate_data  = [tuple(univariate_func.reset_index().iloc[ii][['input', 'nb_intervals']])
                             for ii in range(univariate_func.shape[0])
                             ]
         univariate_model = [tuple(univariate_func.iloc[ii])
                             for ii in range(univariate_func.shape[0])
                             ]
-        bivariate_func   = hprm['afm.formula'].loc[hprm['afm.formula']['nb_intervals'].apply(lambda x : (type(x) == tuple and len(x) == 2))].astype(str)
-        bivariate_data   = [tuple(bivariate_func[['input', 'nb_intervals']].iloc[ii])
+        bivariate_func   = hprm['afm.formula'].loc[hprm['afm.formula']['nb_intervals'].apply(lambda x : (type(x) == tuple and len(x) == 2))].reset_index().astype(str)
+        bivariate_data   = [tuple(bivariate_func.reset_index().iloc[ii][['input', 'nb_intervals']])
                             for ii in range(bivariate_func.shape[0])
                             ]
         bivariate_model  = [tuple(bivariate_func.iloc[ii])
@@ -176,17 +176,10 @@ def make_dikt_files(hprm, nb_sites = None, nb_weather = None, dt_training = None
             dikt[key] = os.sep.join(new_list_chunks)
         dikt[key] = tools.format_file_names(dikt[key])
     
-    for ss in [#'features.validation.univariate',
-               #'features.validation.bivariate',
-               #'features.validation.all',
+    for ss in [
                'experience.whole',
                ]:
-        if ss in dikt:
-            print("dikt['{0}']".format(ss), '\n', 
-                  dikt[ss].replace(os.sep, '/\n\t\t\t'),
-                  '\n',
-                  )
-        
+        print("dikt['{0}']\n{1}".format(ss, dikt[ss].replace(os.sep, '/\n\t\t\t')))
     return dikt
 
 
