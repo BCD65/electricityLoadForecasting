@@ -1,8 +1,0 @@
-conda create -n py37 python=3.7 anaconda conda h5py termcolor matplotlib scipy scikit-learn pytz ipdb python-spams pandas spyder seaborn chardet unidecode
-
-conda activate py37
-conda install -c conda-forge python-spams ipdb xgboost sklearn-contrib-py-earth astral tzlocal
-conda install -c r rpy2
-conda install -c omnia termcolor
-
-# Library mgcv for R
