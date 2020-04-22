@@ -125,22 +125,24 @@ class additive_features_model:
         print('sparse_coef' if self.hprm['afm.algorithm.sparse_coef'] else 'not sparse coef')
         assert self.batch_cd + self.bcd == 1    
 
-    def fit(self, specs,
-            X_training, Y_training, 
+    def fit(self, 
+            specs,
+            X_training, 
+            Y_training, 
             X_validation = None, 
             Y_validation = None, 
             given_warm   = None,
             ):
         # Fot the model given the training and validation matrices (used for stopping criteria)
-        self.X_training = X_training['X_training']#.copy()
+        self.X_training = X_training#.copy()
         self.Y_training = Y_training
         self.n_training = self.Y_training.shape[0]
         self.k          = self.Y_training.shape[1]
         self.factor_A   = bool(set(self.formula.index.get_level_values('coefficient').unique()) & {'A'})
         self.mask       = specs['mask_univariate']
         self.size       = specs['size_univariate']
-        self.mask.update(**specs.get('mask_bivariate', {}))
-        self.size.update(**specs.get('size_bivariate', {}))
+        self.mask.update(specs.get('mask_bivariate', {}))
+        self.size.update(specs.get('size_bivariate', {}))
         self.size_tensor2 = specs.get('size_tensor_bivariate',{})
         print('masks examples : ')
         self.active_gp = (self.gp_pen > 0) and bool(self.hprm['afm.regularization.gp_matrix']) # indicator of the sum-consistent model
@@ -177,10 +179,10 @@ class additive_features_model:
         self.compute_validation    = (type(X_validation) != int) 
         self.precompute_validation = not self.lbfgs and (type(X_validation) != int) and self.hprm.get('afm.algorithm.precompute_validation', True)
         if self.compute_validation:
-            self.X_validation  = X_validation['X_validation']#.copy()
+            self.X_validation  = X_validation
             self.Y_validation  = Y_validation
             self.n_validation  = self.Y_validation.shape[0]
-            self.X_validation.update({**X_validation.get('X2_validation', {})})
+            #self.X_validation.update({**X_validation.get('X2_validation', {})})
             self.print_fit_with_mean(dataset = 'validation', mean = 'training')
             self.print_fit_with_mean(dataset = 'validation', mean = 'validation')
             if self.precompute_validation:
@@ -286,22 +288,22 @@ class additive_features_model:
             self.compute_normalization()
             # Normalize data
             for key in self.sorted_keys:
-                inpt, trsfm, prm, location = key
-                self.X_training[key]    /= self.normalization[inpt, trsfm, prm]
-                self.X_validation [key] /= self.normalization[inpt, trsfm, prm]
+                inpt, location = key
+                self.X_training[key]    /= self.normalization[inpt]
+                self.X_validation [key] /= self.normalization[inpt]
             if hasattr(self, 'XtX_training'):
                 for keys in self.XtX_training.keys():
                     key1, key2 = keys
-                    inpt1, trsfm1, prm1, location1 = key1
-                    inpt2, trsfm2, prm2, location2 = key2
-                    self.XtX_training[key] /= self.normalization[inpt1, trsfm1, prm1]*self.normalization[inpt2, trsfm2, prm2]
+                    inpt1, location1 = key1
+                    inpt2, location2 = key2
+                    self.XtX_training[key] /= self.normalization[inpt1]*self.normalization[inpt2]
                     if self.precompute_validation:
-                        self.XtX_validation [key] /= self.normalization[inpt1, trsfm1, prm1]*self.normalization[inpt2, trsfm2, prm2]
+                        self.XtX_validation [key] /= self.normalization[inpt1]*self.normalization[inpt2]
                 for key in self.XtY_training.keys():
-                    inpt, trsfm, prm, location = key
-                    self.XtY_training[key] /= self.normalization[inpt, trsfm, prm]
+                    inpt, location = key
+                    self.XtY_training[key] /= self.normalization[inpt]
                     if self.precompute_validation:
-                        self.XtY_validation [key] /= self.normalization[inpt, trsfm, prm]
+                        self.XtY_validation [key] /= self.normalization[inpt]
             if self.lbfgs:
                 self.use_lbfgs_old = False
                 lbfgs.start_lbfgs(self) # Launch the lbfgs algorithm
@@ -416,27 +418,27 @@ class additive_features_model:
 
             # Algorithm terminated, denormalize data
             for key in self.sorted_keys:
-                inpt, trsfm, prm, location = key
-                self.X_training[key] *= self.normalization[inpt, trsfm, prm]
-                self.X_validation [key] *= self.normalization[inpt, trsfm, prm]
+                inpt, location = key
+                self.X_training[key] *= self.normalization[inpt]
+                self.X_validation [key] *= self.normalization[inpt]
             if hasattr(self, 'XtX_training'):
                 for keys in self.XtX_training.keys():
                     key1, key2 = keys
-                    inpt1, trsfm1, prm1, location1 = key1
-                    inpt2, trsfm2, prm2, location2 = key2                    
-                    self.XtX_training[key] *= self.normalization[inpt1, trsfm1, prm1]*self.normalization[inpt2, trsfm2, prm2]
+                    inpt1, location1 = key1
+                    inpt2, location2 = key2                    
+                    self.XtX_training[key] *= self.normalization[inpt1]*self.normalization[inpt2]
                     if self.precompute_validation:
-                        self.XtX_validation[keys] *= self.normalization[inpt1, trsfm1, prm1]*self.normalization[inpt2, trsfm2, prm2]
+                        self.XtX_validation[keys] *= self.normalization[inpt1]*self.normalization[inpt2]
                 for key in self.XtY_training.keys():
-                    inpt, trsfm, prm, location = key
-                    self.XtY_training[key] *= self.normalization[inpt, trsfm, prm]
+                    inpt, location = key
+                    self.XtY_training[key] *= self.normalization[inpt]
                     if self.precompute_validation:
-                        self.XtY_validation[key] *= self.normalization[inpt, trsfm, prm]
+                        self.XtY_validation[key] *= self.normalization[inpt]
             # Change coef accordingly
             for ii, (var,key) in enumerate(self.coef.keys()):
-                inpt, trsfm, prm, location = key
+                inpt, location = key
                 if var not in {'bv', 'Cv', 'Cm'}:
-                    self.coef[var,key] /= self.normalization[inpt, trsfm, prm] 
+                    self.coef[var,key] /= self.normalization[inpt] 
             
             print()
             """
@@ -1045,7 +1047,7 @@ class additive_features_model:
         for coor_upd in list_coor:
             assert len(coor_upd) == 3
             var, key, ind              = coor_upd
-            inpt, trsfm, prm, location = key
+            inpt, location = key
             pen, alpha                 = self.get_pen_alpha(var, key)
             mask = d_masks.get(coor_upd, slice(None))
             if pen == 'rsm':
@@ -1057,7 +1059,7 @@ class additive_features_model:
                 if coor_upd[0] in {'Cu', 'Cv'}:
                     raise NotImplementedError # coef has then 3 dimensions
                 M   = self.coef[var,key][:,mask]
-                reshape_tensor = (    type(inpt) == tuple
+                reshape_tensor = (    type(inpt[0]) == tuple
                                   and var not in {'Cu', 'Cv', 'Cb', 'Cm'}
                                   )
                 if not reshape_tensor:
@@ -1434,9 +1436,7 @@ class additive_features_model:
                          for var in self.alpha 
                          for cat in self.alpha[var].keys()
                          ]
-        for cat in sorted(set([(inpt, trsfm, prm) 
-                               for inpt, trsfm, prm, location in self.sorted_keys
-                               ])):
+        for cat in set([e[0] for e in self.sorted_keys]):
             alpha_cat = 0
             for var in sorted(self.alpha):
                 if cat in self.alpha[var]:
@@ -1445,9 +1445,9 @@ class additive_features_model:
                         if self.pen[var][cat] in {'rsm', 'r2sm'}:
                             assert not alpha_cat, 'it should not have already been found for the same cat and a penalization in rsm, r2sm, unless it is approximately lowrank but this is not implemented yet'
                             alpha_cat = self.alpha[var][cat]
-            keys_for_cat = [(inpt, trsfm, prm, location) 
-                            for (inpt, trsfm, prm, location) in self.sorted_keys 
-                            if (inpt, trsfm, prm) == cat
+            keys_for_cat = [(inpt, location) 
+                            for (inpt, location) in self.sorted_keys 
+                            if inpt == cat
                             ]
             if len(keys_for_cat) == 1:
                 X_cat = self.X_training[keys_for_cat[0]]
@@ -1765,7 +1765,7 @@ class additive_features_model:
             if coor[0] in {'Blr', 'bv', 'Cuv', 'Cbm'}:
                 continue
             var, key, ind = coor
-            inpt, trsfm, prm, location = key
+            inpt, location = key
             pen, alpha = self.get_pen_alpha(var, key)
             if pen == 'rsm':
                 if type(M) in {np.ndarray, np.matrix}:
@@ -1776,7 +1776,7 @@ class additive_features_model:
                 if type(M) not in {np.ndarray, np.matrix}:
                     raise NotImplementedError
                 else:
-                    reshape_tensor = (    type(inpt) == tuple
+                    reshape_tensor = (    type(inpt[0]) == tuple
                                       and var not in {'Cu', 'Cv', 'Cb', 'Cm'}
                                       )
                     if not reshape_tensor:
@@ -1830,7 +1830,7 @@ class additive_features_model:
                 if type(M) not in {np.ndarray, np.matrix}:
                     raise NotImplementedError
                 else:
-                    reshape_tensor = type(inpt) == tuple
+                    reshape_tensor = type(inpt[0]) == tuple
                     if not reshape_tensor:
                         cc = M
                         if cc.shape[0] > 2:
@@ -1907,7 +1907,7 @@ class additive_features_model:
         
     def get_pen_alpha(self, var, key):
         # For one coefficient matrix and one covariate, fetch the regularization and the coefficient
-        inpt, trsfm, prm, location = key
+        inpt, location = key
         if var == 'A':
             pen   = self.pen.get(var,'')
             alpha = self.normalized_alphas.get(var,0)
@@ -1915,8 +1915,8 @@ class additive_features_model:
             pen   = ''
             alpha = 0
         else:
-            pen   = self.pen  .get(var,{}).get((inpt, trsfm, prm),'')
-            alpha = self.normalized_alphas.get(var,{}).get((inpt, trsfm, prm),0)
+            pen   = self.pen  .get(var,{}).get(inpt,'')
+            alpha = self.normalized_alphas.get(var,{}).get(inpt,0)
         return pen, alpha
     
     #profile
@@ -1962,12 +1962,15 @@ class additive_features_model:
                             coef[('Blr',key)]   = coef[('bu',key)] @ coef[('bv',key)].T
         if 'B' in self.keys.keys():
             for key in self.X_training.keys():
-                physical_quantity, trsfm, prm, location = key
-                if (physical_quantity, trsfm, prm) in self.formula.loc['B'].index:
+                if type(key[0]) != tuple : 
+                    generic_key = key[:-1]
+                elif type(key[0]) == tuple:
+                    generic_key = tuple([v[:-1] for v in key])
+                if generic_key in self.formula.loc['B'].index:
                     if not (key in self.mask and type(self.mask[key])==np.ndarray and self.mask[key].shape[0] == 0):
                         self.keys['B'].append(key)
                     if 'B' not in self.frozen_variables:
-                        if self.pen['B'].get((physical_quantity, trsfm, prm)) != 'rlasso' and self.hprm['afm.algorithm.column_update'].get(('B', (physical_quantity, trsfm, prm))):
+                        if self.pen['B'].get(generic_key) != 'rlasso' and self.hprm['afm.algorithm.column_update'].get(('B', generic_key)):
                             keys_upd += [('B',key,(int(r),)) for r in self.mask.get(key, range(self.k))]
                         else:
                             keys_upd += [('B',key,())]
@@ -2121,7 +2124,7 @@ class additive_features_model:
             if ind == ():
                 if key in self.mask:
                     d_masks[coor_upd] = self.mask[key]
-                elif '#'.join(key.split('#')[::-1]) in self.mask:
+                elif key[::-1] in self.mask:
                     d_masks[coor_upd] = self.mask['#'.join(key.split('#')[::-1])]
                 else:
                     d_masks[coor_upd] = slice(None)
@@ -2130,7 +2133,7 @@ class additive_features_model:
                 assert len (ind) == 1
                 assert type(ind[0]) == int
                 d_masks[coor_upd] = np.array(ind)
-            if type(d_masks[coor_upd]) == np.ndarray and d_masks[coor_upd].ndim == 1 and d_masks[coor_upd].shape[0] == 0:
+            if hasattr(d_masks[coor_upd], 'len') and len(d_masks[coor_upd]) == 0:
                 self.keys_upd.remove(coor_upd)
             if var == 'bu': 
                 del d_masks[coor_upd]

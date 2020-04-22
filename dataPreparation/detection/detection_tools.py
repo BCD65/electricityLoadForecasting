@@ -7,7 +7,7 @@ import os
 import pickle
 from termcolor import colored
 #
-import electricityLoadForecasting.src.global_var             as global_var
+import electricityLoadForecasting.etc.global_var             as global_var
 
 
 

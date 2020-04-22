@@ -8,8 +8,9 @@ This script is used to compute from the input data all the covariates based on s
 """
 
 
-import numpy as np
-import scipy as sp
+import numpy  as np
+import scipy  as sp
+import pandas as pd
 import os
 import re
 import sys
@@ -69,11 +70,15 @@ def compute_design(inputs,
             dikt_nodes = tools.batch_load(path_data, prefix_features_univariate, data_name = 'dikt_nodes',     data_type = 'np')
             dikt_func  = tools.batch_load(path_data, prefix_features_univariate, data_name = 'dikt_func',      data_type = 'np')
             size1      = tools.batch_load(path_data, prefix_features_univariate, data_name = 'size_univariate',data_type = 'np')
-        X1             = tools.batch_load(path_data, prefix_features_univariate, data_name = 'X1_'+db,         data_type = ('dict_sp'
-                                                                                                                            if hprm['afm.features.sparse_x1']
-                                                                                                                            else
-                                                                                                                            'dict_np'
-                                                                                                                            ))
+        X1 = tools.batch_load(path_data,
+                              prefix_features_univariate,
+                              data_name = 'X1_'+db,        
+                              data_type = ('dict_sp'
+                                           if hprm['afm.features.sparse_x1']
+                                           else
+                                           'dict_np'
+                                           ),
+                              )
     except Exception as e:
         print(e)
         print('Start X1 '+db)
@@ -82,12 +87,18 @@ def compute_design(inputs,
                                            hprm,
                                            hprm['afm.formula'].loc[hprm['afm.formula']['nb_intervals'].apply(lambda x : type(x) != tuple)],
                                            ) # Compute the nodes from the number of nodes for each covariate
-            dikt_func    = make_dikt_func(dikt_nodes, hprm) # Compute the associated functions        
+            dikt_func    = make_dikt_func(dikt_nodes,
+                                          hprm,
+                                          ) # Compute the associated functions        
 #            plot_1d_functions(hprm, 
 #                              {(k,''):v for k, v in dikt_func.items()}, 
 #                              'X1',
 #                              )
-        X1, size1 = make_X1(inputs, dikt_func, hprm, sparse_x1 = hprm['afm.features.sparse_x1']) # Compute the covariates and the size of the corresponding vectors
+        X1, size1 = make_X1(inputs,
+                            dikt_func,
+                            hprm,
+                            sparse_x1 = hprm['afm.features.sparse_x1'],
+                            ) # Compute the covariates and the size of the corresponding vectors
         for key in sorted(X1.keys()):
             if key in mask_univariate:
                 mm = mask_univariate[key]
@@ -103,7 +114,7 @@ def compute_design(inputs,
                     raise ValueError
         print('make X1 done')
         #################
-        ### SAVE 
+        ### Save 
         list_files = [
                       (X1, 'X1_'+db , prefix_features_univariate, ('dict_sp'
                                                                    if hprm['afm.features.sparse_x1']
@@ -120,7 +131,7 @@ def compute_design(inputs,
         save_list_files(list_files, path_data, hprm)
         ### FINISHED X1
     X = {
-         'X_'+db     : X1,
+         'X1_'+db     : X1,
          }
     if not lbfgs:
         # Compute XtX
@@ -131,7 +142,7 @@ def compute_design(inputs,
                                      prefix = prefix_features_univariate,
                                      data_name = 'X1tX1_'+db,
                                      data_type = ('dict_sp' 
-                                                  if hprm.get('sparse_x1')
+                                                  if hprm.get('afm.features.sparse_x1')
                                                   else
                                                   'dict_np'
                                                   ),
@@ -147,7 +158,7 @@ def compute_design(inputs,
                                'X1tX1_'+db,
                                prefix_features_univariate,
                                ('dict_sp'
-                                if hprm.get('sparse_x1')
+                                if hprm.get('afm.features.sparse_x1')
                                 else
                                 'dict_np'),
                                )]
@@ -175,31 +186,43 @@ def compute_design(inputs,
     if bool_bivariate: # ie if there are interactions
         prefix_features_bivariate = dikt_file_names['features.{}.bivariate'.format(db)] # string used to save/load the covariates
         prefix_features_all       = dikt_file_names['features.{}.all'.format(db)] # string used to save/load the covariates
-        if hprm['sparse_x2']:
+        if hprm['afm.features.sparse_x2']:
             print(colored('X2_SPARSE', 'green'))
         try:
             # Try to load the covariates corresponding to the interactions
             # Important because they may demand many more computations
             if db == 'training':
-                dikt_nodes12  = tools.batch_load(path_data, prefix_features_bivariate, hprm, obj_name = 'dikt_nodes12')
-                dikt_func12   = tools.batch_load(path_data, prefix_features_bivariate, hprm, obj_name = 'dikt_func12')
-                size2         = tools.batch_load(path_data, prefix_features_bivariate, hprm, obj_name = 'size_bivariate')
-                size_tensor2  = tools.batch_load(path_data, prefix_features_bivariate, hprm, obj_name = 'size_tensor2')
+                dikt_nodes12  = tools.batch_load(path_data, prefix_features_bivariate, data_name = 'dikt_nodes12',   data_type = 'np')
+                dikt_func12   = tools.batch_load(path_data, prefix_features_bivariate, data_name = 'dikt_func12',    data_type = 'np')
+                size2         = tools.batch_load(path_data, prefix_features_bivariate, data_name = 'size_bivariate', data_type = 'np')
+                size_tensor2  = tools.batch_load(path_data, prefix_features_bivariate, data_name = 'size_tensor2',   data_type = 'np')
             X2 = tools.batch_load(path_data,
                                   prefix    = prefix_features_bivariate,
                                   data_name = 'X2_' + db,
                                   data_type = ('dict_sp'
-                                               if hprm['sparse_x2']
+                                               if hprm['afm.features.sparse_x2']
                                                else
                                                'dict_np'
                                                ),
                                   )
-        except Exception:
+        except Exception as e:
+            print(e)
+            print('Start X2 '+db)
             if db == 'training':
                 # Compute the nodes for the univariate functions used to compute the interactions
                 # They may be different from the nodes used for the univariate covariates
-                dikt_nodes12  = make_dikt_nodes_biv(hprm, hprm['approx_nb_itv'])
-                dikt_func12   = make_dikt_func_biv(dikt_nodes12,  hprm)
+                dikt_nodes12  = make_dikt_nodes(inputs,
+                                                hprm,
+                                                pd.DataFrame([(coef, inpt1, nb_itv1, *reg)
+                                                              for (coef, inpts), (nb_itvs, *reg) in hprm['afm.formula'].loc[hprm['afm.formula']['nb_intervals'].apply(lambda x : type(x) == tuple)].iterrows()
+                                                              for inpt1, nb_itv1 in zip(inpts, nb_itvs)
+                                                              ],
+                                                             columns = hprm['afm.formula'].reset_index().columns,
+                                                             ).set_index(hprm['afm.formula'].index.names),
+                                                )
+                dikt_func12   = make_dikt_func(dikt_nodes12,
+                                               hprm,
+                                               )
 #                plot_1d_functions(hprm, 
 #                                  {(k,'left' ):v[0] for k, v in dikt_func12.items()}, 
 #                                  'X12_left', 
@@ -212,23 +235,27 @@ def compute_design(inputs,
                 assert dikt_func12
             print('start X12')
             # Compute the transformations of the data with univariate functions later used to compute the interactions
-            X12, size12 = make_X12(inputs, 
-                                   dikt_func12, 
-                                   hprm, 
-                                   )
+            X12, size12 = make_X1(inputs, 
+                                  dikt_func12, 
+                                  hprm, 
+                                  sparse_x1 = False, # More convenient to have non sparse matrices to compute products
+                                  )
             print('finished X12')
             print('start X2')
             # Compute the product for the interactions
-            X2, size2, size_tensor2 = make_X2(X12, hprm)
-            for k in sorted(X2.keys()):
-                ord_key = '#'.join(sorted(k.split('#')))
-                if ord_key in mask_bivariate:
-                    mm = mask_bivariate[ord_key]
-                    if mm.ndim == 1 and len(mm) == 0:
+            X2, size2, size_tensor2 = make_X2(X12,
+                                              hprm,
+                                              )
+            for (h,k) in sorted(X2.keys()):
+                if (h,k) in mask_bivariate:
+                    mm = mask_bivariate.get((h,k),
+                                            mask_bivariate.get(k,h),
+                                            )
+                    if type(mm) == list and len(mm) == 0:
                         # Discard interactions that are used by zero substations
                         del X2[k], size2[k], size_tensor2[k]
             print('finished X2') 
-            list_files = [(X2, 'X2_'+db, prefix_features_bivariate, 'dict_sp' if hprm['sparse_x2'] else 'dict_np'), 
+            list_files = [(X2, 'X2_'+db, prefix_features_bivariate, 'dict_sp' if hprm['afm.features.sparse_x2'] else 'dict_np'), 
                           ] if len (X2) < 1e4 else []
             if db == 'training':
                 list_files += [ 
@@ -238,8 +265,6 @@ def compute_design(inputs,
                                (size_tensor2, 'size_tensor2',   prefix_features_bivariate, 'np'),
                                ]
             save_list_files(list_files, path_data, hprm)
-        for k in X2:
-            hprm['data_cat'][k] = re.sub(r'\d+', '', k) 
         precompute = not (lbfgs or (db=='validation' and not hprm['tf_precompute_validation']))
         if precompute:
             # Compute the empirical covariance between the univariate/bivariate covariates
@@ -248,7 +273,7 @@ def compute_design(inputs,
                                          prefix    = prefix_features_all,
                                          data_name = 'X1tX2_'+db,
                                          data_type = ('dict_sp'
-                                                      if hprm.get('sparse_x1') and hprm['sparse_x2']
+                                                      if hprm.get('afm.features.sparse_x1') and hprm['afm.features.sparse_x2']
                                                       else
                                                       'dict_np'
                                                       ),
@@ -257,7 +282,7 @@ def compute_design(inputs,
                                          prefix    = prefix_features_bivariate,
                                          data_name = 'X2tX2_'+db,
                                          data_type = ('dict_sp'
-                                                      if hprm['sparse_x2']
+                                                      if hprm['afm.features.sparse_x2']
                                                       else 'dict_np'
                                                       ),
                                          )
@@ -273,7 +298,7 @@ def compute_design(inputs,
                                     'X1tX2_'+db, 
                                     prefix_features_all, 
                                     ('dict_sp'
-                                     if hprm.get('sparse_x1') and hprm['sparse_x2']
+                                     if hprm.get('afm.features.sparse_x1') and hprm['afm.features.sparse_x2']
                                      else
                                      'dict_np'
                                      ),
@@ -282,7 +307,7 @@ def compute_design(inputs,
                     list_files += [(X2tX2, 
                                     'X2tX2_'+db, 
                                     prefix_features_bivariate, 
-                                    'dict_sp' if hprm['sparse_x2'] else 'dict_np',
+                                    'dict_sp' if hprm['afm.features.sparse_x2'] else 'dict_np',
                                     )] if len (X2tX2) < 1e4 else []
                 save_list_files(list_files, path_data, hprm) 
                 print('finished XtX2')
@@ -293,8 +318,8 @@ def compute_design(inputs,
                       'size_bivariate'          : size2,
                       'size_tensor2'   : size_tensor2,
                       })
-        X.update({'X2_'+db    : X2})
-        X['X_'+db].update(X2)
+        X.update({'X2_'+db : X2})
+        #X['X_'+db].update(X2)
         if precompute:
             X2tX1 = {}
             for e in list(X1tX2.keys()):
@@ -427,34 +452,107 @@ def save_list_files(list_files, path_data, hprm):
 def make_dikt_func(d_nodes, hprm):
     # Compute for each covariate the spline functions from the set of nodes
     d_func = {}
-    for inpt, trsfm, prm in d_nodes:
+    for inpt, trsfm, prm, location in d_nodes:
         cyclic      = hprm['inputs.cyclic'][inpt]
-        d_func[(inpt, trsfm, prm)] = tuple([f 
-                                            for e in d_nodes[(inpt, trsfm, prm)]
-                                            for f in make_func(e, cyclic, hprm['afm.features.order_splines'])
-                                            ])
+        d_func[(inpt, trsfm, prm, location)] = tuple([f 
+                                                      for e in d_nodes[(inpt, trsfm, prm, location)]
+                                                      for f in make_func(e, cyclic, hprm['afm.features.order_splines'])
+                                                      ])
     return d_func
 
 
-def make_dikt_func_biv(d_nodes2, hprm):
-    d_func2 = {}
-    # Compute pairs of lists of functions for the interactions
-    for cat1, cat2 in d_nodes2:
-        cyclic1 = hprm['qo_modulo'][cat1]
-        cyclic2 = hprm['qo_modulo'][cat2]
-        funcs1  = tuple([f 
-                         for e in d_nodes2[cat1,cat2][0]
-                         for f in make_func(e, cyclic1, hprm.get('order_splines',1))
-                         ])
-        funcs2  = tuple([f 
-                         for e in d_nodes2[cat1,cat2][1]
-                         for f in make_func(e, cyclic2, hprm.get('order_splines',1))
-                         ])
-        d_func2[cat1,cat2] = (
-                              funcs1, 
-                              funcs2,
-                              )              
-    return d_func2
+#def make_dikt_func_biv(d_nodes2, hprm):
+#    # Compute pairs of lists of functions for the interactions
+#    d_func2 = {}
+#    for ((inpt1, trsfm1, prm1),(inpt2, trsfm2, prm2)) in d_nodes2:
+#        cyclic1 = hprm['inputs.cyclic'][inpt1]
+#        cyclic2 = hprm['inputs.cyclic'][inpt2]
+#        funcs1  = tuple([f 
+#                         for e in d_nodes2[cat1,cat2][0]
+#                         for f in make_func(e, cyclic1, hprm.get('order_splines',1))
+#                         ])
+#        funcs2  = tuple([f 
+#                         for e in d_nodes2[cat1,cat2][1]
+#                         for f in make_func(e, cyclic2, hprm.get('order_splines',1))
+#                         ])
+#        d_func2[cat1,cat2] = (
+#                              funcs1, 
+#                              funcs2,
+#                              )              
+#    return d_func2
+
+
+def make_dikt_nodes(inputs, hprm, formula):
+    dikt_nodes = {}
+    # For each covariate, compute the nodes from the number of nodes chosen on the interval [0, 1]
+    for (coef, (inpt, trsfm, prm)), (nb_itv, *_) in formula.iterrows():
+        for location in inputs.xs((inpt, trsfm, prm), axis = 1).columns:
+            if bool(hprm['inputs.cyclic'][inpt]):
+                min_value = 0
+                max_value = hprm['inputs.cyclic'][inpt]
+            else:
+                min_value = inputs.loc[:,(inpt, trsfm, prm, location)].min()
+                max_value = inputs.loc[:,(inpt, trsfm, prm, location)].max()
+            dikt_nodes[(inpt, trsfm, prm, location)] = [make_nodes(e,
+                                                                   hprm['inputs.cyclic'][inpt],
+                                                                   hprm['afm.features.order_splines'],
+                                                                   min_value = min_value,
+                                                                   max_value = max_value, 
+                                                                   ) 
+                                                        for e in (nb_itv 
+                                                                  if type(nb_itv) == tuple 
+                                                                  else 
+                                                                  (nb_itv,)
+                                                                  )
+                                                        ]
+    return dikt_nodes
+
+
+#def make_dikt_nodes_biv(inputs, hprm):
+#    # Compute pairs of list of nodes for the interactions
+#    formula = hprm['afm.formula'].loc[hprm['afm.formula']['nb_intervals'].apply(lambda x : type(x) == tuple)],
+#    dikt_nodes = {}
+#    for ii, (coef, ((inpt1, trsfm1, prm1),(inpt2, trsfm2, prm2)), (nb_itv1, nb_itv2), *_) in formula.iterrows():
+#        #
+#        if bool(hprm['inputs.cyclic'][inpt1]):
+#            min_value1 = 0
+#            max_value1 = hprm['inputs.cyclic'][inpt1]
+#        else:
+#            min_value1 = inputs.loc[:,(inpt1, trsfm1, prm1)].min()
+#            max_value1 = inputs.loc[:,(inpt1, trsfm1, prm1)].max()
+#        #
+#        if bool(hprm['inputs.cyclic'][inpt2]):
+#            min_value2 = 0
+#            max_value2 = hprm['inputs.cyclic'][inpt2]
+#        else:
+#            min_value2 = inputs.loc[:,(inpt2, trsfm2, prm2)].min()
+#            max_value2 = inputs.loc[:,(inpt2, trsfm2, prm2)].max()
+#        #
+#        dikt_nodes[((inpt1, trsfm1, prm1),(inpt2, trsfm2, prm2))] = [(make_nodes(e1,
+#                                                                                 hprm['inputs.cyclic'][inpt1],
+#                                                                                 hprm['afm.features.order_splines'],
+#                                                                                 min_value = min_value1,
+#                                                                                 max_value = max_value1, 
+#                                                                                 ),
+#                                                                      make_nodes(e2,
+#                                                                                 hprm['inputs.cyclic'][inpt2],
+#                                                                                 hprm['afm.features.order_splines'],
+#                                                                                 min_value = min_value2,
+#                                                                                 max_value = max_value2, 
+#                                                                                 ),
+#                                                                      )
+#                                                                     for e1 in (nb_itv1 
+#                                                                                if type(nb_itv1) == tuple 
+#                                                                                else 
+#                                                                                (nb_itv1,)
+#                                                                                )
+#                                                                     for e2 in (nb_itv2 
+#                                                                                if type(nb_itv2) == tuple 
+#                                                                                else 
+#                                                                                (nb_itv2,)
+#                                                                                )
+#                                                                    ]
+#    return dikt_nodes
 
 
 def make_func(nodes, cyclic, order_splines):
@@ -479,64 +577,6 @@ def make_func(nodes, cyclic, order_splines):
     else:
         raise ValueError
     return tuple(funcs)
-
-
-def make_dikt_nodes(inputs, hprm, formula):
-    dikt_nodes = {}
-    # For each covariate, compute the nodes from the number of nodes chosen on the interval [0, 1]
-    for (inpt, trsfm, prm, location) in inputs.columns:
-        nb_itv = formula.xs((inpt, trsfm, prm), level = 'input')['nb_intervals'].item()
-        if bool(hprm['inputs.cyclic'][inpt]):
-            min_value = 0
-            max_value = hprm['inputs.cyclic'][inpt]
-        else:
-            min_value = inputs.loc[:,(inpt, trsfm, prm, location)].min()
-            max_value = inputs.loc[:,(inpt, trsfm, prm, location)].max()
-        dikt_nodes[(inpt, trsfm, prm)] = [make_nodes(e,
-                                                     hprm['inputs.cyclic'][inpt],
-                                                     hprm['afm.features.order_splines'],
-                                                     min_value = min_value,
-                                                     max_value = max_value, 
-                                                     ) 
-                                                for e in (nb_itv 
-                                                          if type(nb_itv) == tuple 
-                                                          else 
-                                                          (nb_itv,)
-                                                          )
-                                                ]
-    return dikt_nodes
-
-
-def make_dikt_nodes_biv(hprm, dikt_nb_itv):
-    # Compute pairs of list of nodes for the interactions
-    dikt_nodes = {}
-    for cat1,cat2 in list(map(lambda x : x.split('#'), 
-                              list(filter(lambda x : '#' in x, 
-                                          dikt_nb_itv,
-                                          )
-                                   ),
-                              )
-                          ):
-        if (cat1,cat2) not in dikt_nodes:
-            cyclic1 = hprm['qo_modulo'][cat1]
-            cyclic2 = hprm['qo_modulo'][cat2]
-            nb_itv_left, nb_itv_right = dikt_nb_itv[cat1+'#'+cat2]
-            nodes1 = [make_nodes(e, cyclic1, hprm.get('order_splines',1)) 
-                      for e in (nb_itv_left 
-                                if type(nb_itv_left) == tuple 
-                                else 
-                                (nb_itv_left,)
-                                )
-                      ]
-            nodes2 = [make_nodes(e, cyclic2, hprm.get('order_splines',1)) 
-                      for e in (nb_itv_right 
-                                if type(nb_itv_right) == tuple 
-                                else 
-                                (nb_itv_right,)
-                                )
-                      ]
-            dikt_nodes[cat1,cat2] = (nodes1, nodes2)
-    return dikt_nodes
 
 
 def make_nodes(nb_itv, cyclic, order_splines, min_value = None, max_value = None):
@@ -569,14 +609,14 @@ def make_nodes(nb_itv, cyclic, order_splines, min_value = None, max_value = None
 
 
 def make_X1(inputs, d_func, hprm, sparse_x1 = False):
-    X1 = {(inpt, trsfm, prm, location):make_cov(d_func [(inpt, trsfm, prm)], 
-                                                inputs[[(inpt, trsfm, prm, location)]], 
-                                                sparse_x1, 
-                                                hprm,
-                                                inpt,
-                                                )
-          for inpt, trsfm, prm, location  in inputs.columns
-          if (inpt, trsfm, prm) in d_func 
+    X1 = {((inpt, trsfm, prm), (location,)):make_cov(d_func[(inpt, trsfm, prm, location)], 
+                                                     inputs[[(inpt, trsfm, prm, location)]], 
+                                                     sparse_x1,
+                                                     hprm,
+                                                     inpt,
+                                                     )
+          for inpt, trsfm, prm, location in inputs.columns
+          if (inpt, trsfm, prm, location) in d_func 
           }
     # Compute the covariates from the list of functions and the input inputs
     size1 = {k : v.shape[1]
@@ -585,50 +625,50 @@ def make_X1(inputs, d_func, hprm, sparse_x1 = False):
     return X1, size1
 
 
-def make_X12(inputs, d_func, prm):
-    # For the interactions
-    # Compûte the univariate transformations later used to compute the interactions
-    dikt_uni_cov = {}
-    X12 = {}
-    for key1 in inputs.keys():
-        for key2 in inputs.keys():
-            cat1 = prm['data_cat'][key1]
-            cat2 = prm['data_cat'][key2]
-            if (cat1, cat2) in d_func.keys():
-                for ii, key in enumerate([key1,key2]):
-                    if (key,d_func[cat1,cat2][ii]) not in dikt_uni_cov:
-                        cat = prm['data_cat'][key]
-                        if 'tf_orthogonalize' in prm:
-                            if prm['zone'] != 'nat':
-                                #print(colored('NO ORTHOIGONALIZATION FOR OTHER THAN NAT', 'yellow', 'on_red'))
-                                center = False
-                            else:
-                                if   (cat1,cat2) in prm.get('tf_orthogonalize', {}):
-                                    center = prm['tf_orthogonalize'][cat1,cat2]
-                                elif (cat2,cat1) in prm.get('tf_orthogonalize', {}):
-                                    center = prm['tf_orthogonalize'][cat2,cat1]
-                                else:
-                                    center = False
-                        else:
-                            center = False
-                        dikt_uni_cov[key,d_func[cat1,cat2][ii]] = make_cov(d_func[cat1,cat2][ii], 
-                                                                           inputs[key], 
-                                                                           prm['qo_modulo'][cat],
-                                                                           prm['tf_boundary_scaling'], 
-                                                                           False, # Not sparse because einsum after
-                                                                           prm,
-                                                                           cat,
-                                                                           center = center,
-                                                                           )
-                X12[key1,key2] = (dikt_uni_cov[key1,d_func[prm['data_cat'][key1],
-                                                           prm['data_cat'][key2],
-                                                           ][0]],
-                                  dikt_uni_cov[key2,d_func[prm['data_cat'][key1],
-                                                           prm['data_cat'][key2],
-                                                           ][1]],
-                                  )
-    size12 = {(e,f):(v.shape[1],w.shape[1]) for (e,f), (v,w) in X12.items()}
-    return X12, size12
+#def make_X12(inputs, d_func, prm):
+#    # For the interactions
+#    # Compûte the univariate transformations later used to compute the interactions
+#    dikt_uni_cov = {}
+#    X12 = {}
+#    for key1 in inputs.keys():
+#        for key2 in inputs.keys():
+#            cat1 = prm['data_cat'][key1]
+#            cat2 = prm['data_cat'][key2]
+#            if (cat1, cat2) in d_func.keys():
+#                for ii, key in enumerate([key1,key2]):
+#                    if (key,d_func[cat1,cat2][ii]) not in dikt_uni_cov:
+#                        cat = prm['data_cat'][key]
+#                        if 'tf_orthogonalize' in prm:
+#                            if prm['zone'] != 'nat':
+#                                #print(colored('NO ORTHOIGONALIZATION FOR OTHER THAN NAT', 'yellow', 'on_red'))
+#                                center = False
+#                            else:
+#                                if   (cat1,cat2) in prm.get('tf_orthogonalize', {}):
+#                                    center = prm['tf_orthogonalize'][cat1,cat2]
+#                                elif (cat2,cat1) in prm.get('tf_orthogonalize', {}):
+#                                    center = prm['tf_orthogonalize'][cat2,cat1]
+#                                else:
+#                                    center = False
+#                        else:
+#                            center = False
+#                        dikt_uni_cov[key,d_func[cat1,cat2][ii]] = make_cov(d_func[cat1,cat2][ii], 
+#                                                                           inputs[key], 
+#                                                                           prm['qo_modulo'][cat],
+#                                                                           prm['tf_boundary_scaling'], 
+#                                                                           False, # Not sparse because einsum after
+#                                                                           prm,
+#                                                                           cat,
+#                                                                           center = center,
+#                                                                           )
+#                X12[key1,key2] = (dikt_uni_cov[key1,d_func[prm['data_cat'][key1],
+#                                                           prm['data_cat'][key2],
+#                                                           ][0]],
+#                                  dikt_uni_cov[key2,d_func[prm['data_cat'][key1],
+#                                                           prm['data_cat'][key2],
+#                                                           ][1]],
+#                                  )
+#    size12 = {(e,f):(v.shape[1],w.shape[1]) for (e,f), (v,w) in X12.items()}
+#    return X12, size12
 
 
 def make_cov(list_funcs, inpt_data, sparse_x1, hprm, inpt_name, center = False):
@@ -659,64 +699,48 @@ def make_cov(list_funcs, inpt_data, sparse_x1, hprm, inpt_name, center = False):
 def make_X2(X12, hprm):
     # For the interactions
     # For each pairs of covariates, pairs of univariate covariates are stored in X12
-    # One want to compute their product
-    X2    = {}
-    size2 = {} 
-    size_tensor2 = {} 
-    for ii, (e,f) in enumerate(sorted(X12)):
-        # Check that the interactions is selected in the hprmeters
-        data_cat = (  set([e 
-                           for coef, list_keys in hprm['tf_config_coef'].items() 
-                           for e in list_keys 
-                           if '#' in e
-                           ]) 
-                    & {hprm['data_cat'][e]+'#'+hprm['data_cat'][f], 
-                       hprm['data_cat'][f]+'#'+hprm['data_cat'][e],
-                       }
-                    )
-        if len(data_cat)>1:
-            raise ValueError # not impossible but must be dealt with ie check that the interaction is in mask2
-        if data_cat:
-            print('\r'+'{0:20}'.format(e), ii, '/', len(X12), end = '')
-            #Compute the product or the minimum interaction
-            if hprm['tf_prod0_min1']:
-                assert X12[e,f][0].min() >= 0
-                assert X12[e,f][0].max() <= 1
-                assert X12[e,f][1].min() >= 0
-                assert X12[e,f][1].max() <= 1
-                n, p = X12[e,f][0].shape
-                _, q = X12[e,f][1].shape
-                xleft  = np.repeat(X12[e,f][0][:,:,None], q, axis = 2)
-                xright = np.repeat(X12[e,f][1][:,None,:], p, axis = 1)
-                interaction = np.min([xleft, xright], axis = 0)
-            else:
-                interaction = np.einsum('np,nq->npq', 
-                                        X12[e,f][0], 
-                                        X12[e,f][1],
-                                        )
-            siz2             = interaction.shape[1:]
-            assert len(siz2) == 2
-            size_tensor2[e+'#'+f] = siz2
-            size2       [e+'#'+f] = np.prod(siz2)
-            # IF the first covariate is associated to p functions and the second to q functions and there are n observations
-            # Reshape the interaction of size (n,p,q)into a matrix of size (n, p*q)
-            # It is indeed important to use matrix instead of tensors to have faster computations with numpy, in particular for sparse matrices
-            X2[e+'#'+f] = interaction.reshape((-1, siz2[0]*siz2[1]))
-            if hprm['sparse_x2']:
-                X2[e+'#'+f] = sp.sparse.csc_matrix(X2[e+'#'+f])
-            if (    (f,e) not in X12 
-                and (hprm['data_cat'][f]+'#'+hprm['data_cat'][e] in {e for 
-                                                                       var, list_keys in hprm['tf_config_coef'].items()
-                                                                       for e in list_keys
-                                                                       }
-                     or 'Cbm' in hprm['tf_config_coef']
-                     )
-                ):
-                X2[f+'#'+e] = interaction.transpose(0,2,1).reshape((-1, siz2[0]*siz2[1]))
-                size_tensor2[f+'#'+e] = siz2[::-1]
-                size2       [f+'#'+e] = np.prod(siz2[::-1])
-                if hprm['sparse_x2']:
-                    X2[f+'#'+e] = sp.sparse.csc_matrix(X2[f+'#'+e])
+    # One wants to compute their product
+    X2      = {}
+    size2   = {} 
+    size_tensor2 = {}
+    formula_biv  = hprm['afm.formula'].loc[hprm['afm.formula']['nb_intervals'].apply(lambda x : type(x) == tuple)]
+    for (inpt1, (location1,)), v1 in X12.items():
+        for (inpt2, (location2,)), v2 in X12.items():
+            if (inpt1, inpt2) in formula_biv.index.get_level_values('input'):
+                #Compute the product or the minimum interaction
+                if hprm['afm.features.bivariate.combine_function'] == np.min:
+                    n, p = v1.shape
+                    _, q = v2.shape
+                    xleft  = np.repeat(v1[:,:,None], q, axis = 2)
+                    xright = np.repeat(v2[:,None,:], p, axis = 1)
+                    interaction = np.min([xleft, xright], axis = 0)
+                else:
+                    interaction = np.einsum('np,nq->npq', 
+                                            v1, 
+                                            v2,
+                                            )
+                siz2             = interaction.shape[1:]
+                assert len(siz2) == 2
+                size_tensor2[(inpt1, inpt2),(location1, location2)] = siz2
+                size2       [(inpt1, inpt2),(location1, location2)] = np.prod(siz2)
+                # If the first covariate is associated to p functions and the 
+                # second to q functions and there are n observations
+                # Reshape the interaction of size (n,p,q)into a matrix of size (n, p*q)
+                # It is indeed important to use matrix instead of tensors to 
+                # have faster computations with numpy, in particular for sparse matrices
+                X2[(inpt1, inpt2),(location1, location2)] = interaction.reshape((-1, siz2[0]*siz2[1]))
+                if hprm['afm.features.sparse_x2']:
+                    X2[(inpt1, inpt2),(location1, location2)] = sp.sparse.csc_matrix(X2[(inpt1, inpt2),(location1, location2)])
+                if (    ((inpt2, inpt1),(location2, location1)) not in X12 
+                    and ((*inpt2, *inpt1) in formula_biv.index.get_level_values('input')
+                         or 'Cbm' in hprm['afm.formula'].index.get_level_values('coefficient')
+                         )
+                    ):
+                    X2[(inpt2, inpt1),(location2, location1)] = interaction.transpose(0,2,1).reshape((-1, siz2[0]*siz2[1]))
+                    size_tensor2[(inpt2, inpt1),(location2, location1)] = siz2[::-1]
+                    size2       [(inpt2, inpt1),(location2, location1)] = np.prod(siz2[::-1])
+                    if hprm['afm.features.sparse_x2']:
+                        X2[(inpt2, inpt1),(location2, location1)] = sp.sparse.csc_matrix(X2[(inpt2, inpt1),(location2, location1)])
     print()
     return X2, size2, size_tensor2
     
@@ -746,7 +770,7 @@ def precomputations_2(X1, X2, mask1, mask2, hprm, all_products = 0):
 #    # but have to compute all the product for the sum consistent loss
 #    if all_products:
 #        # all_products is an indicator that all products should be compuetd
-#        assert hprm['sparse_x2']
+#        assert hprm['afm.features.sparse_x2']
 #        print(colored('\n \n X2 will be very large with all interactions ie might be too big \n \n', 'red', 'on_cyan'))
 #    print('Start X1tX2')
 #    X1tX2 = {}

@@ -6,7 +6,7 @@ import urllib
 import zipfile
 import unidecode
 #
-from electricityLoadForecasting import tools, src
+from electricityLoadForecasting import tools, etc
 import electricityLoadForecasting.dataPreparation.Eco2mix as Eco2mix
 
 ###############################################################################
@@ -14,15 +14,15 @@ import electricityLoadForecasting.dataPreparation.Eco2mix as Eco2mix
 def download_raw_load_data(site = None, year = None):
     assert type(year) == int and year >= 2013, year
     assert type(site) == str, site
-    prefix = Eco2mix.src.dikt_folders['sites']
+    prefix = Eco2mix.etc.dikt_folders['sites']
     os.makedirs(prefix, exist_ok = True)
-    zip_file_url = os.path.join(Eco2mix.src.dikt_url['sites'], 
-                                Eco2mix.src.dikt_files['sites.load_site_year'].format(site = Eco2mix.src.URL_TRANSCODING.get(site, site), 
+    zip_file_url = os.path.join(Eco2mix.etc.dikt_url['sites'], 
+                                Eco2mix.etc.dikt_files['sites.load_site_year'].format(site = Eco2mix.etc.URL_TRANSCODING.get(site, site), 
                                                                                       year = year,
                                                                                       ).replace('__', '_'),
                                 ) + '.zip'
     zip_file_path    = os.path.join(prefix,
-                                    Eco2mix.src.dikt_files['sites.load_site_year'].format(site = site,
+                                    Eco2mix.etc.dikt_files['sites.load_site_year'].format(site = site,
                                                                                           year = year,
                                                                                           ).replace('__', '_'),
                                     ) + '.zip'
@@ -35,8 +35,8 @@ def download_raw_load_data(site = None, year = None):
 
 def read_raw_load_data(site = None, year = None):
     assert type(year) == int and year >= 2013, year
-    xls_file_path    = os.path.join(Eco2mix.src.dikt_folders['sites'],
-                                    Eco2mix.src.dikt_files['sites.load_site_year'].format(site = Eco2mix.src.XLS_TRANSCODING.get(site, site),
+    xls_file_path    = os.path.join(Eco2mix.etc.dikt_folders['sites'],
+                                    Eco2mix.etc.dikt_files['sites.load_site_year'].format(site = Eco2mix.etc.XLS_TRANSCODING.get(site, site),
                                                                                           year = year,
                                                                                           ).replace('__', '_'),
                                     ) + '.xls'    
@@ -49,12 +49,12 @@ def read_raw_load_data(site = None, year = None):
                             #skiprows  = 1,
                             na_values = ['ND'],
                             )
-    df[src.user_dt_UTC] = (  pd.to_datetime(   df[Eco2mix.src.Eco2mix_date] + ' ' + df[Eco2mix.src.Eco2mix_time_CET], format = '%Y/%m/%d %H:%M')
+    df[etc.user_dt_UTC] = (  pd.to_datetime(   df[Eco2mix.etc.Eco2mix_date] + ' ' + df[Eco2mix.etc.Eco2mix_time_CET], format = '%Y/%m/%d %H:%M')
                            + pd.DateOffset(hours = 1) #  data from Eco2mix is in CET
                            ).dt.tz_localize('UTC')
-    df = df.set_index(src.user_dt_UTC)[[Eco2mix.src.Eco2mix_load]]
-    df = df.rename({Eco2mix.src.Eco2mix_load : unidecode.unidecode(site) if site else 'France'}, axis = 1)
-    #df.columns = pd.MultiIndex.from_arrays([df.columns], names=[src.user_site_name]) 
+    df = df.set_index(etc.user_dt_UTC)[[Eco2mix.etc.Eco2mix_load]]
+    df = df.rename({Eco2mix.etc.Eco2mix_load : unidecode.unidecode(site) if site else 'France'}, axis = 1)
+    #df.columns = pd.MultiIndex.from_arrays([df.columns], names=[etc.user_site_name]) 
     df = df.iloc[::4]
     return df
 
@@ -74,7 +74,7 @@ def load_raw_load_data(prefix = None):
         print('df_load not loaded')
         dikt_load = {}
         for year in Eco2mix.config.YEARS_LOADS:
-            for site in Eco2mix.src.coordinates_sites[Eco2mix.config.LEVEL].index:
+            for site in Eco2mix.etc.coordinates_sites[Eco2mix.config.LEVEL].index:
                 print('year = {year} - site = {site}'.format(site = site, year = year))
                 try:
                     dikt_load[site, year] = read_raw_load_data(site = site, year = year)
@@ -86,7 +86,7 @@ def load_raw_load_data(prefix = None):
                                         ],
                                        axis = 0,
                                        )
-                             for site in Eco2mix.src.coordinates_sites[Eco2mix.config.LEVEL].index
+                             for site in Eco2mix.etc.coordinates_sites[Eco2mix.config.LEVEL].index
                              ],
                             axis = 1,
                             )
@@ -103,7 +103,7 @@ def load_raw_load_data(prefix = None):
         os.makedirs(os.path.dirname(fname), exist_ok = True)
         df_load.to_csv(fname)
     print('done - df_load.shape = {0}\n{1}'.format(df_load.shape,
-                                                   '#'*src.global_var.NB_SIGNS,
+                                                   '#'*etc.global_var.NB_SIGNS,
                                                    ))
     return df_load
 
@@ -111,14 +111,14 @@ def load_raw_load_data(prefix = None):
         
 def get_coordinates_sites():
     print('get_coordinates_sites - ', end = '')
-    coordinates_sites = Eco2mix.src.coordinates_sites[Eco2mix.config.LEVEL]
+    coordinates_sites = Eco2mix.etc.coordinates_sites[Eco2mix.config.LEVEL]
     coordinates_sites = coordinates_sites.rename({site : unidecode.unidecode(site)
                                                   for site in coordinates_sites.index
                                                   },
                                                  axis = 0,
                                                  )
     print('done - len(coordinates_sites) = {0}\n{1}'.format(len(coordinates_sites),
-                                                            '#'*src.global_var.NB_SIGNS),
+                                                            '#'*etc.global_var.NB_SIGNS),
                                                             )
     print('Names of the {0} sites : \n{1}'.format(len(coordinates_sites), list(coordinates_sites.index))) 
     return coordinates_sites

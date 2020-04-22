@@ -7,38 +7,15 @@ import numpy    as np
 import pandas   as pd
 import datetime as dt
 import os
-from termcolor import colored
 
 #
 from .. import performances, hyperparameters, inputs
 import electricityLoadForecasting.paths  as paths
-import electricityLoadForecasting.src    as src
+import electricityLoadForecasting.etc    as etc
 import electricityLoadForecasting.tools  as tools
-#
 import electricityLoadForecasting.forecasting.models as models
 import electricityLoadForecasting.forecasting.config as config
 
-#import munging;                 importlib.reload(munging)
-#import parameters;              importlib.reload(parameters)
-#import post_treatment;          importlib.reload(post_treatment)
-#import pre_treatment;           importlib.reload(pre_treatment)
-#import str_make;                importlib.reload(str_make)
-#import nb_format;               importlib.reload(nb_format)
-#import performances;            importlib.reload(performances)
-#import misc;                    importlib.reload(misc)
-#import weights_computation;     importlib.reload(weights_computation)
-#import naive_models;            importlib.reload(naive_models)
-#import primitives;              importlib.reload(primitives)
-#import regression;              importlib.reload(regression)
-#import approx_tf;               importlib.reload(approx_tf)
-#import build_data;              importlib.reload(build_data)
-####
-#from .plot_data import plot_data
-#from .plot_pred                import plot_pred
-#from .plot_1d_norm_residuals   import plot_1d_norm_residuals
-#from .plot_1d_marginal         import plot_1d_marginal
-#from .plot_covariance_residual import plot_covariance_residual
-#import archives_plot
 
 
 class Experience(object):
@@ -95,7 +72,7 @@ class Experience(object):
         # Choose weather source
         self.data['df_weather'] = self.data['df_weather'].xs(key   = self.hprm['weather.source'],
                                                              axis  = 1,
-                                                             level = src.user_source,
+                                                             level = etc.user_source,
                                                              )
         
         # Restrict the weather stations to a rectangle defined by the sites
@@ -130,14 +107,14 @@ class Experience(object):
     def unfold_data(self, ):
         self.data['df_calendar'] = tools.calendar.compute_calendar_variables(self.data['df_sites'].index)
         basket_original_data     = {**{key : self.data['df_calendar'][[key]] for key in self.data['df_calendar']} , 
-                                    **{physical_quantity : self.data['df_weather'].xs(key = physical_quantity, axis = 1, level = src.user_physical_quantity)
-                                       for physical_quantity in self.data['df_weather'].columns.get_level_values(src.user_physical_quantity)
+                                    **{physical_quantity : self.data['df_weather'].xs(key = physical_quantity, axis = 1, level = etc.user_physical_quantity)
+                                       for physical_quantity in self.data['df_weather'].columns.get_level_values(etc.user_physical_quantity)
                                        },
                                     'target' : self.data['df_sites'], 
                                     }
         self.dikt_assignments = {'target' : self.assignment_sites,
                                  **{physical_quantity : self.assignment_weather_stations
-                                    for physical_quantity in self.data['df_weather'].columns.get_level_values(src.user_physical_quantity)
+                                    for physical_quantity in self.data['df_weather'].columns.get_level_values(etc.user_physical_quantity)
                                     },
                                  }
         
@@ -284,7 +261,7 @@ class Experience(object):
         """
         self.performances = {
                              'sites_names'   : self.target_training.columns,
-                             'weather_names' : self.data['df_weather'].columns.get_level_values(level = src.user_weather_name),
+                             'weather_names' : self.data['df_weather'].columns.get_level_values(level = etc.user_weather_name),
                              'dt_training'   : self.dt_training,
                              'dt_validation' : self.dt_validation,
                              'model'         : {},
@@ -350,7 +327,6 @@ class Experience(object):
         performances.print_performances(self.performances['model']['validation'])
 
 
-        
 #    def plot_results(self):        
 #        print(colored('BEGIN PLOTS', 'green'))
 #        try:
@@ -368,7 +344,4 @@ class Experience(object):
 #                plot_pred(self)
 #        except Exception as e:
 #            print(colored('\n\n' + str(e) + '\n', 'red', 'on_cyan'))  
-
-
-
 

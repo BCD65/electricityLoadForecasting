@@ -1,14 +1,14 @@
 
 import pandas as pd
-import electricityLoadForecasting.src as src
+import electricityLoadForecasting.etc as etc
 
 
 coordinates_sites = {'France'                 : pd.DataFrame(data    = [[46,2]], 
                                                              index   = pd.Index(['France'], 
-                                                                                name = src.user_site_name,
+                                                                                name = etc.user_site_name,
                                                                                 ),
-                                                             columns = [src.user_latitude, 
-                                                                        src.user_longitude,
+                                                             columns = [etc.user_latitude, 
+                                                                        etc.user_longitude,
                                                                         ],
                                                              ),
                      'administrative_regions' : pd.DataFrame(data    = [[45.5, 4.6],
@@ -37,10 +37,10 @@ coordinates_sites = {'France'                 : pd.DataFrame(data    = [[46,2]],
                                                                                  'PACA',
                                                                                  'Pays-de-la-Loire',
                                                                                  ],
-                                                                                name = src.user_site_name,
+                                                                                name = etc.user_site_name,
                                                                                 ),
-                                                                        columns = [src.user_latitude,
-                                                                                   src.user_longitude,
+                                                                        columns = [etc.user_latitude,
+                                                                                   etc.user_longitude,
                                                                                    ],
                                                              ),
                      }

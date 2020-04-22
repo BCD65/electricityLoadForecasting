@@ -30,17 +30,15 @@ def start_lbfgs(model, ):
         assert not v
     # Remove useless data
     for key in list(model.X_training.keys()):
-        if '#' in key:
-            if key.split('#') != sorted(key.split('#')):
-                         # There is no need to have the interactions key1#key2 and key2#key1 since there is no imposed structure here
+        if type(key[0][0]) == tuple:
+            (inpt1,inpt2), (location1,location2) = key
+            if str(inpt1) > str(inpt2) and ((inpt2,inpt1),(location2,location1)) in model.X_training:
+                # There is no need to have the interactions key1#key2 and key2#key1 since there is no imposed structure here
                 del model.X_training[key], model.X_validation[key]
     # Check that the regularizations are defined as ridge or smoothing splines or nothing
     for k, d in model.pen.items():
         for a, b in d.items():
             assert b in {'rsm', 'r1sm', 'r2sm', 'rs2m', '', 'row2sm'}
-        
-#    for key in model.sorted_keys:
-#        model.keys['lbfgs_coef'].append(key)
     
     # These dictionaries are used to locate the different covariates in the unique long vector     
     model.width_col              = [model.X_training[key].shape[1] 
@@ -58,15 +56,11 @@ def start_lbfgs(model, ):
     for key in model.key_col_large_matching:
         assert model.key_col_large_matching[key][0] < model.key_col_large_matching[key][1], (key, model.key_col_large_matching[key][0], model.key_col_large_matching[key][1])
     
-    model.col_large_cat_matching = np.concatenate([np.array([(inpt, trsfm, prm) 
-                                                             for ii in range(int(model.key_col_large_matching[inpt, trsfm, prm, location][1] - model.key_col_large_matching[inpt, trsfm, prm, location][0]))
-                                                             ], 
-                                                            dtype = object,
-                                                            )
-                                                   for inpt, trsfm, prm, location in model.sorted_keys
-                                                   ], 
-                                                  axis = 0,
-                                                  )
+    model.col_large_cat_matching = np.sum([[inpt 
+                                            for ii in range(int(model.key_col_large_matching[inpt, location][1] - model.key_col_large_matching[inpt, location][0]))
+                                            ]
+                                           for inpt, location in model.sorted_keys
+                                           ])
     ### masks
     print('start masks')
     model.concat_masks = []
@@ -89,8 +83,8 @@ def start_lbfgs(model, ):
     
     # There are covariates shared by all the substations and covariates used by a subset of the substations
     # They are separated inn the computations to improve the speed of the algorithm
-    model.concat_range_shared   = np.array([not model.cats_owned[tuple(model.col_large_cat_matching[ii])] 
-                                            for ii in range(model.col_large_cat_matching.shape[0])
+    model.concat_range_shared   = np.array([not model.cats_owned[value] 
+                                            for ii, value in enumerate(model.col_large_cat_matching)
                                             ])
     
     assert (model.concat_range_shared[:-1].astype(int) - model.concat_range_shared[1:].astype(int) >= 0).all() # Shared then owned variables
@@ -226,8 +220,8 @@ def start_lbfgs(model, ):
                                                                         model.k, 
                                                                         ), end = '')
                     model.nxowty_large_sum_training[tuple_indices][:,pp] = (1/model.n_training) * (  model.concat_training_csc[:,model.concat_large_masks_owned[:,pp].indices].T
-                                                                                             @ model.Y_training[:,list(tuple_indices)].sum(axis = 1)
-                                                                                             )
+                                                                                                   @ model.Y_training[:,list(tuple_indices)].sum(axis = 1)
+                                                                                                   )
             model.part_xowty = np.concatenate([np.sum([(len(model.partition_tuples_to_posts[tuple_indices])/len(tuple_indices)**2) * 
                                                        model.nxowty_large_sum_training[tuple_indices][:,pp]
                                                        for tuple_indices in model.partition_tuples
@@ -317,9 +311,14 @@ def start_lbfgs(model, ):
     
     # Locate the covariates in the concatenated matrices and vectors
     print('start col_cat')    
-    model.col_cat_matching = list(model.col_large_cat_matching[model.concat_slice_shared]) + list(model.col_large_cat_matching[model.concat_large_masks_owned[:,0].indices])
+    model.col_cat_matching = (  model.col_large_cat_matching[model.concat_slice_shared] 
+                              + [model.col_large_cat_matching[ii] for ii in model.concat_large_masks_owned[:,0].indices]
+                              )
     for k in range(model.k):
-        assert (np.array([model.col_cat_matching]) == np.array(list(model.col_large_cat_matching[model.concat_slice_shared]) + list(model.col_large_cat_matching[model.concat_large_masks_owned[:,k].indices]))).all()
+        assert (   np.array(model.col_cat_matching)
+                == np.array(  model.col_large_cat_matching[model.concat_slice_shared] 
+                            + [model.col_large_cat_matching[ii] for ii in model.concat_large_masks_owned[:,k].indices]
+                            )).all()
     model.col_cat_matching   = np.array(model.col_cat_matching)
     model.cat_bound_matching = cat_bound(model.col_cat_matching)
     

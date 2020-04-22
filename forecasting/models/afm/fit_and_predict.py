@@ -51,32 +51,35 @@ def fit_and_predict(inputs_training,
                                           dikt_file_names, 
                                           db = 'training',
                                           mask_univariate = mask_univariate_features, 
-                                          mask_bivariate  = mask_bivariate_features
+                                          mask_bivariate  = mask_bivariate_features,
                                           )
     # validation data
     design.update(features.compute_design (inputs_validation,
                                            hprm,
                                            dikt_file_names, 
+                                           mask_univariate  = mask_univariate_features,
+                                           mask_bivariate   = mask_bivariate_features,
                                            dikt_func        = design['dikt_func'], 
-                                           mask_univariate  = design.get('mask_univariate'),
                                            dikt_func12      = design.get('dikt_func12'),
-                                           mask_bivariate   = design.get('mask_bivariate'),
                                            size2            = design.get('size2'),
                                            size_tensor2     = design.get('size_tensor2'),
                                            db               = 'validation',
                                            ))
-    assert len(set(design['X_validation'].keys())) == len(set(design['X_training'].keys())), 'error len X training X validation'
+    assert len(set(design['X1_validation'].keys())) == len(set(design['X1_training'].keys())), 'error len X training X validation'
+    assert len(set(design['X2_validation'].keys())) == len(set(design['X2_training'].keys())), 'error len X training X validation'
 
       
     """
     Optimization
     """
-    X_training = {k:v 
-                  for k, v in design.items() 
+    X_training = {h:w 
+                  for k, v in design.items()
+                  for h, w in v.items()
                   if 'training' in k
                   }
-    X_validation  = {k:v 
+    X_validation  = {h:w
                      for k, v in design.items() 
+                     for h, w in v.items()
                      if 'validation' in k
                      }
     specs   = {k:v 
@@ -84,6 +87,7 @@ def fit_and_predict(inputs_training,
                if (    'training'   not in k 
                    and 'validation' not in k)
                }
+
     model_pred = additive_features_model(hprm,
                                          dikt_file_names = dikt_file_names,
                                          )

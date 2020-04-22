@@ -8,7 +8,7 @@ It successively calls the functions in exp.py
 
 #
 import electricityLoadForecasting.paths  as paths
-import electricityLoadForecasting.src    as src
+import electricityLoadForecasting.etc    as etc
 from electricityLoadForecasting.tools                       import exceptions
 from electricityLoadForecasting.forecasting.experience      import Experience
 from electricityLoadForecasting.forecasting.hyperparameters import set_hyperparameters
@@ -43,7 +43,7 @@ def main(hprm = None, data = None):
     exp.split_observations()
     exp.dikt_files = file_names.make_dikt_files(exp.hprm,
                                                 nb_sites      = len(exp.data['df_sites'].columns),
-                                                nb_weather    = len(exp.data['df_weather'].columns.get_level_values(src.user_weather_name)),
+                                                nb_weather    = len(exp.data['df_weather'].columns.get_level_values(etc.user_weather_name)),
                                                 dt_training   = exp.target_training.index,
                                                 dt_validation = exp.target_validation.index,
                                                 )

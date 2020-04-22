@@ -6,9 +6,10 @@ import socket
 
 ### Paths ###
 
-if socket.gethostname() == 'MB6.local':
-    root_folder = '/Volumes/_TData'
-else:
+try:
+    # Possible to customize but keep the structure for interoperability
+    from .personal_folders import root_folder
+except ModuleNotFoundError:
     root_folder = os.path.expanduser("~")
     
 ###############################################################################

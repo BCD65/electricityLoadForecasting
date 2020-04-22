@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+etcetcetc#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
 import numpy    as np
@@ -13,7 +13,7 @@ try:
 except:
     pass
 #
-import electricityLoadForecasting.src.global_var             as global_var
+import electricityLoadForecasting.etc.global_var             as global_var
 import electricityLoadForecasting.dataPreparation.plot_tools as plot_tools
 
 

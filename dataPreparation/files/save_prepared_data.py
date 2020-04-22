@@ -1,7 +1,7 @@
 
 import os
 #
-import electricityLoadForecasting.src.global_var as global_var
+import electricityLoadForecasting.etc.global_var as global_var
 
 
 def save_sites(

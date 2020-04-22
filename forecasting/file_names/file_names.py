@@ -92,22 +92,22 @@ def make_dikt_files(hprm, nb_sites = None, nb_weather = None, dt_training = None
         boundary_scaling = 'bds'*hprm.get('afm.boundary_scaling', 0)
         all_products     = 'apr'*(hprm.get('gp_pen',0) > 0 and hprm.get('gp_matrix','') != '') # When apr, x1tx1 containes all interactions  
         univariate_func  = hprm['afm.formula'].loc[hprm['afm.formula']['nb_intervals'].apply(lambda x : type(x) != tuple)].reset_index().astype(str)
-        univariate_data  = [tuple(univariate_func.reset_index().iloc[ii][['input', 'nb_intervals']])
+        univariate_data  = [tuple(univariate_func.iloc[ii][['input', 'nb_intervals']])
                             for ii in range(univariate_func.shape[0])
                             ]
         univariate_model = [tuple(univariate_func.iloc[ii])
                             for ii in range(univariate_func.shape[0])
                             ]
         bivariate_func   = hprm['afm.formula'].loc[hprm['afm.formula']['nb_intervals'].apply(lambda x : (type(x) == tuple and len(x) == 2))].reset_index().astype(str)
-        bivariate_data   = [tuple(bivariate_func.reset_index().iloc[ii][['input', 'nb_intervals']])
+        bivariate_data   = [tuple(bivariate_func.iloc[ii][['input', 'nb_intervals']])
                             for ii in range(bivariate_func.shape[0])
                             ]
         bivariate_model  = [tuple(bivariate_func.iloc[ii])
                             for ii in range(bivariate_func.shape[0])
                             ]
-        str_inter    = (str(hprm['afm.bivariate.combine_function']) if bool(bivariate_data) else '')
+        str_inter    = (hprm['afm.features.bivariate.combine_function'].__name__ if bool(bivariate_data) else '')
         str_data     = [str_dataset,
-                        str_learning, 
+                        str_learning,
                         (natural_splines,
                          order_splines,
                          boundary_scaling,

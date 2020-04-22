@@ -5,7 +5,7 @@
 import numpy as np
 #
 import electricityLoadForecasting.paths as paths
-import electricityLoadForecasting.src    as src
+import electricityLoadForecasting.etc    as etc
 from .aggregation_sites import get_dikt_districts, get_dikt_regions_admin, get_dikt_regions_rte
 
 
@@ -45,10 +45,10 @@ def subsample_Paris(coordinates_sites):
     min_longitude = 2.1
     max_longitude = 2.6
     subset        = [k for k in coordinates_sites.index
-                     if  (coordinates_sites[src.longitude][k] >= min_longitude) 
-                     &   (coordinates_sites[src.longitude][k] <= max_longitude) 
-                     &   (coordinates_sites[src.latitude] [k] >= min_latitude)  
-                     &   (coordinates_sites[src.latitude] [k] <= max_latitude) 
+                     if  (coordinates_sites[etc.longitude][k] >= min_longitude) 
+                     &   (coordinates_sites[etc.longitude][k] <= max_longitude) 
+                     &   (coordinates_sites[etc.latitude] [k] >= min_latitude)  
+                     &   (coordinates_sites[etc.latitude] [k] <= max_latitude) 
                      ]
     return subset
 

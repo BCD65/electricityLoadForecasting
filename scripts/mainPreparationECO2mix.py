@@ -21,19 +21,19 @@ This script takes about 24 hours and has not been optimized but only has to be r
 def main_sites(): 
     
     # Load
-    df_load     = Eco2mix.process.load_raw_load_data(prefix = os.path.join(Eco2mix.src.dikt_folders['tmp_data'], 
+    df_load     = Eco2mix.process.load_raw_load_data(prefix = os.path.join(Eco2mix.etc.dikt_folders['tmp_data'], 
                                                                            Eco2mix.config.LEVEL,
                                                                            ))
     dikt_errors = detection.detection_errors(df_load,
-                                             prefix = os.path.join(Eco2mix.src.dikt_folders['tmp_data'], 
+                                             prefix = os.path.join(Eco2mix.etc.dikt_folders['tmp_data'], 
                                                                    Eco2mix.config.LEVEL,
                                                                    ))
     df_filtered_load, trash_sites = correction.correct_with_regression(df_load, 
                                                                        dikt_errors, 
-                                                                       prefix       = os.path.join(Eco2mix.src.dikt_folders['tmp_data'], 
+                                                                       prefix       = os.path.join(Eco2mix.etc.dikt_folders['tmp_data'], 
                                                                                                    Eco2mix.config.LEVEL,
                                                                                                    ),
-                                                                       prefix_plot = os.path.join(Eco2mix.src.dikt_folders['plots'],
+                                                                       prefix_plot = os.path.join(Eco2mix.etc.dikt_folders['plots'],
                                                                                                   Eco2mix.config.LEVEL,
                                                                                                   ),
                                                                        bool_plot_corrections = Eco2mix.config.bool_plot_corrections, 
@@ -50,7 +50,7 @@ def main_sites():
     files.save_sites(
                      df_filtered_load,
                      coordinates_sites,
-                     prefix = os.path.join(Eco2mix.src.dikt_folders['transformed_data'], 
+                     prefix = os.path.join(Eco2mix.etc.dikt_folders['transformed_data'], 
                                            Eco2mix.config.LEVEL,
                                            )
                      )
@@ -62,10 +62,10 @@ def main_sites():
 def main_weather():
 
     # Load
-    df_weather, coordinates_weather, trash_weather = Eco2mix.process.load_raw_weather_data(prefix      = os.path.join(Eco2mix.src.dikt_folders['tmp_data'],
+    df_weather, coordinates_weather, trash_weather = Eco2mix.process.load_raw_weather_data(prefix      = os.path.join(Eco2mix.etc.dikt_folders['tmp_data'],
                                                                                                                       Eco2mix.config.LEVEL,
                                                                                                                       ),
-                                                                                           prefix_plot = os.path.join(Eco2mix.src.dikt_folders['plots'],
+                                                                                           prefix_plot = os.path.join(Eco2mix.etc.dikt_folders['plots'],
                                                                                                                       Eco2mix.config.LEVEL,
                                                                                                                       ),
                                                                                            )
@@ -79,7 +79,7 @@ def main_weather():
     files.save_weather(
                        df_weather,
                        coordinates_weather,
-                       prefix = os.path.join(Eco2mix.src.dikt_folders['transformed_data'], 
+                       prefix = os.path.join(Eco2mix.etc.dikt_folders['transformed_data'], 
                                              Eco2mix.config.LEVEL,
                                              )
                        )
@@ -92,13 +92,13 @@ if __name__ == '__main__':
     df_filtered_load, coordinates_sites = main_sites()
     df_weather, coordinates_weather     = main_weather()
     input('Hit any key (but ctrl+c) to delete temp variables and finish')
-    shutil.rmtree(os.path.join(Eco2mix.src.dikt_folders['tmp_data'],
+    shutil.rmtree(os.path.join(Eco2mix.etc.dikt_folders['tmp_data'],
                                Eco2mix.config.LEVEL,
                                ), 
                   ignore_errors = True,
                   )
-    if os.path.isdir(Eco2mix.src.dikt_folders['tmp_data']) and not bool(os.listdir(Eco2mix.src.dikt_folders['tmp_data'])):
-        shutil.rmtree(Eco2mix.src.dikt_folders['tmp_data'], 
+    if os.path.isdir(Eco2mix.etc.dikt_folders['tmp_data']) and not bool(os.listdir(Eco2mix.etc.dikt_folders['tmp_data'])):
+        shutil.rmtree(Eco2mix.etc.dikt_folders['tmp_data'], 
                       ignore_errors = True,
                       )
         

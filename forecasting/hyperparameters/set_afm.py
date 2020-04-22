@@ -18,17 +18,11 @@ def set_afm(hprm):
     assert hprm['learning.model'] == 'afm'
     hprm.update({
                   'afm.features.boundary_scaling'           : False, # Activate to select a different scaling of the splines near the boundary (does not improve the results)
-                  #'tf_masks'                  : cp.deepcopy(default.active_mask), # Choose the number of weather stations a substations should have access to
                   'afm.features.natural_splines'            : True, # Activate to extrapolate linearly
                   'afm.features.order_splines'              : 1,    # 1 for piecewise linear
                   'afm.features.bivariate.combine_function' : np.prod,    # Use product or minimum of splines for interactions
                    })
 
-#    hprm['afm.tf_orthogonalize'] = { # Not used anymore since it removes the sparsity and did not improve the performances
-#                                    ('targetlag', 'wh') : False, 
-#                                    ('meteo',     'yd') : False, 
-#                                    ('wh',        'yd') : False, 
-#                                    }
     
     hprm.update({
                   'afm.formula'             : cp.deepcopy(default.afm.dikt_formula.get((hprm['database'], 
@@ -37,59 +31,12 @@ def set_afm(hprm):
                                                                                        None, #default.afm.dikt_formula['nat'], 
                                                                                        )['tmp']
                                                           ), # Choose the granularity for the different inputs ie the number of splines
-#                  'afm.formula'            : {var:tuple([key 
-#                                                            for key in list_keys 
-#                                                            #if 'targetlag' not in key  # Uncomment for Middle-Term models
-#                                                            ]) 
-#                                                 for var, list_keys in cp.deepcopy(default.afm.dikt_formula.get((hprm['database'], 
-#                                                                                                                 hprm['sites.aggregation'],
-#                                                                                                                 ), 
-#                                                                                                                default.afm.dikt_formula['nat'], 
-#                                                                                                                )['tmp']).items()
-#                                                                                                                  # Possible values
-#                                                                                                                  # 'lowrank'
-#                                                                                                                  # 'univariate'
-#                                                                                                                  # 'lbfgs'
-#                                                                                                                  # 'interUV'
-#                                                                                                                  # 'sesq'
-#                                                 }, 
-#
-#                 
-#                  'afm.regularization.functions'                    : cp.deepcopy(default.afm.regularization_func.get((hprm['database'], 
-#                                                                                                                       hprm['sites.aggregation'],
-#                                                                                                                       ), 
-#                                                                                                                      default.afm.regularization_func['nat'], # Default 
-#                                                                                                                      )),                                                                                                               # 'lbfgs'
-#                  'afm.regularization.coefficients'                  : cp.deepcopy(default.afm.regularization_coef.get((hprm['database'], 
-#                                                                                                                        hprm['sites.aggregation'],
-#                                                                                                                        ), 
-#                                                                                                                       default.afm.regularization_coef['nat'], # Default
-#                                                                                                                       )),
-                            
-                            # Choose which variables should be part of the low-rank components and ot the unstructured components
-                            # Blr        for low-rank (over the substations) formulation with a first-order descent algorithm
-                            # Bsp        for independent models and unstructured coedfficients with a first-order descent algorithm
-                            # lbfgs_coef for independent models and unstructured coedfficients with a first-order descent algorithm
-                            # Cuv        for independent models and low-rank interactions
-                            # Cb         for independent models and the univariate part of the sesquivariate constraint
-                            # Cbm        for independent models and the sesquivariate constraint for the interactions
                   })
-    #regularization_setting = 'row2sm'
-    # Choose the regularization   
-    # Possible values
-    # hprm['zone'] 
-    # 'nat' 
-    # 'full'
-    # 'row2sm'                                                                                                                
-    # 'lbfgs'
-    # 'hrch' 
+
     
 
                   
     hprm.update({
-                                                                                           
-                  #'tf_ch_basis1'              : 0,
-                  #'tf_ch_basis2'              : 0,
                   'afm.constraints.ranks_B'     : {  # Rank of the low-rank (substations wise) components for each input
                                                  'wh' : 4, 
                                                  'yd' : 4, 
@@ -163,56 +110,6 @@ def set_afm(hprm):
         hprm['sites.aggregation'],
         ) not in default.afm.stopping_criteria:
         print(colored('NO PARAMETRIZATION SET FOR {0}'.format(hprm['database']), 'red', 'on_cyan'))
-
-
-###############################################################################
-###                       PREDEFEDINED SETTINGS                             ###
-###############################################################################
-    
-    
-#    # hprmeters for specific tests (all are deactivated in define_database.py)
-#    if hprm['spec_hrch']:
-#        hprm['tf_config_coef']       = cp.deepcopy(default.dikt_config['lowrank'])                    
-#        hprm['approx_nb_itv']        = cp.deepcopy(default.nb_itv     ['hrch'])
-#        hprm['tf_pen']               = cp.deepcopy(default.pen_base   ['hrch'])
-#        hprm['tf_alpha']             = cp.deepcopy(default.alphas_base['hrch'])
-#        ccc = 0.2
-#        hprm['tf_hrch']              = {
-#                                         'wh' : ccc, 
-#                                         'yd' : ccc, 
-#                                         }
-#        hprm['any_plot']             = True 
-#        hprm['exp_plot']             = True 
-#        hprm['exp_plot_1d_effect']   = True
-#        hprm['fb_1D_functions_plot'] = False
-#        
-#                    
-#    elif hprm['spec_gp_pen_full']:
-#        assert hprm['zone'] == 'full'
-#        hprm['gp_matrix']        = 'districts'
-#        hprm['gp_pen']           = 1
-#        hprm['lbfgs_precompute'] = True # It is faster to precompute at least for rteReg and admReg
-#        hprm['save_pred']        = False
-#        #hprm['tf_sparse_coef'] = True
-#        # Change to self.active_gp and True in approx_tf
-#        
-#    elif hprm['spec_just_load_data']:
-#        hprm['just_load_data'] = True
-#        
-#    elif hprm['self_reg']:
-#        assert hprm['zone'] == 'full'  
-#        hprm['tf_masks']            = {}
-#        hprm['load_perf']           = False
-#        hprm['load_pred']           = False
-#        hprm['selected_variables']  = ('target',)
-#        hprm['tf_config_coef']      = {'Bsp'    : ('target',)}
-#        hprm['approx_nb_itv']       = {'target' : 'p1'}
-#        hprm['tf_pen']              = {'Bsp'    : {'target':'rlasso'}}
-#        hprm['tf_alpha']            = {'Bsp'    : {'target':1e-2}}
-#        
-#    elif hprm['row2sm']:
-#        hprm['tf_pen']         = default.pen_base   ['row2sm']
-#        hprm['tf_alpha']       = default.alphas_base['row2sm']
 
 
             

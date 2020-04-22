@@ -19,7 +19,7 @@ def cat_bound(col_cat_matching):
     cat_bound_matching = {cat:(np.min([ii for ii, row in enumerate(col_cat_matching) if tuple(row) == cat]), 
                                np.max([ii for ii, row in enumerate(col_cat_matching) if tuple(row) == cat])+1,
                                ) 
-                          for cat in sorted(set([tuple(e) for e in col_cat_matching]))
+                          for cat in sorted(set([e for e in col_cat_matching]), key = lambda x : str(x))
                           }
     # Check that the rows of the design matrix are well ordered
     for cat1, v1 in cat_bound_matching.items():
@@ -426,27 +426,24 @@ def make_coef(model, loss, grad_loss, vec_coef_0):
 def sort_keys(keys, masks): # No reason to be lbfgs specific
     cat_owned = {}
     # Sort the categories of covariates
-    for key in keys: 
-        inpt, trsfm, prm, location = key
-        cond = (    key in masks
-                and not (type(masks[key]) == type(slice(None)) and masks[key] == slice(None))
+    keys_shared = []
+    keys_owned  = []
+    for inpt, location in keys: 
+        cond = (    (inpt,location) in masks
+                and not (type(masks[inpt,location]) == type(slice(None)) and masks[inpt,location] == slice(None))
                 )
         if cond:
-            cat_owned[inpt, trsfm, prm] = True
+            keys_owned.append((inpt, location))
+            cat_owned[inpt] = True
         else:
-            if (inpt, trsfm, prm) not in cat_owned:
-                cat_owned[inpt, trsfm, prm] = False
-    aaa = sorted([(inpt, trsfm, prm, location)
-                  for inpt, trsfm, prm, location in keys
-                  if not cat_owned.get((inpt, trsfm, prm))
-                  ])#, key = lambda x : (cats[x],x))
-    ccc = sorted([(inpt, trsfm, prm, location)
-                  for inpt, trsfm, prm, location in keys
-                  if cat_owned.get((inpt, trsfm, prm))]
-                    )#, key = lambda x : (cats[x],x))
-    print('    {0} cats shared - {1} cats owned'.format(len(aaa), len(ccc)))
+            keys_shared.append((inpt, location))
+            if inpt not in cat_owned:
+                cat_owned[inpt] = False
+    keys_shared = sorted(keys_shared, key = lambda x : str(x))
+    keys_owned  = sorted(keys_owned,  key = lambda x : str(x))
+    print('    {0} cats shared - {1} cats owned'.format(len(keys_shared), len(keys_owned)))
     # The shared variables are in the top rows of the design matrix
     # The individual covariates come after
-    return aaa + ccc, cat_owned
+    return keys_shared + keys_owned, cat_owned
 
   
