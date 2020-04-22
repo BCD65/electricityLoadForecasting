@@ -1,7 +1,7 @@
 
 
 """
-This script creates long names of files from the hyperhprmeters 
+This script creates long names of files from the hyperparameters 
 to save the variables and the results.
 """
 
