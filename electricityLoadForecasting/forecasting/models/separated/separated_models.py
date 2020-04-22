@@ -1,15 +1,15 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 
 
+import numpy as np
+import copy as cp
 
-def bool_meta_model(hprm):
+def bool_separated(hprm):
     variable_separation = (hprm.get('separation_var')  == ())
     independent_models  = (hprm.get('separation_post') == True)
     return variable_separation or independent_models
 
 
-def meta_model(exp):
+def separated(exp):
                        
     args = (
             exp.param, 
@@ -49,6 +49,7 @@ def optim_sep_post_owned_data(
                               IMMACULATE_PRM,
                               posts_names,  
                               ):
+    raise NotImplementedError
     """
     Function to compute the models for the different substations sequentially 
     """
@@ -92,6 +93,7 @@ def optim_sep_var(exp, var, var_sep,
                   data_train, target_train, dates_train,  
                   data_test,  target_test,  dates_test,    
                   ):
+    raise NotImplementedError
     """
     Function to compute the models sequentially for the different values of an input time series (eg different hours of the day)
     """

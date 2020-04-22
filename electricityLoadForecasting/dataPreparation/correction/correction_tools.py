@@ -14,8 +14,8 @@ try:
 except:
     pass
 #
-import electricityLoadForecasting.etc.global_var             as global_var
-import electricityLoadForecasting.dataPreparation.plot_tools as plot_tools
+import electricityLoadForecasting.tools as tools
+from .. import plot_tools
 
 
 
@@ -189,7 +189,7 @@ def correct_with_regression(df_load, dikt_errors, prefix = None, prefix_plot = N
                               ) # Plot the sites that are discarded
     print('done - df_corrected_load.shape = {0} - len(trash_sites) = {1}\n{2}'.format(df_corrected_load.shape,
                                                                                       len(trash_sites),
-                                                                                      '#'*global_var.NB_SIGNS),
+                                                                                      '#'*tools.NB_SIGNS),
                                                                                       )
     return df_corrected_load, trash_sites
             

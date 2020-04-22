@@ -1,14 +1,14 @@
 
 import pandas as pd
-import electricityLoadForecasting.etc as etc
+import electricityLoadForecasting.tools.transcoding as transcoding
 
 
 coordinates_sites = {'France'                 : pd.DataFrame(data    = [[46,2]], 
                                                              index   = pd.Index(['France'], 
-                                                                                name = etc.user_site_name,
+                                                                                name = transcoding.user_site_name,
                                                                                 ),
-                                                             columns = [etc.user_latitude, 
-                                                                        etc.user_longitude,
+                                                             columns = [transcoding.user_latitude, 
+                                                                        transcoding.user_longitude,
                                                                         ],
                                                              ),
                      'administrative_regions' : pd.DataFrame(data    = [[45.5, 4.6],
@@ -37,10 +37,10 @@ coordinates_sites = {'France'                 : pd.DataFrame(data    = [[46,2]],
                                                                                  'PACA',
                                                                                  'Pays-de-la-Loire',
                                                                                  ],
-                                                                                name = etc.user_site_name,
+                                                                                name = transcoding.user_site_name,
                                                                                 ),
-                                                                        columns = [etc.user_latitude,
-                                                                                   etc.user_longitude,
+                                                                        columns = [transcoding.user_latitude,
+                                                                                   transcoding.user_longitude,
                                                                                    ],
                                                              ),
                      }

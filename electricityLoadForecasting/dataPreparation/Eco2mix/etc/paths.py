@@ -1,14 +1,14 @@
 
 import os
 #
-from electricityLoadForecasting.paths import root_folder
+from electricityLoadForecasting import paths
 
 dikt_folders = {
-                'sites'               : os.path.join(root_folder, 'Eco2mix', 'raw_data', 'load'), 
-                'weather'             : os.path.join(root_folder, 'Eco2mix', 'raw_data', 'weather'),  
-                'tmp_data'            : os.path.join(root_folder, 'Eco2mix', 'transformed_data/tmp'),
-                'transformed_data'    : os.path.join(root_folder, 'Eco2mix', 'transformed_data'),
-                'plots'               : os.path.join(root_folder, 'Eco2mix', 'plots'),
+                'sites'               : os.path.join(paths.inputs, 'Eco2mix', 'raw_data', 'load'), 
+                'weather'             : os.path.join(paths.inputs, 'Eco2mix', 'raw_data', 'weather'),  
+                'tmp_data'            : os.path.join(paths.inputs, 'Eco2mix', 'transformed_data/tmp'),
+                'transformed_data'    : os.path.join(paths.inputs, 'Eco2mix', 'transformed_data'),
+                'plots'               : os.path.join(paths.inputs, 'Eco2mix', 'plots'),
                 }
 dikt_files = {
               #

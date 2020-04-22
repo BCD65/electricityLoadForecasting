@@ -3,7 +3,7 @@ import pickle
 import pandas as pd
 
 import electricityLoadForecasting.paths as paths
-import electricityLoadForecasting.tools as tools
+from .. import format_text
 
 
 
@@ -36,7 +36,7 @@ def get_dikt_regions_admin():
     dikt_regions_admin     = {}
     csv_file = pd.read_csv(paths.extras + 'corresp_poste_regionAdministrative.csv')
     for idx, (site, region) in csv_file.iterrows():
-        name_site       = tools.transcoding.format_site_name(site)
+        name_site       = format_text.format_site_name(site)
         name_region     = (region.title()
                                  .replace('  ', ' ')
                                  .replace('-De-', '-de-')
@@ -51,7 +51,7 @@ def get_dikt_regions_rte():
     dikt_regions_rte     = {}
     csv_file = pd.read_csv(paths.extras + 'corresp_poste_regionRTE.csv')
     for idx, (site, region) in csv_file.iterrows():
-        name_site       = tools.transcoding.format_weather_station_name(site)
+        name_site       = format_text.format_weather_station_name(site)
         name_region     = (region.replace('USE ','')
                                  .title()
                                  )

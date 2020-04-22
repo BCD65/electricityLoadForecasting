@@ -15,8 +15,8 @@ import scipy.ndimage as spim
 import numbers
 #
 import electricityLoadForecasting.tools  as tools
+import electricityLoadForecasting.tools.config  as config
 import electricityLoadForecasting.paths  as paths
-import electricityLoadForecasting.forecasting.config as config
 from . import lbfgs
 
 ###############################################################################

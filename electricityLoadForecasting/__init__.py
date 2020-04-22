@@ -1,8 +1,8 @@
 
 
 
-from .dataPreparation import *
-from .forecasting     import *
-from .paths           import *
-from .tools           import *
+from . import dataPreparation
+from . import forecasting
+from . import paths
+from . import tools
 

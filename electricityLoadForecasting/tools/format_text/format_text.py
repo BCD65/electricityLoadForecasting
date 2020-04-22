@@ -2,19 +2,19 @@
 import re
 import os
 #
-import electricityLoadForecasting.etc as etc
+from ..transcoding import transcoding_sites, transcoding_weather
 
 
 def format_weather_station_name(name):
     name = name.title()
-    for k, v in etc.transcoding_weather.items():
+    for k, v in transcoding_weather.items():
         name = name.replace(k,v)
     return name
 
 
 def format_site_name(name):
     name = name.upper()
-    for k, v in etc.transcoding_sites.items():
+    for k, v in transcoding_sites.items():
         name = name.replace(k,v)
     return name
 

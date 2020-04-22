@@ -1,7 +1,7 @@
 
 import os
 #
-import electricityLoadForecasting.etc.global_var as global_var
+import electricityLoadForecasting.tools as tools
 
 
 def save_sites(
@@ -19,7 +19,7 @@ def save_sites(
         value.to_csv(os.path.join(prefix, key+'.csv'),
                      index_label = value.columns.name,
                      )
-    print('done\n{0}'.format('#'*global_var.NB_SIGNS))
+    print('done\n{0}'.format('#'*tools.NB_SIGNS))
 
 
 def save_weather(
@@ -37,5 +37,5 @@ def save_weather(
         value.to_csv(os.path.join(prefix, key+'.csv'),
                      index_label = value.columns.name,
                      )
-    print('done\n{0}'.format('#'*global_var.NB_SIGNS))
+    print('done\n{0}'.format('#'*tools.NB_SIGNS))
 

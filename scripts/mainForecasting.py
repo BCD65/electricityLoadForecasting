@@ -8,13 +8,12 @@ It successively calls the functions in exp.py
 
 #
 import electricityLoadForecasting.paths  as paths
-import electricityLoadForecasting.etc    as etc
-from electricityLoadForecasting.tools                       import exceptions
+from electricityLoadForecasting.tools                       import exceptions, transcoding
 from electricityLoadForecasting.forecasting.experience      import Experience
 from electricityLoadForecasting.forecasting.hyperparameters import set_hyperparameters
 from electricityLoadForecasting.forecasting.inputs          import load_input_data
-from electricityLoadForecasting.forecasting.file_names      import file_names
-from electricityLoadForecasting.forecasting.meta_model      import meta_model
+import electricityLoadForecasting.forecasting.file_names as file_names
+import electricityLoadForecasting.forecasting.models     as models
 
 
 #%%
@@ -30,7 +29,7 @@ def main(hprm = None, data = None):
     #%%
     print('get_data')
     if data is None:
-        exp.data = load_input_data(paths.path_inputs(hprm['database']))
+        exp.data = load_input_data(paths.path_database(hprm['database']))
     else:
         exp.data = data
     exp.select_sites()
@@ -39,7 +38,7 @@ def main(hprm = None, data = None):
     exp.split_observations()
     exp.dikt_files = file_names.make_dikt_files(exp.hprm,
                                                 nb_sites      = len(exp.data['df_sites'].columns),
-                                                nb_weather    = len(exp.data['df_weather'].columns.get_level_values(etc.user_weather_name)),
+                                                nb_weather    = len(exp.data['df_weather'].columns.get_level_values(transcoding.user_weather_name)),
                                                 dt_training   = exp.target_training.index,
                                                 dt_validation = exp.target_validation.index,
                                                 )
@@ -63,8 +62,8 @@ def main(hprm = None, data = None):
             print(repr(e))
             print('predictions not loaded')
             #%%
-            if meta_model.bool_meta_model(exp.hprm):
-                meta_model(exp)  
+            if models.bool_separated(exp.hprm):
+                models.separated(exp)  
             else:
                 exp.learning_process()
                 #%% 

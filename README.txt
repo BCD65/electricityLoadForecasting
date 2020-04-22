@@ -6,7 +6,7 @@ In the folder dataPreparation, the main.py script downloads, formats and saves p
 
 The package can be used with the following environment :
 # Create new env
-conda create -n py37 python=3.7 anaconda conda h5py termcolor matplotlib scipy scikit-learn pytz ipdb python-spams pandas spyder seaborn chardet unidecode
+conda create -n elec python=3.7 anaconda conda h5py termcolor matplotlib scipy scikit-learn pytz ipdb python-spams pandas spyder seaborn chardet unidecode
 # Activate
 conda activate py37
 # Install requirements from specific channels
@@ -17,9 +17,13 @@ conda install -c omnia termcolor
 
 ================================================================
 
-It can be installed with 
+Alternatively, it can be installed with
+conda create --name elec python=3.6
+Conda activate elec
+cd path_to_folder/
 pip install setup.py
 # However, the packages xgboost, spams and rpy2 have to be installed separately
+# Also, the mgcv library should be available in R to use the GAM
 
 ================================================================
 

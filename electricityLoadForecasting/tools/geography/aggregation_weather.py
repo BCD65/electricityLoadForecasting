@@ -3,7 +3,7 @@ import os
 import pandas as pd
 #
 import electricityLoadForecasting.paths as paths
-import electricityLoadForecasting.tools as tools
+from .. import format_text
 
 
 
@@ -23,7 +23,7 @@ def aggregation_weather(df_weather, df_coordinates, aggregation_level):
     else:
         df_weights                = pd.read_csv(os.path.join(paths.extras, 'poids_stations_meteo.csv'), sep = ';', decimal=',')
         df_weights                = df_weights.fillna(0)
-        df_weights['Nom station'] = df_weights['Nom station'].apply(tools.format_weather_station_name)
+        df_weights['Nom station'] = df_weights['Nom station'].apply(format_text.format_weather_station_name)
         df_weights                = df_weights.set_index('Nom station')
         df_weights                = df_weights.astype(float)
         df_weights                = df_weights.loc[df_weather.columns]

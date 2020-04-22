@@ -9,12 +9,10 @@ import datetime as dt
 import os
 
 #
-from .. import performances, hyperparameters, inputs
+from .. import performances, hyperparameters, inputs, models
 import electricityLoadForecasting.paths  as paths
-import electricityLoadForecasting.etc    as etc
 import electricityLoadForecasting.tools  as tools
-import electricityLoadForecasting.forecasting.models as models
-import electricityLoadForecasting.forecasting.config as config
+import electricityLoadForecasting.tools.config as config
 
 
 
@@ -72,7 +70,7 @@ class Experience(object):
         # Choose weather source
         self.data['df_weather'] = self.data['df_weather'].xs(key   = self.hprm['weather.source'],
                                                              axis  = 1,
-                                                             level = etc.user_source,
+                                                             level = tools.transcoding.user_source,
                                                              )
         
         # Restrict the weather stations to a rectangle defined by the sites
@@ -107,14 +105,14 @@ class Experience(object):
     def unfold_data(self, ):
         self.data['df_calendar'] = tools.calendar.compute_calendar_variables(self.data['df_sites'].index)
         basket_original_data     = {**{key : self.data['df_calendar'][[key]] for key in self.data['df_calendar']} , 
-                                    **{physical_quantity : self.data['df_weather'].xs(key = physical_quantity, axis = 1, level = etc.user_physical_quantity)
-                                       for physical_quantity in self.data['df_weather'].columns.get_level_values(etc.user_physical_quantity)
+                                    **{physical_quantity : self.data['df_weather'].xs(key = physical_quantity, axis = 1, level = tools.transcoding.user_physical_quantity)
+                                       for physical_quantity in self.data['df_weather'].columns.get_level_values(tools.transcoding.user_physical_quantity)
                                        },
                                     'target' : self.data['df_sites'], 
                                     }
         self.dikt_assignments = {'target' : self.assignment_sites,
                                  **{physical_quantity : self.assignment_weather_stations
-                                    for physical_quantity in self.data['df_weather'].columns.get_level_values(etc.user_physical_quantity)
+                                    for physical_quantity in self.data['df_weather'].columns.get_level_values(tools.transcoding.user_physical_quantity)
                                     },
                                  }
         
@@ -261,7 +259,7 @@ class Experience(object):
         """
         self.performances = {
                              'sites_names'   : self.target_training.columns,
-                             'weather_names' : self.data['df_weather'].columns.get_level_values(level = etc.user_weather_name),
+                             'weather_names' : self.data['df_weather'].columns.get_level_values(level = tools.transcoding.user_weather_name),
                              'dt_training'   : self.dt_training,
                              'dt_validation' : self.dt_validation,
                              'model'         : {},

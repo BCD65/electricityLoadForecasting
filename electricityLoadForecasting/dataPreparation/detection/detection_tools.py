@@ -7,7 +7,7 @@ import os
 import pickle
 from termcolor import colored
 #
-import electricityLoadForecasting.etc.global_var             as global_var
+import electricityLoadForecasting.tools as tools
 
 
 
@@ -118,7 +118,7 @@ def detection_errors(df_load, prefix = None):
                                                                 ) 
             for key in sorted(dikt_errors.keys())
             ],
-          '\rdone\n{0}'.format('#'*global_var.NB_SIGNS),
+          '\rdone\n{0}'.format('#'*tools.NB_SIGNS),
           )
     return dikt_errors
 

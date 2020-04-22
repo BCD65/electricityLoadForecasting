@@ -8,7 +8,6 @@ from . import default
 import copy as cp
 from termcolor import colored
 import numpy as np
-import electricityLoadForecasting.forecasting.config as config
 
 
 
@@ -60,7 +59,7 @@ def set_afm(hprm):
     hprm.update({
                   'afm.algorithm'                  : 'L-BFGS',
                   'afm.algorithm.lbfgs_precompute' : False, # Precompute XtX and XtY for LbfgS
-                  'afm.algorithm.try_warmstart'    : True and config.load_model, # True warm-start
+                  'afm.algorithm.try_warmstart'    : False, # True warm-start
                   'afm.algorithm.bcd'              : True, # Use block coordinate descent
                   'afm.algorithm.active_set'       : True, # Use an active set strategy
                   'afm.algorithm.prop_active_set'  : 0.2,

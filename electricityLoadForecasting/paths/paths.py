@@ -5,17 +5,17 @@ import os
 
 try:
     # Possible to customize but keep the structure for interoperability
-    from .personal_folders import folder_inputs
+    from .personal_folders import inputs
 except ModuleNotFoundError:
-    folder_inputs = os.path.join(os.path.expanduser("~"),
-                                 'electricityLoadForecastingInputs',
-                                 )
+    inputs = os.path.join(os.path.expanduser("~"),
+                          'electricityLoadForecastingInputs',
+                          )
 
-path_extras   = os.path.join(folder_inputs, 
-                             'additional_data',
-                             )
+extras   = os.path.join(inputs, 
+                        'additional_data',
+                        )
 
-def path_dataset(dataset):
+def path_database(dataset):
     assert dataset in {
                        'Eco2mix.administrative_regions',
                        'Eco2mix.France',
@@ -24,35 +24,35 @@ def path_dataset(dataset):
                        }
     
     if dataset == 'RTE.full':
-        path_dataset = os.path.join(folder_inputs, 
+        path_database = os.path.join(inputs, 
                                    'RTE', 
                                    'transformed_data',
                                    )
     elif dataset == 'RTE.quick_test':
-        path_dataset = os.path.join(folder_inputs, 
+        path_database = os.path.join(inputs, 
                                    'RTE', 
                                    'transformed_data', 
                                    'quick_test',
                                    )
     elif dataset == 'Eco2mix.administrative_regions':
-        path_dataset =  os.path.join(folder_inputs,
+        path_database =  os.path.join(inputs,
                                     'Eco2mix',
                                     'transformed_data',
                                     'administrative_regions',
                                     )
     elif dataset == 'Eco2mix.France':
-        path_dataset =  os.path.join(folder_inputs,
+        path_database =  os.path.join(inputs,
                                     'Eco2mix',
                                     'transformed_data',
                                     'France',
                                     )
-    return path_dataset
+    return path_database
 
 ##############################   Outputs   ####################################
 
-path_outputs = os.path.join(os.path.expanduser("~"),
-                            'electricityLoadForecastingOutputs',
-                            )
+outputs = os.path.join(os.path.expanduser("~"),
+                       'electricityLoadForecastingOutputs',
+                       )
 
 ###############################################################################
 
