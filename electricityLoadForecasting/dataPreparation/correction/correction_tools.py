@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 
 import numpy    as np
 import pandas as pd
@@ -7,7 +5,10 @@ import os
 import pickle
 from termcolor import colored
 from sklearn.ensemble import RandomForestRegressor
-import spams
+try:
+    import spams
+except:
+    pass
 try:
     import xgboost as xgb
 except:

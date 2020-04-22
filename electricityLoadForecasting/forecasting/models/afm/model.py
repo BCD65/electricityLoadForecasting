@@ -6,21 +6,23 @@ except ModuleNotFoundError:
     
 import time
 import os
+import sys
 import numpy as np
 import copy as cp
 import scipy as sp
 import scipy.signal  as sig
 import scipy.ndimage as spim
-from copy import deepcopy
-from sys        import getsizeof as gso
-from numbers    import Number
+import numbers
 #
 import electricityLoadForecasting.tools  as tools
 import electricityLoadForecasting.paths  as paths
 import electricityLoadForecasting.forecasting.config as config
 from . import lbfgs
 
+###############################################################################
 
+path_betas = os.path.join(paths.outputs, 'Saved', 'Betas')
+path_data  = os.path.join(paths.outputs, 'Saved', 'Data')
 
 EXTRA_CHECK = 0
 
@@ -44,8 +46,6 @@ class additive_features_model:
         # Sets all the parameters as attributes of the class
         self.hprm        = hprm
         self.dikt        = dikt_file_names
-        self.path_betas  = os.path.join(paths.outputs, 'Saved', 'Betas')
-        self.path_data   = os.path.join(paths.outputs, 'Saved', 'Data')
         self.formula     = self.hprm['afm.formula']
         self.max_iter    = int(self.hprm['afm.algorithm.max_iter'])
         assert not self.formula.empty
@@ -247,13 +247,13 @@ class additive_features_model:
             """
             Try to load final model
             """
-            keys_upd   = tools.batch_load(self.path_betas, 
+            keys_upd   = tools.batch_load(path_betas, 
                                           prefix    = self.dikt['experience.whole'], 
                                           data_name = 'keys_upd', 
                                           data_type = 'pickle',
                                           )
             assert set(self.keys_upd) == set(keys_upd), 'set(self.keys_upd) != set(keys_upd)'
-            self.coef  = tools.batch_load(self.path_betas, 
+            self.coef  = tools.batch_load(path_betas, 
                                           prefix    = self.dikt['experience.whole'], 
                                           data_name = 'coef', 
                                           data_type = 'dict_np',
@@ -448,7 +448,7 @@ class additive_features_model:
                                    (self.keys_upd,   'keys_upd',   'pickle'), 
                                    ]:
                 try:
-                    tools.batch_save(self.path_betas, 
+                    tools.batch_save(path_betas, 
                                      data      = obj, 
                                      prefix    = self.dikt['experience.whole'], 
                                      data_name = name, 
@@ -813,14 +813,6 @@ class additive_features_model:
             max_iter_reached = (self.iteration >= self.max_iter)
             self.converged   = max(small_decrease, early_stop, norm_grad_small, max_iter_reached, all_dead)                                
 
-
-
-        
-        
-        
-
-###############################################################################
-###############################################################################
 ###############################################################################
 
     
@@ -1042,7 +1034,7 @@ class additive_features_model:
         print('done' + ' '*20)
 
     def compute_grad_ridge(self, list_coor, d_masks):
-        # Computet the gradient of the differentiable regularization (ridge or smoothing-spline)
+        # Compute the gradient of the differentiable regularization (ridge or smoothing-spline)
         dikt_ridge_grad = {}
         for coor_upd in list_coor:
             assert len(coor_upd) == 3
@@ -1079,7 +1071,7 @@ class additive_features_model:
                 else:
                     cc = M.reshape(*self.size_tensor2[key], -1)
                     dikt_ridge_grad[coor_upd] = np.zeros(cc.shape)
-                    cat1, cat2 = cat.split('#')
+                    inpt1, inpt2 = inpt.split('#')
                     if cc.shape[0] > 2:
                         if self.hprm['inputs.cyclic'][inpt1]:
                             ker1  = np.array([[[1],[-4],[6],[-4],[1]]])
@@ -1126,9 +1118,9 @@ class additive_features_model:
                 else:
                     cc = M.reshape(*self.size_tensor2[key], -1)
                     dikt_ridge_grad[coor_upd] = np.zeros(cc.shape)
-                    cat1, cat2 = cat.split('#')
+                    inpt1, inpt2 = inpt
                     if cc.shape[0] > 2:
-                        if sself.hprm['inputs.cyclic'][inpt1]:
+                        if self.hprm['inputs.cyclic'][inpt1]:
                             ker1  = np.array([[[1],[-4],[6],[-4],[1]]])
                             conv1 = spim.filters.convolve(cc,ker1,mode = 'wrap')
                             dikt_ridge_grad[coor_upd] += alpha * conv1
@@ -1485,7 +1477,7 @@ class additive_features_model:
                 if  cat in self.normalization:
                     if var not in self.normalized_alphas:
                         self.normalized_alphas[var] = {}
-                    if isinstance(self.alpha[var][cat], Number):
+                    if isinstance(self.alpha[var][cat], numbers.Number):
                         self.normalized_alphas[var][cat] = self.alpha[var][cat]/self.normalization[cat]**2
                     else:
                         assert type(self.alpha[var][cat]) == tuple
@@ -1497,8 +1489,8 @@ class additive_features_model:
         for var, dikt_cat_alpha in self.normalized_alphas.items():
             assert len(self.alpha[var]) == len(dikt_cat_alpha)
             for cat in self.alpha[var].keys():
-                if isinstance(self.alpha[var][cat], Number):
-                    assert isinstance(self.normalized_alphas[var][cat], Number)
+                if isinstance(self.alpha[var][cat], numbers.Number):
+                    assert isinstance(self.normalized_alphas[var][cat], numbers.Number)
                 else:
                     assert type(self.alpha[var][cat]) == type(self.normalized_alphas[var][cat])
 
@@ -1587,17 +1579,6 @@ class additive_features_model:
                             )
                     ):
                     ans += XtX[key+'@'+key2] @ (coef[var2,key2][:,mask])
-#            ans = np.sum([XtX[key+'@'+key2] @ (coef[var2,key2][:,mask]) 
-#                          for key2 in self.keys[var2]
-#                              if key+'@'+key2 in XtX
-#                              and not(   (var_upd    and key2 == key)
-#                                      or (cbcbm_upd  and key2.split('#')[0] == key)
-#                                      or (cbmcb_upd  and key.split('#')[0]  == key2)
-#                                      or (cbmcbm_upd and key.split('#')[0]  == key2.split('#')[0])
-#                                      )
-#                          ], 
-#                          axis = 0)
-##            assert ans.shape == ans_tmp.shape
         return ans
                  
 
@@ -1631,17 +1612,12 @@ class additive_features_model:
             # scalar product
             if var in {'B'}:
                 pr = np.sum([np.einsum('pk,pk->',   self.coef[(s,k)], grad[(s,k)]/d) for (s,k) in self.coef if s == var])
-                #pp =         np.einsum('nk,nk->',   pred, dual_Z)                    
-                #assert np.abs(pr - pp ) <= 1e-5
             elif var in {'U', 'V'}:
                 pr = np.sum([np.einsum('prk,prk->', self.coef[(s,k)], grad[(s,k)]/d) for (s,k) in self.coef if s == var])
-                #pp =         np.einsum('prk,prk->', pred, dual_Z)                
-                #assert np.abs(pr - pp ) <= 1e-5
             else:
                 raise ValueError
             # regularization
-            reg      = np.sum([v for k, v in self.cur_ind_reg.items() if k[0] == var])
-            #if var in {'U', 'V'}:
+            reg = np.sum([v for k, v in self.cur_ind_reg.items() if k[0] == var])
             ############
             ## Checks ##
             ############
@@ -1658,7 +1634,6 @@ class additive_features_model:
             assert P >= - 1e-14
             D = pr + reg
             assert D >= - 1e-14
-#            print(P, D, P+D)
             return P + D
 
     #profile
@@ -1848,7 +1823,7 @@ class additive_features_model:
                             ridge[var,key,ind] = 0.5 * alpha * np.linalg.norm(conv)**2
                     else:
                         cc = M.reshape(*self.size_tensor2[key], -1)  
-                        cat1, cat2 = cat.split('#')
+                        inpt1, inpt2 = inpt
                         if cc.shape[0] > 2:
                             ker1  = np.array([[[1]],[[-2]],[[1]]]) 
                             if self.hprm['inputs.cyclic'][inpt1]:
@@ -1921,7 +1896,7 @@ class additive_features_model:
     
     #profile
     def initialize_coef(self, ):
-        coef = deepcopy(self.given_coef)
+        coef = cp.deepcopy(self.given_coef)
         keys_upd = []
         self.punished_coor  = set()
         self.prison_coor    = {}
@@ -2334,7 +2309,7 @@ class additive_features_model:
         self.print_gso(L)
         print(colored('compute X1tY', 'red'))        
         try:
-            X1tY = tools.batch_load(self.path_data, 
+            X1tY = tools.batch_load(path_data, 
                                     prefix    = self.dikt['features.{0}.univariate'.format(dataset)], 
                                     data_name = 'X1tY_'+dataset,
                                     data_type = 'dict_sp',
@@ -2350,7 +2325,7 @@ class additive_features_model:
                 X1tY[key][:,mask] = X1[key].T.dot(Y[:,mask]) 
             if len(X1tY) < 1e3:
                 try:
-                    tools.batch_save(self.path_data,
+                    tools.batch_save(path_data,
                                      data      = X1tY,
                                      prefix    = self.dikt['features.{0}.univariate'.format(dataset)],
                                      data_name = 'X1tY_'+dataset,
@@ -2368,7 +2343,7 @@ class additive_features_model:
         if bool(X2):
             print(colored('compute X2tY', 'red'))        
             try:
-                X2tY = tools.batch_load(self.path_data,
+                X2tY = tools.batch_load(path_data,
                                         prefix    = self.dikt['features.{0}.bivariate'.format(dataset)],
                                         data_name = 'X2tY_'+dataset,
                                         data_type = 'dict_sp' if bool(X2) else 'dict_np',
@@ -2382,7 +2357,7 @@ class additive_features_model:
                     X2tY[key][:,mask] = X2[key].T.dot(Y[:,mask]) 
                 if len(X2tY) < 1e3:
                     try:
-                        tools.batch_save(self.path_data,
+                        tools.batch_save(path_data,
                                          data      = X2tY,
                                          prefix    = self.dikt['features.{0}.bivariate'.format(dataset)],
                                          data_name = 'X2tY_' + dataset,
@@ -2506,14 +2481,12 @@ class additive_features_model:
 
 
     def print_gso(self, lits)  :
-        # gso = getsizeof
-        # ie print the large parts of XtX
         for e in lits:
             continue
             if type(e) == np.ndarray:
-                print('var', ' - ', 'size', '{:.3e}'.format(gso(e)/1e6), 'MBytes', ', ', 'shape', e.shape)
+                print('var', ' - ', 'size', '{:.3e}'.format(sys.getsizeof(e)/1e6), 'MBytes', ', ', 'shape', e.shape)
             if type(e) == dict:
-                print('var', ' - ', 'size', '{:.3e}'.format(gso(e)/1e6), 'MBytes')
+                print('var', ' - ', 'size', '{:.3e}'.format(sys.getsizeof(e)/1e6), 'MBytes')
                 print([(k, v.shape) for k, v in e.items()])
 
         
@@ -2589,7 +2562,7 @@ class additive_features_model:
             self.memory_size_coef[cat] = 0
             for (var,key), v in self.coef.items():
                 if self.hprm['data_cat'][key] == cat:
-                    self.memory_size_coef[cat] += gso(v)/1e6
+                    self.memory_size_coef[cat] += sys.getsizeof(v)/1e6
         return self.memory_size_coef 
     
     
@@ -2692,7 +2665,6 @@ class additive_features_model:
                             assert 0
                     if (*coor_upd[:2], r) not in self.prison_coor:
                         self.punished_coor.add((*coor_upd[:2], r))
-                #berliners = ind_post[norm_diff != 0]
             if EXTRA_CHECK:
                 if var == 'bv':
                     assert self.coef[var,key][mask].shape     == coef_tmp[coor_upd].shape
@@ -2805,12 +2777,12 @@ class additive_features_model:
             wanted      = self.dikt['model_wo_hyperp']
             list_wanted = [e for a in wanted.split('/') for e in a.split('_')]
             try:
-                FF_candidates  = sorted(os.listdir(self.path_betas))
+                FF_candidates  = sorted(os.listdir(path_betas))
             except FileNotFoundError:
                 FF_candidates = []
             for ii, FF in enumerate(FF_candidates):
                 try:
-                    GG_candidates  = sorted(os.listdir(os.path.join(self.path_betas, FF)))
+                    GG_candidates  = sorted(os.listdir(os.path.join(path_betas, FF)))
                 except FileNotFoundError:
                     GG_candidates = []
                 for jj, GG in enumerate(GG_candidates):
@@ -2822,7 +2794,7 @@ class additive_features_model:
                     list_cand        = [e for a in cand.split('/') for e in a.split('_')]
                     list_cand        = [e for e in list_cand        if 'pone' not in e]
                     if list_cand == list_wanted_copy or list_cand == [e for e in list_wanted_copy if e != 'apr']:
-                        list_hyperprm = os.listdir(os.path.join(self.path_betas, 
+                        list_hyperprm = os.listdir(os.path.join(path_betas, 
                                                                 cand,
                                                                 ))
                         if not list_hyperprm:
@@ -2831,12 +2803,12 @@ class additive_features_model:
                                                       list_hyperprm[0],
                                                       )
                         try:
-                            coef       = tools.batch_load(self.path_betas, 
+                            coef       = tools.batch_load(path_betas, 
                                                           prefix    = str_warm_model, 
                                                           data_name = 'coef', 
                                                           data_type = 'dict_tup',
                                                           )
-                            keys_upd   = tools.batch_load(self.path_betas, 
+                            keys_upd   = tools.batch_load(path_betas, 
                                                           prefix    = str_warm_model, 
                                                           data_name = 'keys_upd', 
                                                           data_type = 'pickle',

@@ -1,25 +1,9 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-
 
 import numpy as np
-import pickle
-import re
 import os
 #
 import electricityLoadForecasting.paths as paths
 import electricityLoadForecasting.tools as tools
-
-#
-#import itertools
-#import primitives
-#import build_data
-#from custom_exception import custex
-#from subprocess import CalledProcessError, TimeoutExpired
-
-
-#tupleErrors = (CalledProcessError, custex, TimeoutExpired, OSError, AssertionError)
-
 
 path_data = os.path.join(paths.outputs,
                          'Saved',
@@ -116,42 +100,6 @@ def get_mask_bivariate(hprm, inputs, dikt_assignments, file_path = None):
         except tools.exceptions.saving_errors:
             pass
     return mask_bivariate
-
-
-#def build_mask_univariate(inputs_training, assignments):
-#    # Mask1 
-#    # Discard the covariates that are not in param['selected_variables']
-#    univariate_keys1 = {
-#                        k 
-#                        for k in data.keys() 
-#                        if param['data_cat'][k] in param['selected_variables']
-#                        }
-#    cmask1     = make_mask(inputs_training, 
-#                           param, 
-#                           prm_mask, 
-#                           coor_posts, 
-#                           coor_stations, 
-#                           )
-#    return cmask1
-
-
-#def build_mask_bivariate(inputs, dikt_assignments, hprm):
-#
-#    return cmask2
-
-
-#def cross_mask(maska, k_a, maskb, k_b):
-#    key_a = '#'.join(sorted(k_a.split('#')))    
-#    key_b = '#'.join(sorted(k_b.split('#')))    
-#    if key_a in maska and key_b in maskb:
-#        if (   (type(maska[key_a]) == type(slice(None)) and  maska[key_a] == slice(None))
-#            or (type(maskb[key_b]) == type(slice(None)) and  maskb[key_b] == slice(None))
-#            ):
-#            return True
-#        else:
-#            return bool(set(maska[key_a]) &  set(maskb[key_b])) # Relevant product
-#    else:
-#        return True # One has no mask ie is for all posts
 
 
 def make_mask(inputs, dikt_assignments):

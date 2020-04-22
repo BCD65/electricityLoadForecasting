@@ -31,16 +31,12 @@ def fit_and_predict(inputs_training,
                                                          file_path = dikt_file_names['features.training.univariate'],
                                                          )
     
-    if not hprm['afm.formula'].loc[hprm['afm.formula']['nb_intervals'].apply(lambda x : (type(x) == tuple and len(x) == 2))].empty:
-        mask_bivariate_features = masks.get_mask_bivariate(
-                                                           hprm,
-                                                           inputs_training,
-                                                           dikt_assignments,
-                                                           file_path = dikt_file_names['features.training.bivariate'],
-                                                           ) 
-    else:
-        mask_bivariate_features = None
-
+    mask_bivariate_features = masks.get_mask_bivariate(
+                                                       hprm,
+                                                       inputs_training,
+                                                       dikt_assignments,
+                                                       file_path = dikt_file_names['features.training.bivariate'],
+                                                       ) 
         
     """
     Design

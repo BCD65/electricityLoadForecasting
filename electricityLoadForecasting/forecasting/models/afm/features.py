@@ -90,10 +90,6 @@ def compute_design(inputs,
             dikt_func    = make_dikt_func(dikt_nodes,
                                           hprm,
                                           ) # Compute the associated functions        
-#            plot_1d_functions(hprm, 
-#                              {(k,''):v for k, v in dikt_func.items()}, 
-#                              'X1',
-#                              )
         X1, size1 = make_X1(inputs,
                             dikt_func,
                             hprm,
@@ -223,14 +219,6 @@ def compute_design(inputs,
                 dikt_func12   = make_dikt_func(dikt_nodes12,
                                                hprm,
                                                )
-#                plot_1d_functions(hprm, 
-#                                  {(k,'left' ):v[0] for k, v in dikt_func12.items()}, 
-#                                  'X12_left', 
-#                                  )
-#                plot_1d_functions(hprm, 
-#                                  {(k,'right'):v[1] for k, v in dikt_func12.items()}, 
-#                                  'X12_right', 
-#                                  )
             else:
                 assert dikt_func12
             print('start X12')
@@ -379,76 +367,6 @@ def save_list_files(list_files, path_data, hprm):
             print(e)
 
 
-#def plot_1d_functions(hprm, dikt_func, suffix_name):
-#    if hprm['fb_1D_functions_plot']:
-#        print('BEGIN plot 1d functions ' + suffix_name)
-#        plt.ioff()
-#        for ii, ((cat, side), funcs) in enumerate(dikt_func.items()):
-#            print('{0:5} / {1:5} : {2}'.format(ii, 
-#                                               len(dikt_func), 
-#                                               cat, 
-#                                               ))
-#            cat_plotted = {'left'  : cat[0], 
-#                           'right' : cat[1], 
-#                           ''      : cat, 
-#                           }[side]
-#            cyclic    = hprm['qo_modulo'][cat_plotted]
-#            if len(funcs[0]) == 1:
-#                continue
-#            for jj, tt in enumerate(funcs):
-#                print('\r'+' '*4+'{0:5} / {1:5}'.format(jj, len(funcs)), end = '')
-#                title = ('XX'.join(cat) if type(cat) == tuple else cat) + bool(side)*(' '+side) + ' - ' 
-#                for e in tt:
-#                    title +=  ' {:.3f}'.format(e).replace('-', 'm')
-#                title = title.replace('.', '')
-#                aa, bb = tt [:2]
-#                if 'tf_orthogonalize' in hprm:
-#                    for k, v in hprm['tf_orthogonalize'].items():
-#                        assert not v, ('orth given up because it leads to dense matrix and did not improve the results')
-#                    if hprm['zone'] != 'nat':
-#                        print(colored('NO ORTHOGONALIZATION FOR OTHER THAN NAT', 'yellow', 'on_red'))
-#                        center = False
-#                    else:
-#                        if   cat in hprm.get('tf_orthogonalize', {}):
-#                            center = hprm['tf_orthogonalize'][cat]
-#                        elif cat in hprm.get('tf_orthogonalize', {}):
-#                            center = hprm['tf_orthogonalize'][cat]
-#                        else:
-#                            center = False
-#                else:
-#                    center = False  
-#                x     = np.arange(-0.5, 
-#                                  1.5, 
-#                                  (bb+(bb<aa)-aa)/20, 
-#                                  )
-#                y     = func1d(x, 
-#                               tt, 
-#                               cyclic  = cyclic, 
-#                               bd_scal = hprm['tf_boundary_scaling'],
-#                               hrch    = hprm.get('tf_hrch', {}).get(cat,0),
-#                               center  = center,
-#                               )
-#                fig, ax = plt.subplots()
-#                plt.plot(x, y, lw = 1)
-#                ymax = 2*func1d(bb+(bb<aa), 
-#                               tt, 
-#                               cyclic  = cyclic, 
-#                               bd_scal = hprm['tf_boundary_scaling'],
-#                               hrch    = hprm.get('tf_hrch', {}).get(cat,0),
-#                               )
-#                ymax = ymax
-#                plt.ylim(-0.05 - (y<0).any(), 1.05)
-#                folder = hprm['path_plots'] + 'functions/' + suffix_name + '/'
-#                os.makedirs(folder, 
-#                            exist_ok = True,
-#                            )
-#                fig.savefig(folder + title+'.eps', 
-#                            format = 'eps', 
-#                            )
-#                plt.close(fig)
-#            print()
-
-
 def make_dikt_func(d_nodes, hprm):
     # Compute for each covariate the spline functions from the set of nodes
     d_func = {}
@@ -459,27 +377,6 @@ def make_dikt_func(d_nodes, hprm):
                                                       for f in make_func(e, cyclic, hprm['afm.features.order_splines'])
                                                       ])
     return d_func
-
-
-#def make_dikt_func_biv(d_nodes2, hprm):
-#    # Compute pairs of lists of functions for the interactions
-#    d_func2 = {}
-#    for ((inpt1, trsfm1, prm1),(inpt2, trsfm2, prm2)) in d_nodes2:
-#        cyclic1 = hprm['inputs.cyclic'][inpt1]
-#        cyclic2 = hprm['inputs.cyclic'][inpt2]
-#        funcs1  = tuple([f 
-#                         for e in d_nodes2[cat1,cat2][0]
-#                         for f in make_func(e, cyclic1, hprm.get('order_splines',1))
-#                         ])
-#        funcs2  = tuple([f 
-#                         for e in d_nodes2[cat1,cat2][1]
-#                         for f in make_func(e, cyclic2, hprm.get('order_splines',1))
-#                         ])
-#        d_func2[cat1,cat2] = (
-#                              funcs1, 
-#                              funcs2,
-#                              )              
-#    return d_func2
 
 
 def make_dikt_nodes(inputs, hprm, formula):
@@ -506,53 +403,6 @@ def make_dikt_nodes(inputs, hprm, formula):
                                                                   )
                                                         ]
     return dikt_nodes
-
-
-#def make_dikt_nodes_biv(inputs, hprm):
-#    # Compute pairs of list of nodes for the interactions
-#    formula = hprm['afm.formula'].loc[hprm['afm.formula']['nb_intervals'].apply(lambda x : type(x) == tuple)],
-#    dikt_nodes = {}
-#    for ii, (coef, ((inpt1, trsfm1, prm1),(inpt2, trsfm2, prm2)), (nb_itv1, nb_itv2), *_) in formula.iterrows():
-#        #
-#        if bool(hprm['inputs.cyclic'][inpt1]):
-#            min_value1 = 0
-#            max_value1 = hprm['inputs.cyclic'][inpt1]
-#        else:
-#            min_value1 = inputs.loc[:,(inpt1, trsfm1, prm1)].min()
-#            max_value1 = inputs.loc[:,(inpt1, trsfm1, prm1)].max()
-#        #
-#        if bool(hprm['inputs.cyclic'][inpt2]):
-#            min_value2 = 0
-#            max_value2 = hprm['inputs.cyclic'][inpt2]
-#        else:
-#            min_value2 = inputs.loc[:,(inpt2, trsfm2, prm2)].min()
-#            max_value2 = inputs.loc[:,(inpt2, trsfm2, prm2)].max()
-#        #
-#        dikt_nodes[((inpt1, trsfm1, prm1),(inpt2, trsfm2, prm2))] = [(make_nodes(e1,
-#                                                                                 hprm['inputs.cyclic'][inpt1],
-#                                                                                 hprm['afm.features.order_splines'],
-#                                                                                 min_value = min_value1,
-#                                                                                 max_value = max_value1, 
-#                                                                                 ),
-#                                                                      make_nodes(e2,
-#                                                                                 hprm['inputs.cyclic'][inpt2],
-#                                                                                 hprm['afm.features.order_splines'],
-#                                                                                 min_value = min_value2,
-#                                                                                 max_value = max_value2, 
-#                                                                                 ),
-#                                                                      )
-#                                                                     for e1 in (nb_itv1 
-#                                                                                if type(nb_itv1) == tuple 
-#                                                                                else 
-#                                                                                (nb_itv1,)
-#                                                                                )
-#                                                                     for e2 in (nb_itv2 
-#                                                                                if type(nb_itv2) == tuple 
-#                                                                                else 
-#                                                                                (nb_itv2,)
-#                                                                                )
-#                                                                    ]
-#    return dikt_nodes
 
 
 def make_func(nodes, cyclic, order_splines):
@@ -625,52 +475,6 @@ def make_X1(inputs, d_func, hprm, sparse_x1 = False):
     return X1, size1
 
 
-#def make_X12(inputs, d_func, prm):
-#    # For the interactions
-#    # Compûte the univariate transformations later used to compute the interactions
-#    dikt_uni_cov = {}
-#    X12 = {}
-#    for key1 in inputs.keys():
-#        for key2 in inputs.keys():
-#            cat1 = prm['data_cat'][key1]
-#            cat2 = prm['data_cat'][key2]
-#            if (cat1, cat2) in d_func.keys():
-#                for ii, key in enumerate([key1,key2]):
-#                    if (key,d_func[cat1,cat2][ii]) not in dikt_uni_cov:
-#                        cat = prm['data_cat'][key]
-#                        if 'tf_orthogonalize' in prm:
-#                            if prm['zone'] != 'nat':
-#                                #print(colored('NO ORTHOIGONALIZATION FOR OTHER THAN NAT', 'yellow', 'on_red'))
-#                                center = False
-#                            else:
-#                                if   (cat1,cat2) in prm.get('tf_orthogonalize', {}):
-#                                    center = prm['tf_orthogonalize'][cat1,cat2]
-#                                elif (cat2,cat1) in prm.get('tf_orthogonalize', {}):
-#                                    center = prm['tf_orthogonalize'][cat2,cat1]
-#                                else:
-#                                    center = False
-#                        else:
-#                            center = False
-#                        dikt_uni_cov[key,d_func[cat1,cat2][ii]] = make_cov(d_func[cat1,cat2][ii], 
-#                                                                           inputs[key], 
-#                                                                           prm['qo_modulo'][cat],
-#                                                                           prm['tf_boundary_scaling'], 
-#                                                                           False, # Not sparse because einsum after
-#                                                                           prm,
-#                                                                           cat,
-#                                                                           center = center,
-#                                                                           )
-#                X12[key1,key2] = (dikt_uni_cov[key1,d_func[prm['data_cat'][key1],
-#                                                           prm['data_cat'][key2],
-#                                                           ][0]],
-#                                  dikt_uni_cov[key2,d_func[prm['data_cat'][key1],
-#                                                           prm['data_cat'][key2],
-#                                                           ][1]],
-#                                  )
-#    size12 = {(e,f):(v.shape[1],w.shape[1]) for (e,f), (v,w) in X12.items()}
-#    return X12, size12
-
-
 def make_cov(list_funcs, inpt_data, sparse_x1, hprm, inpt_name, center = False):
     #assert type(hprm.get('tf_hrch', {})) == dict
     # Compute for one category (eg the hour, the temperatures or the delayed temperatures)
@@ -692,9 +496,6 @@ def make_cov(list_funcs, inpt_data, sparse_x1, hprm, inpt_name, center = False):
         cov = sp.sparse.csc_matrix(cov)
     return cov
 
-
-                                            
-                                            
 
 def make_X2(X12, hprm):
     # For the interactions
@@ -808,14 +609,13 @@ def func1d(x, func, index_func = None, nb_funcs = None, cyclic = None, bd_scal =
         return x**func[0]
     elif len(func) == 3:
         aa, bb, dd = func
-        assert (dd >= bb and bb >= aa) or cyclic
+        assert (aa <= bb <= dd) or cyclic
         assert not bd_scal # Procedure should be checked
         #y  = x
         z  = x  + (x <=aa).astype(int)*cyclic
         cc = bb + (bb<=aa).astype(int)*cyclic
         ee = dd + (dd<=aa).astype(int)*cyclic
-        assert aa < cc
-        assert cc < ee
+        assert aa < cc < ee
         del bb, dd
         f1 = 0
         f2 = (z-aa)/(cc-aa)
@@ -874,23 +674,8 @@ def func1d(x, func, index_func = None, nb_funcs = None, cyclic = None, bd_scal =
         ### Checks and factor
         if bd_scal:
             raise NotImplementedError
-#            if   aa<0 and bd_scal:
-#                assert bb > 0
-#                assert dd >0
-#                fac = (bb-aa)/bb
-#            elif dd>1 and bd_scal:
-#                assert aa < 1
-#                assert bb < 1
-#                fac = (bb-aa)/(1-aa)
-        #else:
         if hrch:
             raise NotImplementedError
-#            assert cc > aa 
-#            assert cc - aa <= 1
-#            fac = (1/(cc - aa))*hrch**(-np.log(cc - aa)) # If hrch = 1, they all cost the same thing
-#            assert fac > 0
-#        else:
-#            fac = 1
         fac = 1
     else:
         raise NotImplementedError
