@@ -1,60 +1,58 @@
 
 import os
-import socket
-#
 
-
-### Paths ###
+###############################   Inputs   ####################################
 
 try:
     # Possible to customize but keep the structure for interoperability
-    from .personal_folders import root_folder
+    from .personal_folders import folder_inputs
 except ModuleNotFoundError:
-    root_folder = os.path.expanduser("~")
-    
-###############################################################################
+    folder_inputs = os.path.join(os.path.expanduser("~"),
+                                 'electricityLoadForecastingInputs',
+                                 )
 
-def path_inputs(database):
-    assert database in {
+path_extras   = os.path.join(folder_inputs, 
+                             'additional_data',
+                             )
+
+def path_dataset(dataset):
+    assert dataset in {
                        'Eco2mix.administrative_regions',
                        'Eco2mix.France',
                        'RTE.full',
                        'RTE.quick_test',
                        }
     
-    if database == 'RTE.full':
-        path_inputs = os.path.join(root_folder, 
+    if dataset == 'RTE.full':
+        path_dataset = os.path.join(folder_inputs, 
                                    'RTE', 
                                    'transformed_data',
                                    )
-    elif database == 'RTE.quick_test':
-        path_inputs = os.path.join(root_folder, 
+    elif dataset == 'RTE.quick_test':
+        path_dataset = os.path.join(folder_inputs, 
                                    'RTE', 
                                    'transformed_data', 
                                    'quick_test',
                                    )
-    elif database == 'Eco2mix.administrative_regions':
-        path_inputs =  os.path.join(root_folder,
+    elif dataset == 'Eco2mix.administrative_regions':
+        path_dataset =  os.path.join(folder_inputs,
                                     'Eco2mix',
                                     'transformed_data',
                                     'administrative_regions',
                                     )
-    elif database == 'Eco2mix.France':
-        path_inputs =  os.path.join(root_folder,
+    elif dataset == 'Eco2mix.France':
+        path_dataset =  os.path.join(folder_inputs,
                                     'Eco2mix',
                                     'transformed_data',
                                     'France',
                                     )
-    return path_inputs
+    return path_dataset
 
-###############################################################################
+##############################   Outputs   ####################################
 
-extras   = os.path.join(root_folder, 
-                        'additional_data',
-                        )
-outputs = os.path.join(os.path.expanduser("~"),
-                       'forecasting_outputs',
-                       )
+path_outputs = os.path.join(os.path.expanduser("~"),
+                            'electricityLoadForecastingOutputs',
+                            )
 
 ###############################################################################
 

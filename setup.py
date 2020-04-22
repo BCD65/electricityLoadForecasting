@@ -1,0 +1,41 @@
+
+
+from distutils.core import setup
+
+setup(
+      name             = 'electricityLoadForecasting',
+      version          = '0.1dev',
+      packages         = ['electricityLoadForecasting',],
+      scripts          = ['scripts/mainPreparation', 'scripts/mainForecasting'],
+      maintainer       = 'Ben',
+      license          = 'MIT License',
+      long_description = open('README').read(),
+      python_requires  = ">= 3.6",
+      install_requires = [
+                          'astral',
+                          'chardet',
+                          'datetime',
+                          'gzip',
+                          'h5py',
+                          'ipdb',
+                          'matplotlib',
+                          'numpy',
+                          'os',
+                          'pandas',
+                          'pickle',
+                          'python-spams',
+                          'pytz',
+                          'rpy2',
+                          'scikit-learn',
+                          'scipy',
+                          'seaborn',
+                          'shutil',
+                          'sklearn-contrib-py-earth',
+                          'termcolor',
+                          'tzlocal',
+                          'unidecode',
+                          'urllib',
+                          'xgboost',
+                          'zipfile',                          
+                          ],
+      )

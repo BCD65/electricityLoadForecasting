@@ -16,10 +16,6 @@ from electricityLoadForecasting.forecasting.inputs          import load_input_da
 from electricityLoadForecasting.forecasting.file_names      import file_names
 from electricityLoadForecasting.forecasting.meta_model      import meta_model
 
-# Ignore warnings
-#import warnings
-#warnings.filterwarnings("ignore")
-
 
 #%%
 #profile
