@@ -12,7 +12,7 @@ setup(
       long_description = open('README.txt').read(),
       python_requires  = ">= 3.6",
       install_requires = [
-                          'astral',
+                          'astral==1.2',
                           'chardet',
                           'datetime',
                           'h5py',
