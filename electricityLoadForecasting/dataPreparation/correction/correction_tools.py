@@ -6,11 +6,11 @@ import pickle
 from termcolor import colored
 from sklearn.ensemble import RandomForestRegressor
 try:
-    import spams
+    import spams # spams should be installed manually : conda install -c conda-forge python-spams
 except:
     pass
 try:
-    import xgboost as xgb
+    import xgboost as xgb # xgboost should be installed manually : conda install -c conda-forge xgboost
 except:
     pass
 #
@@ -96,7 +96,7 @@ def correct_with_regression(df_load, dikt_errors, prefix = None, prefix_plot = N
             y_train = (y_train - y_mean)/y_std
             assert np.allclose(X_train.sum(), 0)
             assert np.allclose(y_train.sum(), 0)
-            regressor = 'spams' # 'rf' # 'xgb' # 'spams' 
+            regressor = 'rf' # 'rf' # 'xgb' # 'spams' 
             # Assess the quality of a predictor from the other sane sites
             # We de not have a criteria to decide which algorithms is the most 
             # appropriate and have used alternatively spams of random forests.                            

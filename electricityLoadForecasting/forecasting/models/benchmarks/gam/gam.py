@@ -4,7 +4,10 @@ import os
 import re
 import pandas as pd
 import subprocess
-from rpy2.robjects import pandas2ri, r
+try:
+    from rpy2.robjects import pandas2ri, r
+except ModuleNotFoundError:
+    pass
 #
 import electricityLoadForecasting.paths as paths
 

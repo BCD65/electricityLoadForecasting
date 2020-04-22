@@ -1,23 +1,22 @@
 
 
-
-import numpy  as np
 import pandas as pd
+from pyearth          import Earth
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.tree     import DecisionTreeRegressor
 from sklearn.svm      import SVR
-from xgboost          import XGBRegressor
-from pyearth          import Earth
+
+try:
+    from xgboost import XGBRegressor # xgboost should be installed manually : conda install -c conda-forge xgboost
+except ModuleNotFoundError:
+    pass
 
 
 
 def fit_and_predict(inputs_training, Y_training, inputs_validation, hprm, assignments = {}):
     assert type(hprm['learning.independent_models']) == bool
     assert type(hprm['learning.individual_designs']) == bool
-    #sorted_inputs = sorted(list(inputs_training.keys()), key = lambda x : str(x)) 
     if not hprm['learning.independent_models']:
-        #array_inputs_training   = np.concatenate([inputs_training  [key] for key in sorted_inputs], axis = 1)
-        #array_inputs_validation = np.concatenate([inputs_validation[key] for key in sorted_inputs], axis = 1)
         Y_hat_training, Y_hat_validation, model = call_fitter(inputs_training, 
                                                               Y_training, 
                                                               inputs_validation, 
@@ -52,33 +51,12 @@ def fit_and_predict(inputs_training, Y_training, inputs_validation, hprm, assign
                                        or location in assignments[name_input]
                                        )
                                    ]
-                # Need to filter the columns depending on the rule below
-#                array_inputs_training   = np.concatenate([(data
-#                                                           if (qty not in assignments)
-#                                                           else
-#                                                           data[assignments[qty][site_name]]
-#                                                           )
-#                                                          for qty, data in inputs_training.items()
-#                                                          ], 
-#                                                         axis = 1,
-#                                                         )
-#                array_inputs_validation = np.concatenate([(data
-#                                                           if (qty not in assignments)
-#                                                           else
-#                                                           data[assignments[qty][site_name]]
-#                                                           )
-#                                                          for qty, data in inputs_validation.items()
-#                                                          ], 
-#                                                         axis = 1,
-#                                                         )
                 Y_hat_training[site_name], Y_hat_validation[site_name], model[site_name] = call_fitter(inputs_training[columns_to_keep],
                                                                                                        Y_training[site_name],
                                                                                                        inputs_validation[columns_to_keep],
                                                                                                        hprm['learning.method'],
                                                                                                        )
         else :
-            #array_inputs_training   = np.concatenate([inputs_training  [key] for key in sorted_inputs], axis = 1)
-            #array_inputs_validation = np.concatenate([inputs_validation[key] for key in sorted_inputs], axis = 1)
             for ii, site_name in enumerate(Y_training.columns):
                 print('\r{0}/{1}'.format(ii, Y_training.shape[1]), end = '\r')
                 Y_hat_training[site_name], Y_hat_validation[site_name], model[site_name] = call_fitter(inputs_training, 
@@ -90,7 +68,6 @@ def fit_and_predict(inputs_training, Y_training, inputs_validation, hprm, assign
 
 
 def call_fitter(X_training, Y_training, X_validation, method):
-    # Reshape target if only one site
     
     X_mean = X_training.mean(axis = 0)
     X_std  = X_training.std(axis = 0)

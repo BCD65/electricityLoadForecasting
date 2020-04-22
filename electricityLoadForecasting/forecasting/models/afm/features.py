@@ -1,10 +1,7 @@
 
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-
-
 """
-This script is used to compute from the input data all the covariates based on spline features
+This module is used to compute from the input data 
+all the covariates based on spline features.
 """
 
 
@@ -12,7 +9,6 @@ import numpy  as np
 import scipy  as sp
 import pandas as pd
 import os
-import re
 import sys
 from subprocess import CalledProcessError, TimeoutExpired
 from termcolor import colored

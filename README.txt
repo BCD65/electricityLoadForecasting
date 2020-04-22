@@ -13,6 +13,13 @@ conda activate py37
 conda install -c conda-forge python-spams ipdb xgboost sklearn-contrib-py-earth astral tzlocal
 conda install -c r rpy2
 conda install -c omnia termcolor
-# Additionally, the mgcv library should be available in R to use the GAM
+# Also, the mgcv library should be available in R to use the GAM
 
 ================================================================
+
+It can be installed with 
+pip install setup.py
+# However, the packages xgboost, spams and rpy2 have to be installed separately
+
+================================================================
+
