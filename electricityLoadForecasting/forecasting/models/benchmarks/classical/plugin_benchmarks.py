@@ -1,11 +1,14 @@
 
 
 import pandas as pd
-from pyearth          import Earth
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.tree     import DecisionTreeRegressor
 from sklearn.svm      import SVR
 
+try:
+    from pyearth import Earth # pyeart should be installed manually : conda install -c conda-forge sklearn-contrib-py-earth
+except ModuleNotFoundError:
+    pass
 try:
     from xgboost import XGBRegressor # xgboost should be installed manually : conda install -c conda-forge xgboost
 except ModuleNotFoundError:
