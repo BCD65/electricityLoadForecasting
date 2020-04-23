@@ -7,8 +7,8 @@ def set_gam(hprm):
     
     hprm.update({
                  'gam.univariate_functions'   : {
-                                                 #'do'             : ('', ''),
-                                                 #'h'              : ('s', 'bs = "cc"'), 
+                                                 #'holidays'       : ('', ''),
+                                                 #'hour'           : ('s', 'bs = "cc"'), 
                                                  'temperature'     : ('s', ''), 
                                                  'temperature_max' : ('s', ''), 
                                                  'temperature_min' : ('s', ''), 
@@ -16,14 +16,14 @@ def set_gam(hprm):
                                                  'temperature_smo' : ('s', ''), 
                                                  'target_lag'      : ('s', ''), 
                                                  'week_hour'       : ('s', 'k = 7, bs = "cc"'), 
-                                                 #'yd'             : ('s', ''), 
-                                                 #'stamp'           : ('', ''), 
+                                                 #'year_day'       : ('s', ''), 
+                                                 #'timestamp'      : ('', ''), 
                                                  },
                  'gam.bivariate_functions'    : {
-                                                 #('h', 'wd')          : ('ti', 'bs = c("cc", "tp"), k = c(24, 7)'),
-                                                 #('h', 'yd')          : ('ti', 'bs = c("cc", "tp")'), 
-                                                 #('wd', 'yd')         : ('ti', 'bs = c("tp", "tp")'), 
-                                                 #('targetlag', 'wd')  : ('ti', 'bs = c("tp", "tp")'), 
+                                                 #('hour',      'week_day')  : ('ti', 'bs = c("cc", "tp"), k = c(24, 7)'),
+                                                 #('hour',      'year_day')  : ('ti', 'bs = c("cc", "tp")'), 
+                                                 #('week_day',  'year_day')  : ('ti', 'bs = c("tp", "tp")'), 
+                                                 #('targetlag', 'week_day')  : ('ti', 'bs = c("tp", "tp")'), 
                                                  },
                    })
     return hprm

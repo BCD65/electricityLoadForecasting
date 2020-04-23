@@ -367,7 +367,7 @@ def make_dikt_func(d_nodes, hprm):
     # Compute for each covariate the spline functions from the set of nodes
     d_func = {}
     for inpt, trsfm, prm, location in d_nodes:
-        cyclic      = hprm['inputs.cyclic'][inpt]
+        cyclic      = hprm['inputs.cyclic'].get(inpt, False)
         d_func[(inpt, trsfm, prm, location)] = tuple([f 
                                                       for e in d_nodes[(inpt, trsfm, prm, location)]
                                                       for f in make_func(e, cyclic, hprm['afm.features.order_splines'])
@@ -380,14 +380,14 @@ def make_dikt_nodes(inputs, hprm, formula):
     # For each covariate, compute the nodes from the number of nodes chosen on the interval [0, 1]
     for (coef, (inpt, trsfm, prm)), (nb_itv, *_) in formula.iterrows():
         for location in inputs.xs((inpt, trsfm, prm), axis = 1).columns:
-            if bool(hprm['inputs.cyclic'][inpt]):
+            if bool(hprm['inputs.cyclic'].get(inpt, False)):
                 min_value = 0
                 max_value = hprm['inputs.cyclic'][inpt]
             else:
                 min_value = inputs.loc[:,(inpt, trsfm, prm, location)].min()
                 max_value = inputs.loc[:,(inpt, trsfm, prm, location)].max()
             dikt_nodes[(inpt, trsfm, prm, location)] = [make_nodes(e,
-                                                                   hprm['inputs.cyclic'][inpt],
+                                                                   hprm['inputs.cyclic'].get(inpt, False),
                                                                    hprm['afm.features.order_splines'],
                                                                    min_value = min_value,
                                                                    max_value = max_value, 
@@ -479,7 +479,7 @@ def make_cov(list_funcs, inpt_data, sparse_x1, hprm, inpt_name, center = False):
                                  func, 
                                  index_func = ii,
                                  nb_funcs   = len(list_funcs),
-                                 cyclic     = hprm['inputs.cyclic'][inpt_name], 
+                                 cyclic     = hprm['inputs.cyclic'].get(inpt_name, False), 
                                  bd_scal    = hprm['afm.features.boundary_scaling'],
                                  hrch       = hprm.get('tf_hrch', {}).get(inpt_name,0),
                                  center     = center, 

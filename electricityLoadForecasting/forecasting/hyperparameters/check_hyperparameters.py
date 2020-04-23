@@ -50,13 +50,14 @@ def check_hyperparameters(hprm):
     if hprm['learning.model'] in {'afm'}:
         #ordered_index = hprm['afm.formula'].astype(str).sort_values(['coefficient', 'input']).index
         hprm['afm.formula'].sort_index(inplace = True)# = hprm['afm.formula'].loc[ordered_index]
-        assert not {e
-                    for inpts in hprm['afm.formula'].index.get_level_values('input').unique()
-                    for e in ([inpts]
-                              if type(inpts[0]) == str
-                              else
-                              inpts)
-                    }.difference(hprm['inputs.selection'])
+        set_diff =  {e
+                     for inpts in hprm['afm.formula'].index.get_level_values('input').unique()
+                     for e in ([inpts]
+                               if type(inpts[0]) == str
+                               else
+                               inpts)
+                     }.difference(hprm['inputs.selection'])
+        assert not set_diff, set_diff
         
 #        if param['separation_var']:
 #            #assert 0
