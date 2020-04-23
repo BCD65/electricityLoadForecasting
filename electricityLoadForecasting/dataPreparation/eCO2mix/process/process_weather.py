@@ -10,7 +10,7 @@ import gzip
 #
 from electricityLoadForecasting import tools
 from ... import plot_tools
-from ..  import etc
+from ..  import etc, config
 
 ###############################################################################
 
@@ -104,7 +104,7 @@ def load_raw_weather_data(prefix = None, prefix_plot = None):
         print('\n{0}'.format(colored(e,'red')))
         print('df_weather and trash_weather not loaded')
         dikt_weather = {}
-        for year in eCO2mix.config.YEARS_WEATHER:
+        for year in config.YEARS_WEATHER:
             for month in range(1,13):
                 print('\ryear = {0:2} - month = {1:2}'.format(year, month), end = '')
                 try:
@@ -114,7 +114,7 @@ def load_raw_weather_data(prefix = None, prefix_plot = None):
                     dikt_weather[year, month] = read_raw_weather_data(year = year, month = month)
         print()
         df_weather = pd.concat([dikt_weather[year,month] 
-                                for year in eCO2mix.config.YEARS_WEATHER
+                                for year in config.YEARS_WEATHER
                                 for month in range(1,13)
                                 ], 
                                axis = 0,
@@ -148,7 +148,7 @@ def load_raw_weather_data(prefix = None, prefix_plot = None):
     common_names = sorted(set(coordinates_weather.index).intersection(df_weather.columns.levels[0]))
     df_weather          = df_weather.loc[:,common_names]
     coordinates_weather = coordinates_weather.loc[common_names]
-    if eCO2mix.config.bool_plot_meteo:
+    if config.bool_plot_meteo:
         plot_tools.plot_meteo(df_weather, 
                               os.path.join(prefix_plot,
                                            'meteo',

@@ -5,6 +5,7 @@ from termcolor import colored
 import urllib
 import zipfile
 import unidecode
+import pytz
 #
 import electricityLoadForecasting.tools as tools
 from .. import etc, config
@@ -46,15 +47,14 @@ def read_raw_load_data(site = None, year = None):
                             skipfooter = 2,
                             index_col  = False,
                             engine     = 'python',
-                            #skiprows  = 1,
                             na_values = ['ND'],
                             )
+    # According to RTE, the data is in CET. Given the NonExistentTimeErrors, it must be CET all year long and never CEST.
     df[tools.transcoding.user_dt_UTC] = pd.to_datetime(df[etc.eCO2mix_date] + ' ' + df[etc.eCO2mix_time_CET],
                                                        format = '%Y/%m/%d %H:%M',
-                                                       ).dt.tz_localize('CET').dt.tz_convert('UTC')
+                                                       ).dt.tz_localize(tz = pytz.FixedOffset(60)).dt.tz_convert('UTC')
     df = df.set_index(tools.transcoding.user_dt_UTC)[[etc.eCO2mix_load]]
     df = df.rename({etc.eCO2mix_load : unidecode.unidecode(site) if site else 'France'}, axis = 1)
-    #df.columns = pd.MultiIndex.from_arrays([df.columns], names=[etc.user_site_name]) 
     df = df.iloc[::4]
     return df
 
@@ -65,7 +65,6 @@ def load_raw_load_data(prefix = None):
     try:
         df_load = pd.read_csv(fname,
                               index_col = [0],
-                              #header    = [0],
                               )
         df_load.index = pd.to_datetime(df_load.index)
         print('Loaded df_load')
@@ -75,7 +74,7 @@ def load_raw_load_data(prefix = None):
         dikt_load = {}
         for year in config.YEARS_LOADS:
             for site in etc.coordinates_sites[config.LEVEL].index:
-                print('year = {year} - site = {site}'.format(site = site, year = year))
+                print('\ryear = {year} - site = {site}'.format(site = site, year = year), end = '')
                 try:
                     dikt_load[site, year] = read_raw_load_data(site = site, year = year)
                 except FileNotFoundError:

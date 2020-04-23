@@ -7,7 +7,7 @@ from termcolor import colored
 #
 import electricityLoadForecasting.tools as tools
 from electricityLoadForecasting.dataPreparation import correction, detection, files
-import electricityLoadForecasting.dataPreparation.Eco2mix as Eco2mix
+import electricityLoadForecasting.dataPreparation.eCO2mix as eCO2mix
 
 
 """
@@ -23,26 +23,26 @@ This script takes about 24 hours and has not been optimized but only has to be r
 def main_sites(): 
     
     # Load
-    df_load     = Eco2mix.process.load_raw_load_data(prefix = os.path.join(Eco2mix.etc.dikt_folders['tmp_data'], 
-                                                                           Eco2mix.config.LEVEL,
+    df_load     = eCO2mix.process.load_raw_load_data(prefix = os.path.join(eCO2mix.etc.dikt_folders['tmp_data'], 
+                                                                           eCO2mix.config.LEVEL,
                                                                            ))
     dikt_errors = detection.detection_errors(df_load,
-                                             prefix = os.path.join(Eco2mix.etc.dikt_folders['tmp_data'], 
-                                                                   Eco2mix.config.LEVEL,
+                                             prefix = os.path.join(eCO2mix.etc.dikt_folders['tmp_data'], 
+                                                                   eCO2mix.config.LEVEL,
                                                                    ))
     df_filtered_load, trash_sites = correction.correct_with_regression(df_load, 
                                                                        dikt_errors, 
-                                                                       prefix       = os.path.join(Eco2mix.etc.dikt_folders['tmp_data'], 
-                                                                                                   Eco2mix.config.LEVEL,
+                                                                       prefix       = os.path.join(eCO2mix.etc.dikt_folders['tmp_data'], 
+                                                                                                   eCO2mix.config.LEVEL,
                                                                                                    ),
-                                                                       prefix_plot = os.path.join(Eco2mix.etc.dikt_folders['plots'],
-                                                                                                  Eco2mix.config.LEVEL,
+                                                                       prefix_plot = os.path.join(eCO2mix.etc.dikt_folders['plots'],
+                                                                                                  eCO2mix.config.LEVEL,
                                                                                                   ),
-                                                                       bool_plot_corrections = Eco2mix.config.bool_plot_corrections, 
-                                                                       bool_plot_trash       = Eco2mix.config.bool_plot_trash
+                                                                       bool_plot_corrections = eCO2mix.config.bool_plot_corrections, 
+                                                                       bool_plot_trash       = eCO2mix.config.bool_plot_trash
                                                                        )
     print(colored('{0} sites have been dropped'.format(len(trash_sites)), 'red'))
-    coordinates_sites = Eco2mix.process.get_coordinates_sites()
+    coordinates_sites = eCO2mix.process.get_coordinates_sites()
     
     # Checks
     tools.check_dates(df_filtered_load.index)
@@ -52,8 +52,8 @@ def main_sites():
     files.save_sites(
                      df_filtered_load,
                      coordinates_sites,
-                     prefix = os.path.join(Eco2mix.etc.dikt_folders['transformed_data'], 
-                                           Eco2mix.config.LEVEL,
+                     prefix = os.path.join(eCO2mix.etc.dikt_folders['transformed_data'], 
+                                           eCO2mix.config.LEVEL,
                                            )
                      )
     return df_filtered_load, coordinates_sites
@@ -64,11 +64,11 @@ def main_sites():
 def main_weather():
 
     # Load
-    df_weather, coordinates_weather, trash_weather = Eco2mix.process.load_raw_weather_data(prefix      = os.path.join(Eco2mix.etc.dikt_folders['tmp_data'],
-                                                                                                                      Eco2mix.config.LEVEL,
+    df_weather, coordinates_weather, trash_weather = eCO2mix.process.load_raw_weather_data(prefix      = os.path.join(eCO2mix.etc.dikt_folders['tmp_data'],
+                                                                                                                      eCO2mix.config.LEVEL,
                                                                                                                       ),
-                                                                                           prefix_plot = os.path.join(Eco2mix.etc.dikt_folders['plots'],
-                                                                                                                      Eco2mix.config.LEVEL,
+                                                                                           prefix_plot = os.path.join(eCO2mix.etc.dikt_folders['plots'],
+                                                                                                                      eCO2mix.config.LEVEL,
                                                                                                                       ),
                                                                                            )
     print(colored('{0} weather stations have been dropped'.format(len(trash_weather)), 'red'))
@@ -81,8 +81,8 @@ def main_weather():
     files.save_weather(
                        df_weather,
                        coordinates_weather,
-                       prefix = os.path.join(Eco2mix.etc.dikt_folders['transformed_data'], 
-                                             Eco2mix.config.LEVEL,
+                       prefix = os.path.join(eCO2mix.etc.dikt_folders['transformed_data'], 
+                                             eCO2mix.config.LEVEL,
                                              )
                        )
     return df_weather, coordinates_weather
@@ -94,13 +94,13 @@ if __name__ == '__main__':
     df_filtered_load, coordinates_sites = main_sites()
     df_weather, coordinates_weather     = main_weather()
     input('Hit any key (but ctrl+c) to delete temp variables and finish')
-    shutil.rmtree(os.path.join(Eco2mix.etc.dikt_folders['tmp_data'],
-                               Eco2mix.config.LEVEL,
+    shutil.rmtree(os.path.join(eCO2mix.etc.dikt_folders['tmp_data'],
+                               eCO2mix.config.LEVEL,
                                ), 
                   ignore_errors = True,
                   )
-    if os.path.isdir(Eco2mix.etc.dikt_folders['tmp_data']) and not bool(os.listdir(Eco2mix.etc.dikt_folders['tmp_data'])):
-        shutil.rmtree(Eco2mix.etc.dikt_folders['tmp_data'], 
+    if os.path.isdir(eCO2mix.etc.dikt_folders['tmp_data']) and not bool(os.listdir(eCO2mix.etc.dikt_folders['tmp_data'])):
+        shutil.rmtree(eCO2mix.etc.dikt_folders['tmp_data'], 
                       ignore_errors = True,
                       )
         

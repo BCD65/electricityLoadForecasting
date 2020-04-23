@@ -3,7 +3,7 @@
 
 
 ### Dataset ###
-LEVEL = 'administrative_regions'
+LEVEL = 'France'
 assert LEVEL in ['France', 'administrative_regions']
 #
 YEARS_WEATHER = range(2010, 2020)
