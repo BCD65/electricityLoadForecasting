@@ -83,7 +83,7 @@ class additive_features_model:
             self.alpha['Cv'] = self.alpha['Cuv']
             self.pen  ['Cv'] = self.pen  ['Cuv']
             del self.alpha['Cuv'], self.pen['Cuv']
-        self.gp_pen      = self.hprm['afm.regularization.gp_pen'] # matrix for the sum-consistent model
+        self.gp_pen      = self.hprm['afm.sum_consistent.gp_pen'] # matrix for the sum-consistent model
         
         # Freeze the univariate or the bivariate coefficient matrices (rarely used)        
         self.frozen_variables = self.hprm.get('afm.algorithm.frozen_variables')
@@ -145,7 +145,7 @@ class additive_features_model:
         self.size.update(specs.get('size_bivariate', {}))
         self.size_tensor2 = specs.get('size_tensor_bivariate',{})
         print('masks examples : ')
-        self.active_gp = (self.gp_pen > 0) and bool(self.hprm['afm.regularization.gp_matrix']) # indicator of the sum-consistent model
+        self.active_gp = (self.gp_pen > 0) and bool(self.hprm['afm.sum_consistent.gp_matrix']) # indicator of the sum-consistent model
         if self.active_gp: # Parameters for the sum-consistent model
             self.make_gp_matrix()
             self.partition_tuples = {tuple(self.gp_matrix[:,k].nonzero()[0])
@@ -289,8 +289,8 @@ class additive_features_model:
             # Normalize data
             for key in self.sorted_keys:
                 inpt, location = key
-                self.X_training[key]    /= self.normalization[inpt]
-                self.X_validation [key] /= self.normalization[inpt]
+                self.X_training[key]    = self.X_training[key]    / self.normalization[inpt]
+                self.X_validation [key] = self.X_validation [key] / self.normalization[inpt]
             if hasattr(self, 'XtX_training'):
                 for keys in self.XtX_training.keys():
                     key1, key2 = keys

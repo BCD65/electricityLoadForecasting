@@ -319,7 +319,7 @@ def start_lbfgs(model, ):
                 == np.array(  model.col_large_cat_matching[model.concat_slice_shared] 
                             + [model.col_large_cat_matching[ii] for ii in model.concat_large_masks_owned[:,k].indices]
                             )).all()
-    model.col_cat_matching   = np.array(model.col_cat_matching)
+    #model.col_cat_matching   = np.array(model.col_cat_matching)
     model.cat_bound_matching = cat_bound(model.col_cat_matching)
     
     ###

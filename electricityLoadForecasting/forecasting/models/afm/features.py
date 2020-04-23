@@ -91,7 +91,7 @@ def compute_design(inputs,
                             hprm,
                             sparse_x1 = hprm['afm.features.sparse_x1'],
                             ) # Compute the covariates and the size of the corresponding vectors
-        for key in sorted(X1.keys()):
+        for key in X1.keys():
             if key in mask_univariate:
                 mm = mask_univariate[key]
                 if type(mm) == list and len(mm) == 0: 
@@ -230,7 +230,7 @@ def compute_design(inputs,
             X2, size2, size_tensor2 = make_X2(X12,
                                               hprm,
                                               )
-            for (h,k) in sorted(X2.keys()):
+            for (h,k) in X2.keys():
                 if (h,k) in mask_bivariate:
                     mm = mask_bivariate.get((h,k),
                                             mask_bivariate.get(k,h),

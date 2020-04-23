@@ -45,9 +45,9 @@ def fit_and_predict(inputs_training,
     design      = features.compute_design(inputs_training, 
                                           hprm, 
                                           dikt_file_names, 
-                                          db = 'training',
                                           mask_univariate = mask_univariate_features, 
                                           mask_bivariate  = mask_bivariate_features,
+                                          db              = 'training',
                                           )
     # validation data
     design.update(features.compute_design (inputs_validation,
@@ -61,8 +61,9 @@ def fit_and_predict(inputs_training,
                                            size_tensor2     = design.get('size_tensor2'),
                                            db               = 'validation',
                                            ))
-    assert len(set(design['X1_validation'].keys())) == len(set(design['X1_training'].keys())), 'error len X training X validation'
-    assert len(set(design['X2_validation'].keys())) == len(set(design['X2_training'].keys())), 'error len X training X validation'
+    assert len(set(design['X1_validation'].keys())) == len(set(design['X1_training'].keys())), 'error len X1 training X1 validation'
+    if 'X2_validation' in design:
+        assert len(set(design['X2_validation'].keys())) == len(set(design['X2_training'].keys())), 'error len X2 training X2 validation'
 
       
     """

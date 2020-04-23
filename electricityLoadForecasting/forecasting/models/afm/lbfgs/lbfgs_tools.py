@@ -19,7 +19,9 @@ def cat_bound(col_cat_matching):
     cat_bound_matching = {cat:(np.min([ii for ii, row in enumerate(col_cat_matching) if tuple(row) == cat]), 
                                np.max([ii for ii, row in enumerate(col_cat_matching) if tuple(row) == cat])+1,
                                ) 
-                          for cat in sorted(set([e for e in col_cat_matching]), key = lambda x : str(x))
+                          for cat in sorted(set([e for e in col_cat_matching]),
+                                            key = lambda x : str(x),
+                                            )
                           }
     # Check that the rows of the design matrix are well ordered
     for cat1, v1 in cat_bound_matching.items():
