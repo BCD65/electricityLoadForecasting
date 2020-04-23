@@ -55,20 +55,46 @@ dikt_formula = {
                 ('eCO2mix.France',
                  None,
                  ) : {
-                      'tmp'   : pd.DataFrame([
-                                              # Univariate features
-                                              ('B', ('target',        'lag',        pd.DateOffset(hours = 24)),   4,       'r2sm', 1e-4, None),
-                                              ('B', ('temperature',   '',           ''),                          16,      'r2sm', 1e-4, None),
-                                              ('B', ('temperature',   'difference', pd.DateOffset(hours = 24)),   16,      'r2sm', 1e-2, None),
-                                              ('B', ('temperature',   'maximum',    pd.DateOffset(hours = 24)),   16,      'r2sm', 1e-2, None),
-                                              ('B', ('temperature',   'minimum',    pd.DateOffset(hours = 24)),   16,      'r2sm', 1e-1, None),
-                                              ('B', ('temperature',   'smoothing',  0.99),                        16,      'r2sm', 1e-1, None),
-                                              ('B', ('timestamp',     '',           ''),                          'p1',    'rsm',  1e-3, None),
-                                              ('B', ('week_hour',     '',           ''),                          168,     'rsm',  1e-8, None),
-                                              # Bivariate features
-                                              ('B', (('target',        'lag',        pd.DateOffset(hours = 24)),
-                                                     ('week_hour',     '',           '')),                        (4,168), 'rsm',  1e-8, None),
-                                              #
+#                      'tmp'   : pd.DataFrame([
+#                                              # Univariate features
+#                                              ('B', ('target',        'lag',        pd.DateOffset(hours = 24)),   4,       'r2sm', 1e-4, None),
+#                                              ('B', ('temperature',   '',           ''),                          16,      'r2sm', 1e-4, None),
+#                                              ('B', ('temperature',   'difference', pd.DateOffset(hours = 24)),   16,      'r2sm', 1e-2, None),
+#                                              ('B', ('temperature',   'maximum',    pd.DateOffset(hours = 24)),   16,      'r2sm', 1e-2, None),
+#                                              ('B', ('temperature',   'minimum',    pd.DateOffset(hours = 24)),   16,      'r2sm', 1e-1, None),
+#                                              ('B', ('temperature',   'smoothing',  0.99),                        16,      'r2sm', 1e-1, None),
+#                                              ('B', ('timestamp',     '',           ''),                          'p1',    'rsm',  1e-3, None),
+#                                              ('B', ('week_hour',     '',           ''),                          168,     'rsm',  1e-8, None),
+#                                              # Bivariate features
+#                                              ('B', (('target',        'lag',        pd.DateOffset(hours = 24)),
+#                                                     ('week_hour',     '',           '')),                        (4,168), 'rsm',  1e-8, None),
+#                                              #
+#                                              ],
+#                                             columns = ['coefficient',
+#                                                        'input',
+#                                                        'nb_intervals',
+#                                                        'regularization_func',
+#                                                        'regularization_coef',
+#                                                        'structure',
+#                                                        ],
+#                                             ).set_index(['coefficient', 'input']),
+                      ### National univariate
+                      'univariate': pd.DataFrame([
+                                                  # Univariate features
+                                                  ('B', ('daylight',      '',           ''),                           'p1',    'rsm',  1e-8, None),
+                                                  ('B', ('holidays',      '',           ''),                           'p1',    'rsm',  1e-8, None),
+                                                  ('B', ('holidays',      'lag',        pd.DateOffset(hours = 24)),    'p1',    'rsm',  1e-8, None),
+                                                  ('B', ('holidays',      'lag',      - pd.DateOffset(hours = 24)),    'p1',    'rsm',  1e-8, None),
+                                                  ('B', ('nebulosity',    '',           ''),                           'p1',    'rsm',  1e-8, None),
+                                                  ('B', ('target',        'lag',        pd.DateOffset(hours = 24)),     4,      'r2sm', 1e-4, None),
+                                                  ('B', ('temperature',   '',           ''),                            16,     'r2sm', 1e-4, None),
+                                                  ('B', ('temperature',   'lag',        pd.DateOffset(hours = 24)),     16,     'r2sm', 1e-2, None),
+                                                  ('B', ('temperature',   'maximum',    pd.DateOffset(hours = 24)),     16,     'r2sm', 1e-2, None),
+                                                  ('B', ('temperature',   'minimum',    pd.DateOffset(hours = 24)),     16,     'r2sm', 1e-1, None),
+                                                  ('B', ('timestamp',     '',           ''),                           'p1',    'rsm',  1e-3, None),
+                                                  ('B', ('week_hour',     '',           ''),                            168,    'rsm',  1e-8, None),
+                                                  ('B', ('xmas',          '',           ''),                           'p1',    '',     1e-8, None),
+                                                  ('B', ('year_day',      '',           ''),                            128,    'r2sm',  1e-8, None),
                                               ],
                                              columns = ['coefficient',
                                                         'input',
@@ -78,24 +104,100 @@ dikt_formula = {
                                                         'structure',
                                                         ],
                                              ).set_index(['coefficient', 'input']),
-                      ### National univariate
-                      'univariate': pd.DataFrame([
+                      ### National standard bivariate
+                      'bivariate': pd.DataFrame([
                                                   # Univariate features
-                                                  ('B', ('target',        'lag',        pd.DateOffset(hours = 24)),   4,       'r2sm', 1e-4, None),
-                                                  ('B', ('temperature',   '',           ''),                          16,      'r2sm', 1e-4, None),
-                                                  ('B', ('temperature',   'lag',        pd.DateOffset(hours = 24)),   16,      'r2sm', 1e-2, None),
-                                                  ('B', ('temperature',   'maximum',    pd.DateOffset(hours = 24)),   16,      'r2sm', 1e-2, None),
-                                                  ('B', ('temperature',   'minimum',    pd.DateOffset(hours = 24)),   16,      'r2sm', 1e-1, None),
-                                                  ('B', ('timestamp',     '',           ''),                          'p1',    'rsm',  1e-3, None),
-                                                  ('B', ('week_hour',     '',           ''),                          168,     'rsm',  1e-8, None),
-                                                  ('B', ('xmas',     '',           ''),                          168,     'rsm',  1e-8, None),
-                                                  ('B', ('yd',     '',           ''),                          168,     'rsm',  1e-8, None),
-                                                  ('B', ('do',     '',           ''),                          168,     'rsm',  1e-8, None),
-                                                  ('B', ('dado',     '',           ''),                          168,     'rsm',  1e-8, None),
-                                                  ('B', ('dbdo',     '',           ''),                          168,     'rsm',  1e-8, None),
-                                                  ('B', ('daylight',     '',           ''),                          168,     'rsm',  1e-8, None),
-                                                  ('B', ('nebulosity',     '',           ''),                          168,     'rsm',  1e-8, None),
-                                              ],
+                                                  ('B', ('target',        'lag',        pd.DateOffset(hours = 24)),     4,       'r2sm', 1e-4, None),
+                                                  ('B', ('temperature',   '',           ''),                            16,      'r2sm', 1e-4, None),
+                                                  ('B', ('temperature',   'lag',        pd.DateOffset(hours = 24)),     16,      'r2sm', 1e-2, None),
+                                                  ('B', ('temperature',   'maximum',    pd.DateOffset(hours = 24)),     16,      'r2sm', 1e-2, None),
+                                                  ('B', ('temperature',   'minimum',    pd.DateOffset(hours = 24)),     16,      'r2sm', 1e-1, None),
+                                                  ('B', ('timestamp',     '',           ''),                            'p1',    'rsm',  1e-3, None),
+                                                  ('B', ('week_hour',     '',           ''),                            168,     'rsm',  1e-8, None),
+                                                  ('B', ('xmas',          '',           ''),                            'p1',    '',     1e-8, None),
+                                                  ('B', ('year_day',      '',           ''),                            128,     'r2sm',  1e-8, None),
+                                                  # Bivariate features
+                                                  ('B', (('holidays',     '',           ''),
+                                                         ('week_hour',    '',           '')),                          ('p1',84), 'r2sm',  1e-8, None),
+                                                  ('B', (('holidays',     '',           pd.DateOffset(hours = 24)),
+                                                         ('week_hour',    '',           '')),                          ('p1',84), 'r2sm',  1e-8, None),
+                                                  ('B', (('holidays',     '',         - pd.DateOffset(hours = 24)),
+                                                         ('week_hour',    '',           '')),                          ('p1',84), 'r2sm',  1e-8, None),
+                                                  ('B', (('daylight',     'lag',        pd.DateOffset(hours = 24)),
+                                                         ('nebulosity',   '',           '')),                          ('p1',2),  'r2sm',  1e-8, None),
+                                                  ('B', (('target',       'lag',        pd.DateOffset(hours = 24)),
+                                                         ('week_hour',    '',           '')),                          (4,84),    'rsm',  1e-8, None),
+                                                  ('B', (('temperature',  '',           ''),
+                                                         ('year_day',     '',           '')),                          (4,32),    'r2sm',  1e-8, None),
+                                                  ('B', (('week_hour',    'lag',        pd.DateOffset(hours = 24)),
+                                                         ('year_day',     '',           '')),                          (168,32),  'r2sm',  1e-8, None),
+                                             ],
+                                             columns = ['coefficient',
+                                                        'input',
+                                                        'nb_intervals',
+                                                        'regularization_func',
+                                                        'regularization_coef',
+                                                        'structure',
+                                                        ],
+                                             ).set_index(['coefficient', 'input']),
+#                      ### Bivariate with low-rank constraints on the bivariate coefficients
+#                      'interUV': pd.DataFrame([
+#                                                  # Univariate features
+#                                                  ('B', ('target',        'lag',        pd.DateOffset(hours = 24)),     4,       'r2sm', 1e-4, None),
+#                                                  ('B', ('temperature',   '',           ''),                            16,      'r2sm', 1e-4, None),
+#                                                  ('B', ('temperature',   'lag',        pd.DateOffset(hours = 24)),     16,      'r2sm', 1e-2, None),
+#                                                  ('B', ('temperature',   'maximum',    pd.DateOffset(hours = 24)),     16,      'r2sm', 1e-2, None),
+#                                                  ('B', ('temperature',   'minimum',    pd.DateOffset(hours = 24)),     16,      'r2sm', 1e-1, None),
+#                                                  ('B', ('timestamp',     '',           ''),                            'p1',    'rsm',  1e-3, None),
+#                                                  ('B', ('week_hour',     '',           ''),                            168,     'rsm',  1e-8, None),
+#                                                  ('B', ('xmas',          '',           ''),                            'p1',    'rsm',  1e-8, None),
+#                                                  ('B', ('year_day',      '',           ''),                            168,     'rsm',  1e-8, None),
+#                                                  # Bivariate features
+#                                                  ('Cuv', (('target',       'lag',        pd.DateOffset(hours = 24)),
+#                                                           ('week_hour',    '',           '')),                          (4,168),    'rsm',  1e-8, None),
+#                                                  ('Cuv', (('temperature',  '',           ''),
+#                                                           ('year_day',     '',           '')),                          (4,168),    'rsm',  1e-8, None),
+#                                                  ('Cuv', (('week_hour',    'lag',        pd.DateOffset(hours = 24)),
+#                                                           ('year_day',     '',           '')),                          (4,168),    'rsm',  1e-8, None),
+#                                             ],
+#                                             columns = ['coefficient',
+#                                                        'input',
+#                                                        'nb_intervals',
+#                                                        'regularization_func',
+#                                                        'regularization_coef',
+#                                                        'structure',
+#                                                        ],
+#                                             ).set_index(['coefficient', 'input']),
+                      ### Sesquivariate model
+                      'sesq': pd.DataFrame([
+                                                  # Univariate independent features
+                                                  ('B', ('temperature',   '',           ''),                            16,      'r2sm', 1e-4, None),
+                                                  ('B', ('temperature',   'lag',        pd.DateOffset(hours = 24)),     16,      'r2sm', 1e-2, None),
+                                                  ('B', ('temperature',   'maximum',    pd.DateOffset(hours = 24)),     16,      'r2sm', 1e-2, None),
+                                                  ('B', ('temperature',   'minimum',    pd.DateOffset(hours = 24)),     16,      'r2sm', 1e-1, None),
+                                                  ('B', ('timestamp',     '',           ''),                            'p1',    'rsm',  1e-3, None),
+                                                  ('B', ('xmas',          '',           ''),                            'p1',    '',     1e-8, None),
+                                                  # Bivariate independent features
+                                                  ('B', (('holidays',     '',           ''),
+                                                         ('week_hour',    '',           '')),                          ('p1',84),    'r2sm',  1e-8, None),
+                                                  ('B', (('holidays',     '',           pd.DateOffset(hours = 24)),
+                                                         ('week_hour',    '',           '')),                          ('p1',84),    'r2sm',  1e-8, None),
+                                                  ('B', (('holidays',     '',         - pd.DateOffset(hours = 24)),
+                                                         ('week_hour',    '',           '')),                          ('p1',84),    'r2sm',  1e-8, None),
+                                                  ('B', (('daylight',     'lag',        pd.DateOffset(hours = 24)),
+                                                         ('nebulosity',   '',           '')),                          ('p1',2),     'r2sm',  1e-8, None),
+                                                  ('B', (('temperature',  '',           ''),
+                                                         ('year_day',     '',           '')),                          (16,128),     'r2sm',  1e-8, None),
+                                                  # Univariate linked features
+                                                  ('Cb', ('target',        'lag',        pd.DateOffset(hours = 24)),     'p1',       'r2sm', 1e-4, None),
+                                                  ('Cb', ('week_hour',     '',           ''),                            168,        'rsm',  1e-8, None),
+                                                  ('Cb', ('year_day',      '',           ''),                            128,        'r2sm', 1e-8, None),
+                                                  # Bivariate linked features
+                                                  ('Cbm', (('target',       'lag',        pd.DateOffset(hours = 24)),
+                                                           ('week_hour',    '',           '')),                          ('p1',168), 'rsm',  1e-8, None),
+                                                  ('Cbm', (('week_hour',    'lag',        pd.DateOffset(hours = 24)),
+                                                           ('year_day',     '',           '')),                          (168,128),  'r2sm',  1e-8, None),
+                                             ],
                                              columns = ['coefficient',
                                                         'input',
                                                         'nb_intervals',
@@ -139,14 +241,6 @@ dikt_formula = {
 
 
 
-
-
-
-
-
-
-
-
                             # Choose which variables should be part of the low-rank components and ot the unstructured components
                             # Blr        for low-rank (over the substations) formulation with a first-order descent algorithm
                             # Bsp        for independent models and unstructured coedfficients with a first-order descent algorithm
@@ -158,84 +252,7 @@ dikt_formula = {
 
 ####################################################################################
                                   
-  
-#                'nat' : {
 
-
-#                            ###
-#                            'lbfgs'       : {
-#                                             'lbfgs_coef' : tuple([
-#                                                                  'meteo',
-#                                                                  'meteolag',
-#                                                                  'meteomax',
-#                                                                  'meteomin',
-#                                                                  'ones',
-#                                                                  'stamp',
-#                                                                  'targetlag',
-#                                                                  'wh',
-#                                                                  'xmas',
-#                                                                  'yd',
-#                                                                  ####
-#                                                                  'do#wh',
-#                                                                  'dado#wh',
-#                                                                  'dbdo#wh',
-#                                                                  'dl#nebu',
-#                                                                  'targetlag#wh',
-#                                                                  'meteo#yd',
-#                                                                  'wh#yd',
-#                                                                  ]),
-#                                             },
-#                            ###
-#                            'InterUV'     : {
-#                                             'Bsp' : tuple(['meteo',
-#                                                            'meteolag',
-#                                                            'meteomax',
-#                                                            'meteomin',
-#                                                            'ones',
-#                                                            'stamp',
-#                                                            'targetlag',
-#                                                            'wh',
-#                                                            'xmas',
-#                                                            'yd',
-#                                                            ####
-#                                                            'do#wh',
-#                                                            'dado#wh',
-#                                                            'dbdo#wh',
-#                                                            'dl#nebu',
-#                                                            ]),
-#                                             'Cuv' : tuple([
-#                                                            'targetlag#wh',
-#                                                            'meteo#yd',
-#                                                            'wh#yd',
-#                                                            ]),
-#                                             },
-#                            ###
-#                            'sesq'        : {
-#                                             'Bsp' : tuple(['meteolag',
-#                                                            'meteomax',
-#                                                            'meteomin',
-#                                                            'ones',
-#                                                            'stamp',
-#                                                            'xmas',
-#                                                            ####
-#                                                            'do#wh',
-#                                                            'dado#wh',
-#                                                            'dbdo#wh',
-#                                                            'dl#nebu',
-#                                                            'meteo#yd',
-#                                                            ]),
-#                                             'Cb'  : tuple([
-#                                                            'meteo',
-#                                                            'targetlag',
-#                                                            'wh',
-#                                                            'yd',
-#                                                            ]),
-#                                             'Cbm' : tuple([
-#                                                            'wh#yd',
-#                                                            'targetlag#wh',
-#                                                            ]),
-#                                             },
-#                            }, 
 #               ############
 #               'full' : {
 #                           'lowrank' :      {
@@ -365,100 +382,6 @@ dikt_formula = {
 ###############################################################################
 
 #nb_itv  =  {
-#            ('eCO2mix.administrative_regions',
-#             None,
-#             ) : {
-#                     'dado'               : 'p1',
-#                     'dbdo'               : 'p1',
-#                     'do'                 : 'p1',
-#                     'meteo'              : 16,
-#                     'meteolag'           : 16,
-#                     'meteomax'           : 16,
-#                     'meteomin'           : 16,
-#                     'ones'               : 'p1',
-#                     'stamp'              : 'p1',
-#                     'targetlag'          : 4,
-#                     'wh'                 : 168,
-#                     'xmas'               : 'p1',
-#                     'yd'                 : 128, 
-#                     'dl'                 : 'p1',
-#                     #'h'                  : 24,
-#                     #'meteodif'           : 8,
-#                     #'meteodifmeteolag'   : 8,
-#                     #'meteodiftargetlag'  : 8,
-#                     #'meteosmo'           : 8,
-#                     #'nebu'               : 2,
-#                     #'sbrk'               : 0,
-#                     #'target'             : 'lin',
-#                     #'targetdif'          : 8,
-#                     #'wd'                 : 7,
-#                     ####
-#                     'do#wh'         : ('p1',84),
-#                     'dado#wh'       : ('p1',84), 
-#                     'dbdo#wh'       : ('p1',84), 
-#                     'dl#nebu'       : ('p1',2),
-#                     'targetlag#wh'  : (4,84), 
-#                     'meteo#yd'      : (4,32),
-#                     'wh#yd'         : (168,32),
-#                     },
-#            'nat' : {
-#                     'dado'               : 'p1',
-#                     'dbdo'               : 'p1',
-#                     'do'                 : 'p1',
-#                     'meteo'              : 16,
-#                     'meteolag'           : 16,
-#                     'meteomax'           : 16,
-#                     'meteomin'           : 16,
-#                     'ones'               : 'p1',
-#                     'stamp'              : 'p1',
-#                     'targetlag'          : 4,
-#                     'wh'                 : 168,
-#                     'xmas'               : 'p1',
-#                     'yd'                 : 128, 
-#                     'dl'                 : 'p1',
-#                     #'h'                  : 24,
-#                     #'meteodif'           : 8,
-#                     #'meteodifmeteolag'   : 8,
-#                     #'meteodiftargetlag'  : 8,
-#                     #'meteosmo'           : 8,
-#                     #'nebu'               : 2,
-#                     #'sbrk'               : 0,
-#                     #'target'             : 'lin',
-#                     #'targetdif'          : 8,
-#                     #'wd'                 : 7,
-#                     ####
-#                     'do#wh'         : ('p1',84),
-#                     'dado#wh'       : ('p1',84), 
-#                     'dbdo#wh'       : ('p1',84), 
-#                     'dl#nebu'       : ('p1',2),
-#                     'targetlag#wh'  : (4,84), 
-#                     'meteo#yd'      : (4,32),
-#                     'wh#yd'         : (168,32),
-#                     },
-#            'nat_cbm' : {
-#                         #'dado'               : 'p1',
-#                         #'dbdo'               : 'p1',
-#                         #'do'                 : 'p1',
-#                         'meteo'              : 16,
-#                         'meteolag'           : 16,
-#                         'meteomax'           : 16,
-#                         'meteomin'           : 16,
-#                         'ones'               : 'p1',
-#                         'stamp'              : 'p1',
-#                         'targetlag'          : 'p1',
-#                         'wh'                 : 168,
-#                         'xmas'               : 'p1',
-#                         'yd'                 : 128, 
-#                         #'dl'                 : 'p1',
-#                         ####
-#                         'do#wh'         : ('p1',168),
-#                         'dado#wh'       : ('p1',168), 
-#                         'dbdo#wh'       : ('p1',168), 
-#                         'dl#nebu'       : ('p1',2),
-#                         'targetlag#wh'  : ('p1',168), 
-#                         'meteo#yd'      : (16,128),
-#                         'wh#yd'         : (168,128),
-#                         },
 #            'full' : {
 #                     'dado'               : 'p1',
 #                     'dbdo'               : 'p1',
@@ -568,179 +491,7 @@ dikt_formula = {
 
 ###############################################################################
 
-#pen_tmp = 'rsm'
 #regularization_func = {
-#                       ('eCO2mix.administrative_regions',
-#                        None,
-#                        ) : {
-#                             'A'   : {'y'         :'rsm'}, 
-#                             'Blr' : {
-#                                      'wh'        : 'rsm',
-#                                      'yd'        : '0r2sm',
-#                                      'do#wh'     : '0r2sm',
-#                                      'dado#wh'   : '0r2sm',
-#                                      'dbdo#wh'   : '0r2sm',
-#                                      'wh#yd'     : 'r2sm',
-#                                      },
-#                             'B' : {
-#                                      'meteo'     : 'r2sm',
-#                                      'meteolag'  : 'r2sm',
-#                                      'meteomin'  : 'r2sm',
-#                                      'meteomax'  : 'r2sm',
-#                                      'ones'      : '',
-#                                      'stamp'     : 'rsm',
-#                                      'targetlag' : 'r2sm',
-#                                      'wh'        : 'rsm',     
-#                                      'xmas'      : '', 
-#                                      'yd'        : 'r2sm',      
-#                                      
-#                                      'do#wh'        : 'r2sm',
-#                                      'dado#wh'      : 'r2sm',
-#                                      'dbdo#wh'      : 'r2sm',
-#                                      'wh#yd'        : 'r2sm', 
-#                                      
-#                                      'targetlag#wh' : 'rsm',
-#                                      'meteo#yd'     : 'r2sm',
-#                                      'dl#nebu'      : 'r2sm',
-#                                      },
-#                             'Cb'  : {
-#                                      'meteo'     : 'r2sm',
-#                                      'targetlag' : 'r2sm',
-#                                      'wh'        : 'rsm',     
-#                                      'yd'        : 'r2sm', 
-#                                      #'meteolag'  : 'rsm',
-#                                      #'meteomin'  : 'rsm',
-#                                      #'meteomax'  : 'rsm',     
-#                                      },               
-#                             'Cm'  : {
-#                                      'do#wh'        : 'r2sm',
-#                                      'dado#wh'      : 'r2sm',
-#                                      'dbdo#wh'      : 'r2sm',
-#                                      'wh#yd'        : 'r2sm', 
-#                                      
-#                                      'targetlag#wh' : 'rsm',
-#                                      'meteo#yd'     : 'r2sm',
-#                                      'dl#nebu'      : 'r2sm',
-#                                      },
-#                             'Cuv' : {
-#                                      'do#wh'        : 'rsm',
-#                                      'dado#wh'      : 'rsm',
-#                                      'dbdo#wh'      : 'rsm',
-#                                      'wh#yd'        : 'rsm', 
-#                                      
-#                                      'targetlag#wh' : 'rsm',
-#                                      'meteo#yd'     : 'rsm',
-#                                      'dl#nebu'      : 'rsm',
-#                                      },
-#                     'lbfgs_coef' : {
-#                                     'meteo'     : 'r2sm', #'rsm', # 'lasso', # 'ncvxclasso'  # 'n2cvxclasso', #
-#                                     'meteolag'  : 'r2sm', #'rsm', # 'lasso', # 'ncvxclasso'  # 'n2cvxclasso', # 
-#                                     'meteomin'  : 'r2sm', #'rsm', # 'lasso', # 'ncvxclasso'  # 'n2cvxclasso', # 
-#                                     'meteomax'  : 'r2sm', #'rsm', # 'lasso', # 'ncvxclasso'  # 'n2cvxclasso', # 
-#                                     'ones'      : '',
-#                                     'stamp'     : 'rsm', #'rsm', 
-#                                     'targetlag' : 'r2sm', #'rsm', # 'lasso', # 'ncvxclasso'  # 'n2cvxclasso', #
-#                                     'wh'        : 'rsm', #'rsm',      
-#                                     'xmas'      : '', 
-#                                     'yd'        : 'r2sm',
-#                                     
-#                                     # Interactions with indicators
-#                                     'do#wh'        : 'r2sm',
-#                                     'dado#wh'      : 'r2sm',
-#                                     'dbdo#wh'      : 'r2sm',
-#                                     'dl#nebu'      : 'r2sm',
-#                                     
-#                                     # 2-dimensional interactions
-#                                     'targetlag#wh' : 'rsm',
-#                                     'wh#yd'        : 'r2sm', 
-#                                     'meteo#yd'     : 'r2sm',
-#                                     },
-#                     },
-#            ###
-#            'nat' : {
-#                     'A'   : {'y'         :'rsm'}, 
-#                     'Blr' : {
-#                              'wh'        : 'rsm',
-#                              'yd'        : '0r2sm',
-#                              'do#wh'     : '0r2sm',
-#                              'dado#wh'   : '0r2sm',
-#                              'dbdo#wh'   : '0r2sm',
-#                              'wh#yd'     : 'r2sm',
-#                              },
-#                     'Bsp' : {
-#                              'meteo'     : 'r2sm',
-#                              'meteolag'  : 'r2sm',
-#                              'meteomin'  : 'r2sm',
-#                              'meteomax'  : 'r2sm',
-#                              'ones'      : '',
-#                              'stamp'     : 'rsm',
-#                              'targetlag' : 'r2sm',
-#                              'wh'        : 'rsm',     
-#                              'xmas'      : '', 
-#                              'yd'        : 'r2sm',      
-#                              
-#                              'do#wh'        : 'r2sm',
-#                              'dado#wh'      : 'r2sm',
-#                              'dbdo#wh'      : 'r2sm',
-#                              'wh#yd'        : 'r2sm', 
-#                              
-#                              'targetlag#wh' : 'rsm',
-#                              'meteo#yd'     : 'r2sm',
-#                              'dl#nebu'      : 'r2sm',
-#                              },
-#                     'Cb'  : {
-#                              'meteo'     : 'r2sm',
-#                              'targetlag' : 'r2sm',
-#                              'wh'        : 'rsm',     
-#                              'yd'        : 'r2sm', 
-#                              #'meteolag'  : 'rsm',
-#                              #'meteomin'  : 'rsm',
-#                              #'meteomax'  : 'rsm',     
-#                              },               
-#                     'Cm'  : {
-#                              'do#wh'        : 'r2sm',
-#                              'dado#wh'      : 'r2sm',
-#                              'dbdo#wh'      : 'r2sm',
-#                              'wh#yd'        : 'r2sm', 
-#                              
-#                              'targetlag#wh' : 'rsm',
-#                              'meteo#yd'     : 'r2sm',
-#                              'dl#nebu'      : 'r2sm',
-#                              },
-#                     'Cuv' : {
-#                              'do#wh'        : 'rsm',
-#                              'dado#wh'      : 'rsm',
-#                              'dbdo#wh'      : 'rsm',
-#                              'wh#yd'        : 'rsm', 
-#                              
-#                              'targetlag#wh' : 'rsm',
-#                              'meteo#yd'     : 'rsm',
-#                              'dl#nebu'      : 'rsm',
-#                              },
-#                     'lbfgs_coef' : {
-#                                     'meteo'     : 'r2sm', #'rsm', # 'lasso', # 'ncvxclasso'  # 'n2cvxclasso', #
-#                                     'meteolag'  : 'r2sm', #'rsm', # 'lasso', # 'ncvxclasso'  # 'n2cvxclasso', # 
-#                                     'meteomin'  : 'r2sm', #'rsm', # 'lasso', # 'ncvxclasso'  # 'n2cvxclasso', # 
-#                                     'meteomax'  : 'r2sm', #'rsm', # 'lasso', # 'ncvxclasso'  # 'n2cvxclasso', # 
-#                                     'ones'      : '',
-#                                     'stamp'     : 'rsm', #'rsm', 
-#                                     'targetlag' : 'r2sm', #'rsm', # 'lasso', # 'ncvxclasso'  # 'n2cvxclasso', #
-#                                     'wh'        : 'rsm', #'rsm',      
-#                                     'xmas'      : '', 
-#                                     'yd'        : 'r2sm',
-#                                     
-#                                     # Interactions with indicators
-#                                     'do#wh'        : 'r2sm',
-#                                     'dado#wh'      : 'r2sm',
-#                                     'dbdo#wh'      : 'r2sm',
-#                                     'dl#nebu'      : 'r2sm',
-#                                     
-#                                     # 2-dimensional interactions
-#                                     'targetlag#wh' : 'rsm',
-#                                     'wh#yd'        : 'r2sm', 
-#                                     'meteo#yd'     : 'r2sm',
-#                                     },
-#                     },
 #            ###
 #            'row2sm' : {
 #                     'A'   : {'y'         :'rsm'}, 
@@ -922,13 +673,10 @@ dikt_formula = {
 
 ###############################################################################
 
-#alpha_Blr       = 1e-6
-#alpha_Cb        = 1e-8
 #factor_nb_posts = 4e2
-##alpha_lbfgs_uni = 1e-8
+                            
 #regularization_coef = {
 #                       'nat': {
-#                               'A'     : {'y' : 1e-2},
 #                               'Cuv'   : {     
 #                                        'do#wh'        : 1e-8,
 #                                        'dado#wh'      : 1e-8, 
@@ -958,7 +706,6 @@ dikt_formula = {
 #                                            }, 
 #                             }, 
 #                       'row2sm': {
-#                               'A'     : {'y' : 1e-2},
 #                               'Cuv'   : {     
 #                                        'do#wh'        : 1e-8,
 #                                        'dado#wh'      : 1e-8, 
