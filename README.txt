@@ -11,7 +11,7 @@ pip install -e .
 # However, the packages xgboost, spams and rpy2 have to be installed separately
 conda install -c conda-forge python-spams xgboost sklearn-contrib-py-earth ipdb 
 conda install -c r rpy2
-# Also, the mgcv library should be available in R to use the GAM
+# Also, the mgcv library should be available in R if the GAM are to be tested.
 
 ================================================================
 
