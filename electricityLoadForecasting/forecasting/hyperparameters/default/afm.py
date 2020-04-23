@@ -9,69 +9,65 @@ Default hyperparameters for additive features model
 
              
 ###############################################################################
-                     
 ###                       Stopping Criteria                                 ###
-
 ###############################################################################
               
 stopping_criteria = {
-                     ('Eco2mix.administrative_regions',
+                     ('eCO2mix.administrative_regions',
                       None,
                       ) : {
-                               'afm.algorithm.lbfgs.maxfun'          : 1e8,
-                               'afm.algorithm.lbfgs.maxiter'         : 1e8,                             
-                               'afm.algorithm.lbfgs.pgtol'           : 1e-6,
-                               'afm.algorithm.lbfgs.tol'             : 1e-12,
-                               },
-                     ('Eco2mix.France',
+                           'afm.algorithm.lbfgs.maxfun'  : 1e8,
+                           'afm.algorithm.lbfgs.maxiter' : 1e8,                             
+                           'afm.algorithm.lbfgs.pgtol'   : 1e-6,
+                           'afm.algorithm.lbfgs.tol'     : 1e-12,
+                           },
+                     ('eCO2mix.France',
                       None,
                       ) : {
-                               'afm.algorithm.lbfgs.maxfun'          : 1e8,
-                               'afm.algorithm.lbfgs.maxiter'         : 1e8,                             
-                               'afm.algorithm.lbfgs.tol'             : 1e-12,
-                               'afm.algorithm.lbfgs.pgtol'           : 1e-4,
-                               },
+                           'afm.algorithm.lbfgs.maxfun'  : 1e8,
+                           'afm.algorithm.lbfgs.maxiter' : 1e8,                             
+                           'afm.algorithm.lbfgs.tol'     : 1e-12,
+                           'afm.algorithm.lbfgs.pgtol'   : 1e-4,
+                           },
                     ('RTE.substations',
                      None,
                      ) : {
-                               'afm.algorithm.lbfgs.maxfun'          : 1e8,
-                               'afm.algorithm.lbfgs.maxiter'         : 1e8,                             
-                               'afm.algorithm.lbfgs.tol'             : 1e-9,
-                               'afm.algorithm.lbfgs.pgtol'           : 1e-5,
-                               },
+                          'afm.algorithm.lbfgs.maxfun'  : 1e8,
+                          'afm.algorithm.lbfgs.maxiter' : 1e8,                             
+                          'afm.algorithm.lbfgs.tol'     : 1e-9,
+                          'afm.algorithm.lbfgs.pgtol'   : 1e-5,
+                          },
                      }
-stopping_criteria.update({
-                          ('RTE','sum')                   : cp.deepcopy(stopping_criteria['Eco2mix.France',None]),
-                          ('RTE','AdministrativeRegions') : cp.deepcopy(stopping_criteria['Eco2mix.France',None]),
-                          ('RTE','RTERegions')            : cp.deepcopy(stopping_criteria['Eco2mix.France',None]),
-                          ('RTE','Districts')             : cp.deepcopy(stopping_criteria['Eco2mix.France',None]),
-                          })
 
+stopping_criteria.update({
+                          ('RTE.substations','Sum')                    : cp.deepcopy(stopping_criteria['eCO2mix.France',None]),
+                          ('RTE.substations','Administrative_regions') : cp.deepcopy(stopping_criteria['eCO2mix.France',None]),
+                          ('RTE.substations','Regions')                : cp.deepcopy(stopping_criteria['eCO2mix.France',None]),
+                          ('RTE.substations','Districts')              : cp.deepcopy(stopping_criteria['eCO2mix.France',None]),
+                          })
               
 ###############################################################################
-                     
 ###                             dikt formula                                ###
-
 ###############################################################################                        
 
 dikt_formula = {
-                ###
-                ('Eco2mix.France',
+                ### National level
+                ('eCO2mix.France',
                  None,
                  ) : {
                       'tmp'   : pd.DataFrame([
                                               # Univariate features
-                                              ('B', ('target',        'lag',        pd.DateOffset(hours = 24)),   4,       'r2sm', 1e-4),
-                                              ('B', ('temperature',   '',           ''),                          16,      'r2sm', 1e-4),
-                                              ('B', ('temperature',   'difference', pd.DateOffset(hours = 24)),   16,      'r2sm', 1e-2),
-                                              ('B', ('temperature',   'maximum',    pd.DateOffset(hours = 24)),   16,      'r2sm', 1e-2),
-                                              ('B', ('temperature',   'minimum',    pd.DateOffset(hours = 24)),   16,      'r2sm', 1e-1),
-                                              ('B', ('temperature',   'smoothing',  0.99),                        16,      'r2sm', 1e-1),
-                                              ('B', ('timestamp',     '',           ''),                          'p1',    'rsm',  1e-3),
-                                              ('B', ('week_hour',     '',           ''),                          168,     'rsm',  1e-8),
+                                              ('B', ('target',        'lag',        pd.DateOffset(hours = 24)),   4,       'r2sm', 1e-4, None),
+                                              ('B', ('temperature',   '',           ''),                          16,      'r2sm', 1e-4, None),
+                                              ('B', ('temperature',   'difference', pd.DateOffset(hours = 24)),   16,      'r2sm', 1e-2, None),
+                                              ('B', ('temperature',   'maximum',    pd.DateOffset(hours = 24)),   16,      'r2sm', 1e-2, None),
+                                              ('B', ('temperature',   'minimum',    pd.DateOffset(hours = 24)),   16,      'r2sm', 1e-1, None),
+                                              ('B', ('temperature',   'smoothing',  0.99),                        16,      'r2sm', 1e-1, None),
+                                              ('B', ('timestamp',     '',           ''),                          'p1',    'rsm',  1e-3, None),
+                                              ('B', ('week_hour',     '',           ''),                          168,     'rsm',  1e-8, None),
                                               # Bivariate features
                                               ('B', (('target',        'lag',        pd.DateOffset(hours = 24)),
-                                                     ('week_hour',     '',           '')),                        (4,168), 'rsm',  1e-8),
+                                                     ('week_hour',     '',           '')),                        (4,168), 'rsm',  1e-8, None),
                                               #
                                               ],
                                              columns = ['coefficient',
@@ -79,37 +75,77 @@ dikt_formula = {
                                                         'nb_intervals',
                                                         'regularization_func',
                                                         'regularization_coef',
+                                                        'structure',
                                                         ],
-                                             ).set_index(['coefficient', 'input'])
-                      },
-                ###
-                ('Eco2mix.administrative_regions',
-                 None,
-                 ) : {
-                      'tmp'   : pd.DataFrame([
-                                              # Univariate features
-                                              ('B', ('target',        'lag',        pd.DateOffset(hours = 24)),   4,       'r2sm', 1e-4),
-                                              ('B', ('temperature',   '',           ''),                          16,      'r2sm', 1e-4),
-                                              ('B', ('temperature',   'difference', pd.DateOffset(hours = 24)),   16,      'r2sm', 1e-2),
-                                              ('B', ('temperature',   'maximum',    pd.DateOffset(hours = 24)),   16,      'r2sm', 1e-2),
-                                              ('B', ('temperature',   'minimum',    pd.DateOffset(hours = 24)),   16,      'r2sm', 1e-1),
-                                              ('B', ('temperature',   'smoothing',  0.99),                        16,      'r2sm', 1e-1),
-                                              ('B', ('timestamp',     '',           ''),                          'p1',    'rsm',  1e-3),
-                                              ('B', ('week_hour',     '',           ''),                          168,     'rsm',  1e-8),
-                                              # Bivariate features
-                                              ('B', (('target',        'lag',       pd.DateOffset(hours = 24)),
-                                                     ('week_hour',     '',          '')),                        (4,168),  'rsm',  1e-8),
-                                              #
+                                             ).set_index(['coefficient', 'input']),
+                      ### National univariate
+                      'univariate': pd.DataFrame([
+                                                  # Univariate features
+                                                  ('B', ('target',        'lag',        pd.DateOffset(hours = 24)),   4,       'r2sm', 1e-4, None),
+                                                  ('B', ('temperature',   '',           ''),                          16,      'r2sm', 1e-4, None),
+                                                  ('B', ('temperature',   'lag',        pd.DateOffset(hours = 24)),   16,      'r2sm', 1e-2, None),
+                                                  ('B', ('temperature',   'maximum',    pd.DateOffset(hours = 24)),   16,      'r2sm', 1e-2, None),
+                                                  ('B', ('temperature',   'minimum',    pd.DateOffset(hours = 24)),   16,      'r2sm', 1e-1, None),
+                                                  ('B', ('timestamp',     '',           ''),                          'p1',    'rsm',  1e-3, None),
+                                                  ('B', ('week_hour',     '',           ''),                          168,     'rsm',  1e-8, None),
+                                                  ('B', ('xmas',     '',           ''),                          168,     'rsm',  1e-8, None),
+                                                  ('B', ('yd',     '',           ''),                          168,     'rsm',  1e-8, None),
+                                                  ('B', ('do',     '',           ''),                          168,     'rsm',  1e-8, None),
+                                                  ('B', ('dado',     '',           ''),                          168,     'rsm',  1e-8, None),
+                                                  ('B', ('dbdo',     '',           ''),                          168,     'rsm',  1e-8, None),
+                                                  ('B', ('daylight',     '',           ''),                          168,     'rsm',  1e-8, None),
+                                                  ('B', ('nebulosity',     '',           ''),                          168,     'rsm',  1e-8, None),
                                               ],
                                              columns = ['coefficient',
                                                         'input',
                                                         'nb_intervals',
                                                         'regularization_func',
                                                         'regularization_coef',
+                                                        'structure',
                                                         ],
-                                             ).set_index(['coefficient', 'input'])
+                                             ).set_index(['coefficient', 'input']),
                       },
+
+
+
+#                ### Regions level
+#                ('eCO2mix.administrative_regions',
+#                 None,
+#                 ) : {
+#                      'tmp'   : pd.DataFrame([
+#                                              # Univariate features
+#                                              ('B', ('target',        'lag',        pd.DateOffset(hours = 24)),   4,       'r2sm', 1e-4),
+#                                              ('B', ('temperature',   '',           ''),                          16,      'r2sm', 1e-4),
+#                                              ('B', ('temperature',   'difference', pd.DateOffset(hours = 24)),   16,      'r2sm', 1e-2),
+#                                              ('B', ('temperature',   'maximum',    pd.DateOffset(hours = 24)),   16,      'r2sm', 1e-2),
+#                                              ('B', ('temperature',   'minimum',    pd.DateOffset(hours = 24)),   16,      'r2sm', 1e-1),
+#                                              ('B', ('temperature',   'smoothing',  0.99),                        16,      'r2sm', 1e-1),
+#                                              ('B', ('timestamp',     '',           ''),                          'p1',    'rsm',  1e-3),
+#                                              ('B', ('week_hour',     '',           ''),                          168,     'rsm',  1e-8),
+#                                              # Bivariate features
+#                                              ('B', (('target',        'lag',       pd.DateOffset(hours = 24)),
+#                                                     ('week_hour',     '',          '')),                        (4,168),  'rsm',  1e-8),
+#                                              #
+#                                              ],
+#                                             columns = ['coefficient',
+#                                                        'input',
+#                                                        'nb_intervals',
+#                                                        'regularization_func',
+#                                                        'regularization_coef',
+#                                                        ],
+#                                             ).set_index(['coefficient', 'input'])
+#                      },
                 }
+
+
+
+
+
+
+
+
+
+
 
                             # Choose which variables should be part of the low-rank components and ot the unstructured components
                             # Blr        for low-rank (over the substations) formulation with a first-order descent algorithm
@@ -122,169 +158,10 @@ dikt_formula = {
 
 ####################################################################################
                                   
-                                  
-
-#                      'univariate'   : {
-#                                        'B' : tuple([
-#                                                       'meteo',
-#                                                       'meteolag',
-#                                                       'meteomax',
-#                                                       'meteomin',
-#                                                       'ones',
-#                                                       'stamp',
-#                                                       'targetlag',
-#                                                       'wh',
-#                                                       'xmas',
-#                                                       'yd',
-#                                                       'do', 
-#                                                       'dado', 
-#                                                       'dbdo', 
-#                                                       'dl', 
-#                                                       'nebu',
-#                                                       ]),
-#                                             },
-#                           ###
-#                           'lowrank' :      {
-#                                             'Blr' : tuple([
-#                                                            'wh',
-#                                                            'yd',
-#                                                            'do#wh',
-#                                                            'dado#wh',
-#                                                            'dbdo#wh',
-#                                                            'wh#yd',
-#                                                            ]),
-#                                             'Bsp' : tuple([
-#                                                            'meteo',
-#                                                            'meteolag',
-#                                                            'meteomax',
-#                                                            'meteomin',
-#                                                            'ones',
-#                                                            'stamp',
-#                                                            'targetlag',
-#                                                            'xmas',
-#                                                            'dl#nebu',
-#                                                            'targetlag#wh',
-#                                                            'meteo#yd',
-#                                                            ]),
-#                                             },
-#                            ###
-#                            'lbfgs'       : {
-#                                             'lbfgs_coef' : tuple([
-#                                                                  'meteo',
-#                                                                  'meteolag',
-#                                                                  'meteomax',
-#                                                                  'meteomin',
-#                                                                  'ones',
-#                                                                  'stamp',
-#                                                                  'targetlag',
-#                                                                  'wh',
-#                                                                  'xmas',
-#                                                                  'yd',
-#                                                                  ####
-#                                                                  'do#wh',
-#                                                                  'dado#wh',
-#                                                                  'dbdo#wh',
-#                                                                  'dl#nebu',
-#                                                                  'targetlag#wh',
-#                                                                  'meteo#yd',
-#                                                                  'wh#yd',
-#                                                                  ]),
-#                                             },
-#                            ###
-#                            'InterUV'     : {
-#                                             'Bsp' : tuple(['meteo',
-#                                                            'meteolag',
-#                                                            'meteomax',
-#                                                            'meteomin',
-#                                                            'ones',
-#                                                            'stamp',
-#                                                            'targetlag',
-#                                                            'wh',
-#                                                            'xmas',
-#                                                            'yd',
-#                                                            ####
-#                                                            'do#wh',
-#                                                            'dado#wh',
-#                                                            'dbdo#wh',
-#                                                            'dl#nebu',
-#                                                            ]),
-#                                             'Cuv' : tuple([
-#                                                            'targetlag#wh',
-#                                                            'meteo#yd',
-#                                                            'wh#yd',
-#                                                            ]),
-#                                             },
-#                            ###
-#                            'sesq'        : {
-#                                             'Bsp' : tuple(['meteolag',
-#                                                            'meteomax',
-#                                                            'meteomin',
-#                                                            'ones',
-#                                                            'stamp',
-#                                                            'xmas',
-#                                                            ####
-#                                                            'do#wh',
-#                                                            'dado#wh',
-#                                                            'dbdo#wh',
-#                                                            'dl#nebu',
-#                                                            'meteo#yd',
-#                                                            ]),
-#                                             'Cb'  : tuple([
-#                                                            'meteo',
-#                                                            'targetlag',
-#                                                            'wh',
-#                                                            'yd',
-#                                                            ]),
-#                                             'Cbm' : tuple([
-#                                                            'wh#yd',
-#                                                            'targetlag#wh',
-#                                                            ]),
-#                                             },
-#                            }, 
-#               ############
+  
 #                'nat' : {
-#                           'lowrank' :      {
-#                                             'Blr' : tuple([
-#                                                            'wh',
-#                                                            'yd',
-#                                                            'do#wh',
-#                                                            'dado#wh',
-#                                                            'dbdo#wh',
-#                                                            'wh#yd',
-#                                                            ]),
-#                                             'Bsp' : tuple([
-#                                                            'meteo',
-#                                                            'meteolag',
-#                                                            'meteomax',
-#                                                            'meteomin',
-#                                                            'ones',
-#                                                            'stamp',
-#                                                            'targetlag',
-#                                                            'xmas',
-#                                                            'dl#nebu',
-#                                                            'targetlag#wh',
-#                                                            'meteo#yd',
-#                                                            ]),
-#                                             },
-#                           'univariate'   : {
-#                                             'lbfgs_coef' : tuple([
-#                                                                  'meteo',
-#                                                                  'meteolag',
-#                                                                  'meteomax',
-#                                                                  'meteomin',
-#                                                                  'ones',
-#                                                                  'stamp',
-#                                                                  'targetlag',
-#                                                                  'wh',
-#                                                                  'xmas',
-#                                                                  'yd',
-#                                                                  'do', 
-#                                                                  'dado', 
-#                                                                  'dbdo', 
-#                                                                  'dl', 
-#                                                                  'nebu',
-#                                                                  ]),
-#                                             },
+
+
 #                            ###
 #                            'lbfgs'       : {
 #                                             'lbfgs_coef' : tuple([
@@ -479,18 +356,6 @@ dikt_formula = {
 #                            }, 
 #                }
 
-#dikt_formula['nat'] ['unstructured'] = {'Bsp' : dikt_config['nat']['lbfgs']['lbfgs_coef']}
-#dikt_formula['full']['unstructured'] = {'Bsp' : dikt_config['nat']['lbfgs']['lbfgs_coef']}
-#            
-#dikt_formula.update({
-#                     'e2m'       : cp.deepcopy(dikt_config['nat']),
-#                     'rteReg'    : cp.deepcopy(dikt_config['nat']),
-#                     'admReg'    : cp.deepcopy(dikt_config['nat']),
-#                     'districts' : cp.deepcopy(dikt_config['nat']),
-#                     #'4Paris'    : cp.deepcopy(dikt_config['nat']),
-#                     #'Normandie' : cp.deepcopy(dikt_config['nat']),
-#                     })
-
 
               
 ###############################################################################
@@ -500,7 +365,7 @@ dikt_formula = {
 ###############################################################################
 
 #nb_itv  =  {
-#            ('Eco2mix.administrative_regions',
+#            ('eCO2mix.administrative_regions',
 #             None,
 #             ) : {
 #                     'dado'               : 'p1',
@@ -705,7 +570,7 @@ dikt_formula = {
 
 #pen_tmp = 'rsm'
 #regularization_func = {
-#                       ('Eco2mix.administrative_regions',
+#                       ('eCO2mix.administrative_regions',
 #                        None,
 #                        ) : {
 #                             'A'   : {'y'         :'rsm'}, 

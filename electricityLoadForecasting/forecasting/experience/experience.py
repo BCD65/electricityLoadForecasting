@@ -104,6 +104,7 @@ class Experience(object):
 
     def unfold_data(self, ):
         self.data['df_calendar'] = tools.calendar.compute_calendar_variables(self.data['df_sites'].index)
+        import ipdb; ipdb.set_trace()
         basket_original_data     = {**{key : self.data['df_calendar'][[key]] for key in self.data['df_calendar']} , 
                                     **{physical_quantity : self.data['df_weather'].xs(key = physical_quantity, axis = 1, level = tools.transcoding.user_physical_quantity)
                                        for physical_quantity in self.data['df_weather'].columns.get_level_values(tools.transcoding.user_physical_quantity)

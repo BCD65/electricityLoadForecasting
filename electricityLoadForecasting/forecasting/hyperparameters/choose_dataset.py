@@ -9,11 +9,11 @@ def choose_dataset(hprm):
    
     hprm.update({
                  # Choose the database
-                 'database' : 'Eco2mix.administrative_regions',
+                 'database' : 'eCO2mix.France',
                  })
     assert hprm['database'] in [
-                                'Eco2mix.France',
-                                'Eco2mix.administrative_regions',
+                                'eCO2mix.France',
+                                'eCO2mix.administrative_regions',
                                 'RTE.substations',
                                 'RTE.quick_test',
                                 ]
@@ -27,14 +27,14 @@ def choose_dataset(hprm):
                  # Choose the weather data
                  'weather.zone'              : 'all', 
                  'weather.source'            : 'observed', 
-                 'weather.aggregation'       : {'Eco2mix.France'                 : 'mean',
-                                                'Eco2mix.administrative_regions' : None, 
+                 'weather.aggregation'       : {'eCO2mix.France'                 : 'mean',
+                                                'eCO2mix.administrative_regions' : None, 
                                                 }[hprm['database']],
-                 'weather.extra_latitude'    : {'Eco2mix.France'                 : 5,
-                                                'Eco2mix.administrative_regions' : 0.1, 
+                 'weather.extra_latitude'    : {'eCO2mix.France'                 : 5,
+                                                'eCO2mix.administrative_regions' : 0.1, 
                                                 }[hprm['database']],
-                 'weather.extra_longitude'   : {'Eco2mix.France'                 : 8,
-                                                'Eco2mix.administrative_regions' : 0.1, 
+                 'weather.extra_longitude'   : {'eCO2mix.France'                 : 8,
+                                                'eCO2mix.administrative_regions' : 0.1, 
                                                 }[hprm['database']],
                  
                  # Select the training and the test set
@@ -53,7 +53,7 @@ def choose_dataset(hprm):
                             # 'Paris'               A square around Paris
                             # 'zone_Normandie'      A list of substations in Normandie/Paris
                             # 'full'                All the substations
-                            # 'e2m'                 Eco2mix time series
+                            # 'e2m'                 eCO2mix time series
                             #  misc.reg_admin[0]    An administrative region
                             #  misc.reg_rte[0]      A RTE region
                             #  misc.stations[0]     A district

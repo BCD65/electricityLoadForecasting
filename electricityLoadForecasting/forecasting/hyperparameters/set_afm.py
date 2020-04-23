@@ -1,14 +1,13 @@
 
 
 """
-Parameters for the main model of this work
+Parameters for the main additive features model
 """
 
-from . import default
 import copy as cp
-from termcolor import colored
 import numpy as np
-
+#
+from . import default
 
 
 def set_afm(hprm):
@@ -19,7 +18,9 @@ def set_afm(hprm):
                   'afm.features.boundary_scaling'           : False, # Activate to select a different scaling of the splines near the boundary (does not improve the results)
                   'afm.features.natural_splines'            : True, # Activate to extrapolate linearly
                   'afm.features.order_splines'              : 1,    # 1 for piecewise linear
-                  'afm.features.bivariate.combine_function' : np.prod,    # Use product or minimum of splines for interactions
+                  'afm.features.bivariate.combine_function' : np.prod, # Use product or minimum of splines for interactions
+                  'afm.features.sparse_x1'                  : True, # Store the univariate covariates in a sparse format
+                  'afm.features.sparse_x2'                  : True, # Store the interaction covariates in a sparse format
                    })
 
     
@@ -31,29 +32,27 @@ def set_afm(hprm):
                                                                                        )['tmp']
                                                           ), # Choose the granularity for the different inputs ie the number of splines
                   })
-
     
-
-                  
+    # Low-rank structure
     hprm.update({
-                  'afm.constraints.ranks_B'     : {  # Rank of the low-rank (substations wise) components for each input
-                                                 'wh' : 4, 
-                                                 'yd' : 4, 
-                                                 },
-                  'afm.constraints.ranks_UV'    : 1,    # Rank of the coefficient matrices for the interactions (individually per post) 
-                  'afm.regularization.share_enet'                : 0.95, # Coefficient for the elastic-net penalty
+                  'afm.constraints.ranks_B'     : {# Rank of the low-rank (substations wise) components for each input
+                                                   'wh' : 4, 
+                                                   'yd' : 4, 
+                                                    },
+                  'afm.constraints.ranks_UV'      : 1,    # Rank of the coefficient matrices for the interactions (individually per post) 
+                  'afm.regularization.share_enet' : 0.95, # Coefficient for the elastic-net penalty
                   })
             
-            
+    # Sum-consistent model        
     hprm.update({
-                  'afm.regularization.gp_matrix'   : '', # Form of the sum-consistent matrix
+                  'afm.sum_consistent.gp_pen'    : 1, # Coefficient for the sum-consistent model
+                  'afm.sum_consistent.gp_matrix' : '', # Form of the sum-consistent matrix
                                                  # '' not to consider the sum-consistent model
                                                  # 'cst' penalize the nationally aggregated predictions
                                                  # 'nat' penalize the nationally aggregated predictions
                                                  # 'rteReg' penalize the aggregated predictions in each RTE regions
                                                  # 'admReg' penalize the aggregated predictions in each administrative regions
                                                  # 'districts' penalize the aggregated predictions in each districts
-                  'afm.regularization.gp_pen'      : 1, # Coefficient for the sum-consistent model
                   })
     # Algorithm
     hprm.update({
@@ -69,22 +68,9 @@ def set_afm(hprm):
                                                       }, # In the BCD procedure, activate to have column update instead of larger block updates
                                                       #'wh':True,
                                                       #'yd':True,
-                  'afm.features.sparse_x1'                : True, # Store the univariate covariates in a sparse format
-                  'afm.features.sparse_x2'                : True, # Store the interaction covariates in a sparse format
-                  #'tf_init_B'                 : False,
-                  #'trunc_svd'                 : -1,
-                  #'tol_B'                     : 1e-10,
-                  #'tf_init_C'                 : False,
-                  #'tol_C'                     : 1e-10,
-                  #'tf_sesq'                   : False, # Optimization in two steps to introduce 2nd order interactions
-                  #'tf_method_init_UV'         : 'w_uni', # 'haar' 'random' 'w_uni'
-                  })
-        
-    hprm.update({ # CRITERIA RELATED TO THE ALGORITHM
                   'afm.algorithm.sparse_coef'               : False, # Memory size of coef does not seem to be a problem, at least when there is no interactions
                   'afm.algorithm.sparse_coef_after_optim'   : True,  # After the optimization, store the coefficients in a sparse format
                   'afm.algorithm.frozen_variables'          : {}, # 
-                  #'afm.algorithm.precompute_validation'     : True,  
                   'afm.algorithm.early_stop_validation'     : False, # Use performance on validation set as a stopping criteria 
                   'afm.algorithm.early_stop_ind_validation' : False, # Use performance on validation set as a stopping criteria 
                   'afm.algorithm.early_small_decrease'      : True,  # Use decrease of objective as a stopping criteria 
@@ -98,18 +84,18 @@ def set_afm(hprm):
                   **cp.deepcopy(default.afm.stopping_criteria.get((hprm['database'], 
                                                                    hprm['sites.aggregation'],
                                                                    ), 
-                                                                  default.afm.stopping_criteria['Eco2mix.France',
+                                                                  default.afm.stopping_criteria['eCO2mix.France',
                                                                                                 None,
                                                                                                 ], 
                                                                   )
                                 ),
+                  #'tf_init_B'                 : False,
+                  #'trunc_svd'                 : -1,
+                  #'tol_B'                     : 1e-10,
+                  #'tf_init_C'                 : False,
+                  #'tol_C'                     : 1e-10,
+                  #'tf_sesq'                   : False, # Optimization in two steps to introduce 2nd order interactions
+                  #'tf_method_init_UV'         : 'w_uni', # 'haar' 'random' 'w_uni'
                   })
-    
-    if (hprm['database'], 
-        hprm['sites.aggregation'],
-        ) not in default.afm.stopping_criteria:
-        print(colored('NO PARAMETRIZATION SET FOR {0}'.format(hprm['database']), 'red', 'on_cyan'))
-
-
             
     return hprm

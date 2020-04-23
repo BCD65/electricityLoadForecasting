@@ -17,8 +17,8 @@ extras   = os.path.join(inputs,
 
 def path_database(dataset):
     assert dataset in {
-                       'Eco2mix.administrative_regions',
-                       'Eco2mix.France',
+                       'eCO2mix.administrative_regions',
+                       'eCO2mix.France',
                        'RTE.full',
                        'RTE.quick_test',
                        }
@@ -34,15 +34,15 @@ def path_database(dataset):
                                    'transformed_data', 
                                    'quick_test',
                                    )
-    elif dataset == 'Eco2mix.administrative_regions':
+    elif dataset == 'eCO2mix.administrative_regions':
         path_database =  os.path.join(inputs,
-                                    'Eco2mix',
+                                    'eCO2mix',
                                     'transformed_data',
                                     'administrative_regions',
                                     )
-    elif dataset == 'Eco2mix.France':
+    elif dataset == 'eCO2mix.France':
         path_database =  os.path.join(inputs,
-                                    'Eco2mix',
+                                    'eCO2mix',
                                     'transformed_data',
                                     'France',
                                     )

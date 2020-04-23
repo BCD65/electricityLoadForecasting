@@ -1,11 +1,7 @@
 
-
-
 """
-Parameters for GAM
+Hyperparameters for GAM
 """
-
-
 
 def set_gam(hprm):    
     
@@ -32,3 +28,30 @@ def set_gam(hprm):
                    })
     return hprm
 
+##gam_selected_variables
+#selected_variables = (
+#                      'dado',
+#                      'dbdo',
+#                      'dl',
+#                      'do',
+#                      'h',
+#                      'meteo',
+#                      'meteolag',
+#                      'meteomax',
+#                      'meteomin', 
+#                      'meteosmo', 
+#                      'nebu',
+#                      'ones',
+#                      'stamp',
+#                      'targetlag',
+#                      #'wh',
+#                      'wd',
+#                      'wd_bin',
+#                      'we',
+#                      'xmas',
+#                      'yd',
+#                      #'meteodif',
+#                      #'meteosmo', 
+#                      #'sbrk',
+#                      #'wd',
+#                      )
