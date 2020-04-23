@@ -18,7 +18,7 @@ def fit_and_predict(inputs_training, Y_training, inputs_validation, hprm, assign
                                     columns = Y_training.columns,
                                     )
     Y_hat_validation = pd.DataFrame(0, 
-                                    index   = next(iter(inputs_validation.values())).index, 
+                                    index   = inputs_validation.index, 
                                     columns = Y_training.columns,
                                     )
     for ii, site_name in enumerate(Y_training.columns):
@@ -28,14 +28,14 @@ def fit_and_predict(inputs_training, Y_training, inputs_validation, hprm, assign
                                                else
                                                inputs_training[(qty, *prm)][assignments[qty][site_name]]
                                                ) 
-                                for (qty, *prm), data in inputs_training.items()
+                                for (qty, *prm) in inputs_training.columns.droplevel(-1).drop_duplicates()
                                 }
         site_inputs_validation = {(qty, *prm) : (inputs_validation[(qty, *prm)]
                                                  if (qty not in assignments)
                                                  else
                                                  inputs_validation[(qty, *prm)][assignments[qty][site_name]]
                                                  ) 
-                                  for (qty, *prm), data in inputs_validation.items()
+                                  for (qty, *prm) in inputs_validation.columns.droplevel(-1).drop_duplicates()
                                   }
         Y_hat_training[site_name], Y_hat_validation[site_name] = call_fitter(site_inputs_training,
                                                                              Y_training[site_name],#.rename({site_name : 'target'}, axis = 1),

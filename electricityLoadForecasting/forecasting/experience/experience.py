@@ -204,7 +204,7 @@ class Experience(object):
             #self.model = None
             
             
-        elif self.hprm['learning.model'] in {'random_forests', 'regression_tree', 'xgboost', 'svr'}:
+        elif self.hprm['learning.model'] in {'mars', 'random_forests', 'regression_tree', 'xgboost', 'svr'}:
             self.Y_hat_training, self.Y_hat_validation, self.model = models.benchmarks.classical.fit_and_predict(self.inputs_training, 
                                                                                                                  self.Y_training, 
                                                                                                                  self.inputs_validation,
