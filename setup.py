@@ -8,7 +8,7 @@ setup(
       packages         = setuptools.find_packages(),
       scripts          = ['scripts/mainPreparation.py', 'scripts/mainForecasting.py'],
       author           = 'Ben',
-      author_email     = 'bcd6591@gmail.com',
+      author_email     = '',
       license          = 'MIT License',
       long_description = open('README.txt').read(),
       python_requires  = ">= 3.6",
