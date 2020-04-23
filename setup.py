@@ -6,7 +6,7 @@ setup(
       name             = 'electricityLoadForecasting',
       version          = '0.1.dev0',
       packages         = setuptools.find_packages(),
-      scripts          = ['electricityLoadForecasting/scripts/mainPreparation.py', 'scripts/mainForecasting.py'],
+      scripts          = ['scripts/mainPreparation.py', 'scripts/mainForecasting.py'],
       maintainer       = 'Ben',
       license          = 'MIT License',
       long_description = open('README.txt').read(),
