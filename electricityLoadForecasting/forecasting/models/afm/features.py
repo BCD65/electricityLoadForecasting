@@ -597,7 +597,15 @@ def precomputations_2(X1, X2, mask1, mask2, hprm, all_products = 0):
 #    return X1tX2, X2tX2
 
 
-def func1d(x, func, index_func = None, nb_funcs = None, cyclic = None, bd_scal = 0, hrch = None, center = False):
+def func1d(x,
+           func,
+           index_func = None,
+           nb_funcs   = None,
+           cyclic     = None,
+           bd_scal    = 0,
+           hrch       = None,
+           center     = False,
+           ):
     # Computet for the different values stored in x the values of the spline function (defined by a set of nodes) stored in func
     assert hrch != None
     if len(func) == 1:
@@ -611,7 +619,11 @@ def func1d(x, func, index_func = None, nb_funcs = None, cyclic = None, bd_scal =
         z  = x  + (x <=aa).astype(int)*cyclic
         cc = bb + (bb<=aa).astype(int)*cyclic
         ee = dd + (dd<=aa).astype(int)*cyclic
-        assert aa < cc < ee
+        assert aa <= cc <= ee
+        if aa == ee:
+            assert len(np.unique(x)) == 1 # Constant input (e.g. nebulosity Milllau)
+            cc = aa + 1
+            ee = cc + 1
         del bb, dd
         f1 = 0
         f2 = (z-aa)/(cc-aa)

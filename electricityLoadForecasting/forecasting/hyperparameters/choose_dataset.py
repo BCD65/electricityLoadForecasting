@@ -9,7 +9,7 @@ def choose_dataset(hprm):
    
     hprm.update({
                  # Choose the database
-                 'database' : 'eCO2mix.France',
+                 'database' : 'eCO2mix.administrative_regions',
                  })
     assert hprm['database'] in [
                                 'eCO2mix.France',
@@ -25,10 +25,10 @@ def choose_dataset(hprm):
                  'sites.trash'               : [],    # Eliminate additional sites from the dataset
                  
                  # Choose the weather data
-                 'weather.zone'              : 'all', 
+                 'weather.zone'              : 'all', # '4Paris', 'Normandie'
                  'weather.source'            : 'observed', 
                  'weather.aggregation'       : {'eCO2mix.France'                 : 'mean',
-                                                'eCO2mix.administrative_regions' : None, 
+                                                'eCO2mix.administrative_regions' :  None, 
                                                 }[hprm['database']],
                  'weather.extra_latitude'    : {'eCO2mix.France'                 : 5,
                                                 'eCO2mix.administrative_regions' : 0.1, 

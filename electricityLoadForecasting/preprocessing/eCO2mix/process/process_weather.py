@@ -70,8 +70,10 @@ def read_raw_weather_data(year = None, month = None):
 def correct_filter_weather(df_weather):
     # Some series start with a few Nan so correct them or drop them
     length_missing_data_beginning = (1 - pd.isnull(df_weather)).idxmax(axis = 0) - df_weather.index[0]
-    dropped_columns               = df_weather.columns[length_missing_data_beginning > pd.to_timedelta(24, unit='h')].remove_unused_levels()#.levels[0]
+    dropped_columns               = df_weather.columns[length_missing_data_beginning > pd.to_timedelta(24, unit='h')].remove_unused_levels()
     df_weather                    = df_weather.drop(columns = dropped_columns)
+    constant_columns              = df_weather.columns[(df_weather.nunique(axis = 0) <= 1)]
+    df_weather                    = df_weather.drop(columns = constant_columns)
     trash_weather                 = list(dropped_columns.levels[0])
     df_weather.columns            = df_weather.columns.remove_unused_levels()
     # Drop the stations that do not have all the physical quantities
