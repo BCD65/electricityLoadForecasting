@@ -8,7 +8,7 @@ from scipy      import sparse
 from subprocess import CalledProcessError, TimeoutExpired
 #
 from .. import format_text
-from .. import config
+from .  import config
 
 
 len_str = 25

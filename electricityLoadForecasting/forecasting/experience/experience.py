@@ -12,7 +12,6 @@ import os
 from .. import performances, hyperparameters, inputs, models
 import electricityLoadForecasting.paths  as paths
 import electricityLoadForecasting.tools  as tools
-import electricityLoadForecasting.tools.config as config
 
 
 
@@ -151,7 +150,7 @@ class Experience(object):
 
     def load_performances(self):
         # Load performances ie r2, MAPE, NMSE etc.
-        if not config.load_performances:
+        if not tools.config.load_performances:
             raise IOError('fail on purpose load performances')
         self.performances = tools.batch_load(os.path.join(paths.outputs,
                                                           'Saved/Performances',
@@ -163,7 +162,7 @@ class Experience(object):
 
     def load_predictions(self):
         # Load the predictions 
-        if not config.load_predictions:
+        if not tools.config.load_predictions:
             raise IOError('fail on purpose load predictions')
         self.predictions = tools.batch_load(os.path.join(paths.outputs,
                                                          'Saved/Predictions',
@@ -230,7 +229,7 @@ class Experience(object):
         
             
     def save_predictions(self):
-        if not config.save_predictions:
+        if not tools.config.save_predictions:
             raise IOError('perf not saved on purpose')
         self.prediction_dikt = {
                                 'target_training'       : self.target_training, 
@@ -294,7 +293,7 @@ class Experience(object):
                                                                                    )
 
     def save_performances(self,):   
-        if not config.save_performances:
+        if not tools.config.save_performances:
             raise IOError('performances not saved on purpose')
         tools.batch_save(os.path.join(paths.outputs,
                                       'Saved/Performances',

@@ -1,6 +1,5 @@
 
 
-from . import     config
 from .calendar    import *
 from .encoding    import *
 from .exceptions  import *
