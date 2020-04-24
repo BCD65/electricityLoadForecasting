@@ -5,7 +5,7 @@
 cd ~/Downloads
 git clone https://github.com/BCD65/electricityLoadForecasting.git
 cd electricityLoadForecasting
-conda create --name elec
+conda create --name elec pip
 conda activate elec
 pip install -e .
 # However, the packages xgboost, spams and rpy2 have to be installed separately
