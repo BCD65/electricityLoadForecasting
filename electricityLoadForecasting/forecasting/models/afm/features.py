@@ -43,23 +43,22 @@ def compute_design(inputs,
     # From the number of nodes defined in the parameters, 
     # We compute sequentially the nodes, the corresponding splines functions, 
     # and the transformation of the data by these functions.
-
-    """
-    Checks and Prints
-    """
     if   db == 'training':
         assert dikt_func   == None
         assert dikt_func12 == None
     elif db == 'validation':
         assert bool(dikt_func)
     else:
-        raise ValueError
+        raise ValueError('Incorret db')
+    precompute = not (   hprm['afm.algorithm'] == 'L-BFGS' 
+                      or (    db == 'validation'
+                          and not hprm['tf_precompute_validation']
+                          )
+                      )        
+    ### Univariate part
     if hprm['afm.features.sparse_x1']: # Format to store the univariate covariates
         print(colored('X1_SPARSE', 'green'))
-          
     prefix_features_univariate = dikt_file_names['features.{}.univariate'.format(db)] # string used to save/load the covariates
-    lbfgs   = (hprm['afm.algorithm'] == 'L-BFGS')
-    
     try:
         # We try to load from the local machine or from a distant machine (in the module primitives)
         if db == 'training':
@@ -77,7 +76,7 @@ def compute_design(inputs,
                               )
     except Exception as e:
         print(e)
-        print('Start X1 '+db)
+        print('Start X1 {0}'.format(db))
         if db == 'training':
             dikt_nodes   = make_dikt_nodes(inputs,
                                            hprm,
@@ -104,8 +103,7 @@ def compute_design(inputs,
                     pass
                 else:
                     raise ValueError
-        print('make X1 done')
-        #################
+        print('finished X1')
         ### Save 
         list_files = [
                       (X1, 'X1_'+db , prefix_features_univariate, ('dict_sp'
@@ -122,13 +120,18 @@ def compute_design(inputs,
                            ]
         save_list_files(list_files, path_data, hprm)
         ### FINISHED X1
-    X = {
-         'X1_'+db     : X1,
-         }
-    if not lbfgs:
+    X = {'X1_{0}'.format(db) : X1}
+    if db == 'training':
+        X.update({
+                  'dikt_nodes'       : dikt_nodes, 
+                  'dikt_func'        : dikt_func, 
+                  'mask_univariate'  : mask_univariate, 
+                  'size_univariate'  : size1, 
+                  })
+    if precompute:
         # Compute XtX
-        # lbfgs and mfilter are two possible algorithms that do not require the precomputations of XtX
-        # since it is done later for lbfgs and it is not done for mfilter.
+        # l-bfgs and mfilter are two possible algorithms that do not require the precomputations of XtX
+        # since it is done later for l-bfgs and it is not done for mfilter.
         try:
             X1tX1 = tools.batch_load(path_data,
                                      prefix = prefix_features_univariate,
@@ -142,7 +145,7 @@ def compute_design(inputs,
         except Exception as e:
             print(e)
             print('Start XtX1 '+db)
-            X1tX1 = precomputations_1(X1, mask_univariate, all_products = hprm.get('gp_pen',0) > 0)
+            X1tX1 = precomputations_1(X1, mask_univariate, all_products = (hprm.get('gp_pen',0) > 0 and hprm['gp_matrix'] != ''))
             for key, value in {**X1tX1}.items():
                 assert type(value) in {np.ndarray, sp.sparse.csr_matrix}
             if len (X1tX1) < 1e4:
@@ -154,28 +157,23 @@ def compute_design(inputs,
                                 else
                                 'dict_np'),
                                )]
+                save_list_files(list_files, path_data, hprm)
+                print('finished XtX1')
             else:
                 print('X1tX1 too large to save : len (X1tX1) = {0}'.format(len(X1tX1)))
-                list_files = []
-            save_list_files(list_files, path_data, hprm)        
         for e in list(X1tX1.keys()):
             assert type(X1tX1[e]) in {np.ndarray, sp.sparse.csr_matrix}
             j, k = e.split('@')
-            if j!=k:
-                X1tX1.update({k+'@'+j : sp.sparse.csr_matrix(X1tX1[e].T) if type(X1tX1[e]) == sp.sparse.csr_matrix else X1tX1[e].T})
+            if (j != k) and (k+'@'+j) not in X1tX1:
+                X1tX1.update({k+'@'+j : (sp.sparse.csr_matrix(X1tX1[e].T)
+                                         if type(X1tX1[e]) == sp.sparse.csr_matrix
+                                         else
+                                         X1tX1[e].T
+                                         )})
         
-        X.update({
-                  'X1tX1_'+db : X1tX1 ,
-                  })
-    if db == 'training':
-        X.update({
-                  'dikt_nodes'       : dikt_nodes, 
-                  'dikt_func'        : dikt_func, 
-                  'mask_univariate'  : mask_univariate, 
-                  'size_univariate'  : size1, 
-                  })
-    bool_bivariate = not hprm['afm.formula'].loc[hprm['afm.formula']['nb_intervals'].apply(lambda x : (type(x) == tuple and len(x) == 2))].empty
-    if bool_bivariate: # ie if there are interactions
+        X.update({'X1tX1_{0}'.format(db) : X1tX1})
+    ### Bivariate part
+    if not hprm['afm.formula'].loc[hprm['afm.formula']['nb_intervals'].apply(lambda x : (type(x) == tuple and len(x) == 2))].empty: # ie if there are interactions
         prefix_features_bivariate = dikt_file_names['features.{}.bivariate'.format(db)] # string used to save/load the covariates
         prefix_features_all       = dikt_file_names['features.{}.all'.format(db)] # string used to save/load the covariates
         if hprm['afm.features.sparse_x2']:
@@ -199,7 +197,7 @@ def compute_design(inputs,
                                   )
         except Exception as e:
             print(e)
-            print('Start X2 '+db)
+            print('Start X2 {0}'.format(db))
             if db == 'training':
                 # Compute the nodes for the univariate functions used to compute the interactions
                 # They may be different from the nodes used for the univariate covariates
@@ -230,7 +228,7 @@ def compute_design(inputs,
             X2, size2, size_tensor2 = make_X2(X12,
                                               hprm,
                                               )
-            for (h,k) in X2.keys():
+            for h,k in X2.keys():
                 if (h,k) in mask_bivariate:
                     mm = mask_bivariate.get((h,k),
                                             mask_bivariate.get(k,h),
@@ -249,7 +247,14 @@ def compute_design(inputs,
                                (size_tensor2, 'size_tensor2',   prefix_features_bivariate, 'np'),
                                ]
             save_list_files(list_files, path_data, hprm)
-        precompute = not (lbfgs or (db=='validation' and not hprm['tf_precompute_validation']))
+            
+        X.update({'X2_'+db : X2})
+        if db == 'training':
+            X.update({
+                      'mask_bivariate' : mask_bivariate,
+                      'size_bivariate'          : size2,
+                      'size_tensor2'   : size_tensor2,
+                      })
         if precompute:
             # Compute the empirical covariance between the univariate/bivariate covariates
             try:
@@ -286,24 +291,15 @@ def compute_design(inputs,
                                      else
                                      'dict_np'
                                      ),
-                                    )] if len (X1tX2) < 1e4 else []
+                                    )]
                 if len (X1tX2) < 1e4:    
                     list_files += [(X2tX2, 
                                     'X2tX2_'+db, 
                                     prefix_features_bivariate, 
                                     'dict_sp' if hprm['afm.features.sparse_x2'] else 'dict_np',
-                                    )] if len (X2tX2) < 1e4 else []
+                                    )]
                 save_list_files(list_files, path_data, hprm) 
                 print('finished XtX2')
-
-        if db == 'training':
-            X.update({
-                      'mask_bivariate' : mask_bivariate,
-                      'size_bivariate'          : size2,
-                      'size_tensor2'   : size_tensor2,
-                      })
-        X.update({'X2_'+db : X2})
-        #X['X_'+db].update(X2)
         if precompute:
             X2tX1 = {}
             for e in list(X1tX2.keys()):
@@ -343,6 +339,7 @@ def compute_design(inputs,
                 assert type(X[k][j]) != dict
     print('end gso')
     return X
+
 
 def save_list_files(list_files, path_data, hprm):
     # Intermediary function to format the data and save it with the module primitives
@@ -425,7 +422,12 @@ def make_func(nodes, cyclic, order_splines):
     return tuple(funcs)
 
 
-def make_nodes(nb_itv, cyclic, order_splines, min_value = None, max_value = None):
+def make_nodes(nb_itv,
+               cyclic,
+               order_splines,
+               min_value = None,
+               max_value = None,
+               ):
     # Given the number of nodes, the indicator of a cyclic variable and the degree of the wanted splines
     # Compute the associated nodes
     ######
@@ -447,14 +449,20 @@ def make_nodes(nb_itv, cyclic, order_splines, min_value = None, max_value = None
                               ])  
         else:
             nodes = np.array([affine_trsfm(i/nb_itv)
-                              for i in range(-1, nb_itv + 1 + order_splines)
+                              for i in range(- order_splines,
+                                             nb_itv + 1 + order_splines,
+                                             )
                               ])
     else:
         raise ValueError
     return nodes
 
 
-def make_X1(inputs, d_func, hprm, sparse_x1 = False):
+def make_X1(inputs,
+            d_func,
+            hprm,
+            sparse_x1 = False,
+            ):
     X1 = {((inpt, trsfm, prm), (location,)):make_cov(d_func[(inpt, trsfm, prm, location)], 
                                                      inputs[[(inpt, trsfm, prm, location)]], 
                                                      sparse_x1,
@@ -471,8 +479,12 @@ def make_X1(inputs, d_func, hprm, sparse_x1 = False):
     return X1, size1
 
 
-def make_cov(list_funcs, inpt_data, sparse_x1, hprm, inpt_name, center = False):
-    #assert type(hprm.get('tf_hrch', {})) == dict
+def make_cov(list_funcs,
+             inpt_data,
+             sparse_x1,
+             hprm,
+             inpt_name,
+             ):
     # Compute for one category (eg the hour, the temperatures or the delayed temperatures)
     # the covariates with the associated list of functions
     cov = np.concatenate([func1d(inpt_data, 
@@ -481,8 +493,6 @@ def make_cov(list_funcs, inpt_data, sparse_x1, hprm, inpt_name, center = False):
                                  nb_funcs   = len(list_funcs),
                                  cyclic     = hprm['inputs.cyclic'].get(inpt_name, False), 
                                  bd_scal    = hprm['afm.features.boundary_scaling'],
-                                 hrch       = hprm.get('tf_hrch', {}).get(inpt_name,0),
-                                 center     = center, 
                                  )
                           for ii, func in enumerate(list_funcs)
                           ], 
@@ -493,10 +503,9 @@ def make_cov(list_funcs, inpt_data, sparse_x1, hprm, inpt_name, center = False):
     return cov
 
 
-def make_X2(X12, hprm):
-    # For the interactions
-    # For each pairs of covariates, pairs of univariate covariates are stored in X12
-    # One wants to compute their product
+def make_X2(X12,
+            hprm,
+            ):
     X2      = {}
     size2   = {} 
     size_tensor2 = {}
@@ -504,7 +513,7 @@ def make_X2(X12, hprm):
     for (inpt1, (location1,)), v1 in X12.items():
         for (inpt2, (location2,)), v2 in X12.items():
             if (inpt1, inpt2) in formula_biv.index.get_level_values('input'):
-                #Compute the product or the minimum interaction
+                #Compute interactions
                 if hprm['afm.features.bivariate.combine_function'] == np.min:
                     n, p = v1.shape
                     _, q = v2.shape
@@ -522,9 +531,9 @@ def make_X2(X12, hprm):
                 size2       [(inpt1, inpt2),(location1, location2)] = np.prod(siz2)
                 # If the first covariate is associated to p functions and the 
                 # second to q functions and there are n observations
-                # Reshape the interaction of size (n,p,q)into a matrix of size (n, p*q)
+                # Reshape the interaction of size (n,p,q) into a matrix of size (n, p*q)
                 # It is indeed important to use matrix instead of tensors to 
-                # have faster computations with numpy, in particular for sparse matrices
+                # have faster computations, in particular for sparse matrices
                 X2[(inpt1, inpt2),(location1, location2)] = interaction.reshape((-1, siz2[0]*siz2[1]))
                 if hprm['afm.features.sparse_x2']:
                     X2[(inpt1, inpt2),(location1, location2)] = sp.sparse.csc_matrix(X2[(inpt1, inpt2),(location1, location2)])
@@ -602,19 +611,14 @@ def func1d(x,
            index_func = None,
            nb_funcs   = None,
            cyclic     = None,
-           bd_scal    = 0,
-           hrch       = None,
-           center     = False,
            ):
     # Computet for the different values stored in x the values of the spline function (defined by a set of nodes) stored in func
-    assert hrch != None
     if len(func) == 1:
         assert func[0] == int(func[0])
         return x**func[0]
     elif len(func) == 3:
         aa, bb, dd = func
         assert (aa <= bb <= dd) or cyclic
-        assert not bd_scal # Procedure should be checked
         #y  = x
         z  = x  + (x <=aa).astype(int)*cyclic
         cc = bb + (bb<=aa).astype(int)*cyclic
@@ -677,15 +681,7 @@ def func1d(x,
                  a_min = 0,
                  a_max = None,
                  )
-        if center:
-            v -= (cc - aa)
-        ### Checks and factor
-        if bd_scal:
-            raise NotImplementedError
-        if hrch:
-            raise NotImplementedError
-        fac = 1
     else:
         raise NotImplementedError
-    return v*fac 
+    return v
         

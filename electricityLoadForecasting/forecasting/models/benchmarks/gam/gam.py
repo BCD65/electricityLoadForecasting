@@ -12,7 +12,7 @@ try:
 except ModuleNotFoundError:
     pass
 #
-import electricityLoadForecasting.paths as paths
+from electricityLoadForecasting import paths
 
 
 def fit_and_predict(inputs_training, Y_training, inputs_validation, hprm, assignments = {}):
@@ -41,7 +41,7 @@ def fit_and_predict(inputs_training, Y_training, inputs_validation, hprm, assign
                                   for (qty, *prm) in inputs_validation.columns.droplevel(-1).drop_duplicates()
                                   }
         Y_hat_training[site_name], Y_hat_validation[site_name] = call_fitter(site_inputs_training,
-                                                                             Y_training[site_name],#.rename({site_name : 'target'}, axis = 1),
+                                                                             Y_training[site_name],
                                                                              site_inputs_validation, 
                                                                              hprm,
                                                                              )
@@ -76,7 +76,6 @@ def call_fitter(inputs_training, y_training, inputs_validation, hprm):
                           for (qty, transform, prm), data in inputs_validation.items()
                           for ii in range(data.shape[1])
                           },
-                       #'target' : y_validation,
                        }
         
     ### Convert arrays

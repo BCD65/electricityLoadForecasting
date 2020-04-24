@@ -1,8 +1,6 @@
 # Fetch command line arguments
 myargs <- commandArgs(trailingOnly = TRUE)
 
-#print('entered the r script')
-
 # Get formula
 string_formula = myargs[1]
 cat(gsub(')+', ')\n', sub('~', '~\n ', string_formula)))

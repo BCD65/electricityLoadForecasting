@@ -6,7 +6,7 @@ from sklearn.tree     import DecisionTreeRegressor
 from sklearn.svm      import SVR
 
 try:
-    from pyearth import Earth # pyeart should be installed manually : conda install -c conda-forge sklearn-contrib-py-earth
+    from pyearth import Earth # pyearth should be installed manually : conda install -c conda-forge sklearn-contrib-py-earth
 except ModuleNotFoundError:
     pass
 try:
