@@ -22,6 +22,7 @@ setup(
                           'ipdb',
                           'matplotlib',
                           'numpy',
+                          'openblas',
                           'pandas',
                           'pytz',
                           'scikit-learn',

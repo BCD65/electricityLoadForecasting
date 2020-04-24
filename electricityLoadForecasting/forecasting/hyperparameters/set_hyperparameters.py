@@ -1,6 +1,7 @@
 
 
 
+from .activate_plots        import activate_plots
 from .check_hyperparameters import check_hyperparameters
 from .choose_dataset        import choose_dataset
 from .choose_inputs         import choose_inputs
@@ -23,6 +24,7 @@ def set_hyperparameters(model = None):
     hprm.update(choose_dataset(hprm)) 
     hprm.update(choose_inputs(hprm)) 
     hprm.update(choose_model(hprm, model = model))                
+    hprm.update(activate_plots(hprm))                
   
     if   hprm['learning.model'] == 'afm':
         hprm.update(set_afm(hprm))
