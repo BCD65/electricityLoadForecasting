@@ -6,7 +6,7 @@ from electricityLoadForecasting import paths
 dikt_folders = {
                 'sites'               : os.path.join(paths.inputs, 'eCO2mix', 'raw_data', 'load'), 
                 'weather'             : os.path.join(paths.inputs, 'eCO2mix', 'raw_data', 'weather'),  
-                'tmp_data'            : os.path.join(paths.inputs, 'eCO2mix', 'transformed_data/tmp'),
+                'tmp_data'            : os.path.join(paths.inputs, 'eCO2mix', 'transformed_data', 'tmp'),
                 'transformed_data'    : os.path.join(paths.inputs, 'eCO2mix', 'transformed_data'),
                 'plots'               : os.path.join(paths.inputs, 'eCO2mix', 'plots'),
                 }

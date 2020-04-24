@@ -337,8 +337,7 @@ dikt_formula = {
 
 # Choose which variables should be part of the low-rank components and ot the unstructured components
 # Blr        for low-rank (over the substations) formulation with a first-order descent algorithm
-# Bsp        for independent models and unstructured coedfficients with a first-order descent algorithm
-# lbfgs_coef for independent models and unstructured coedfficients with a first-order descent algorithm
+# B          for independent models and unstructured coedfficients with a first-order descent algorithm
 # Cuv        for independent models and low-rank interactions
 # Cb         for independent models and the univariate part of the sesquivariate constraint
 # Cbm        for independent models and the sesquivariate constraint for the interactions
@@ -361,14 +360,14 @@ stopping_criteria = {
                            'afm.algorithm.lbfgs.maxfun'  : 1e8,
                            'afm.algorithm.lbfgs.maxiter' : 1e8,                             
                            'afm.algorithm.lbfgs.pgtol'   : 1e-6,
-                           'afm.algorithm.lbfgs.tol'     : 1e-12,
+                           'afm.algorithm.lbfgs.tol'     : 1e-4,
                            },
                      ('eCO2mix.France',
                       None,
                       ) : {
                            'afm.algorithm.lbfgs.maxfun'  : 1e8,
                            'afm.algorithm.lbfgs.maxiter' : 1e8,                             
-                           'afm.algorithm.lbfgs.tol'     : 1e-12,
+                           'afm.algorithm.lbfgs.tol'     : 1e-6,
                            'afm.algorithm.lbfgs.pgtol'   : 1e-4,
                            },
                     ('RTE.substations',
@@ -376,15 +375,16 @@ stopping_criteria = {
                      ) : {
                           'afm.algorithm.lbfgs.maxfun'  : 1e8,
                           'afm.algorithm.lbfgs.maxiter' : 1e8,                             
-                          'afm.algorithm.lbfgs.tol'     : 1e-9,
-                          'afm.algorithm.lbfgs.pgtol'   : 1e-5,
+                          'afm.algorithm.lbfgs.tol'     : 1e-6,
+                          'afm.algorithm.lbfgs.pgtol'   : 1e-4,
                           },
                      }
 
 stopping_criteria.update({
-                          ('RTE.substations','Sum')                    : cp.deepcopy(stopping_criteria['eCO2mix.France',None]),
-                          ('RTE.substations','Administrative_regions') : cp.deepcopy(stopping_criteria['eCO2mix.France',None]),
-                          ('RTE.substations','RTE_Regions')            : cp.deepcopy(stopping_criteria['eCO2mix.France',None]),
-                          ('RTE.substations','Districts')              : cp.deepcopy(stopping_criteria['eCO2mix.France',None]),
+                          ('RTE.substations','Sum')                    : cp.deepcopy(stopping_criteria['eCO2mix.France', None]),
+                          ('RTE.substations','Administrative_regions') : cp.deepcopy(stopping_criteria['eCO2mix.France', None]),
+                          ('RTE.substations','RTE_Regions')            : cp.deepcopy(stopping_criteria['eCO2mix.France', None]),
+                          ('RTE.substations','Districts')              : cp.deepcopy(stopping_criteria['eCO2mix.France', None]),
+                          ('RTE.quick_test', 'Districts')              : cp.deepcopy(stopping_criteria['RTE.substations', None]),
                           })
               

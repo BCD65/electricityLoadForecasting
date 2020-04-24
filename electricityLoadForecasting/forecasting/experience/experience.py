@@ -32,7 +32,6 @@ class Experience(object):
         minutes, seconds = divmod(remainder, 60)
         print('Total : ', '{:02} hours {:02} minutes {:02} seconds'.format(int(hours), int(minutes), int(seconds)))
 
-
 ###############################################################################
   
     def select_sites(self, ):   
@@ -142,10 +141,9 @@ class Experience(object):
     def split_observations(self, ):
         self.dt_training, self.dt_validation = performances.split_population(self.hprm, 
                                                                              freq = pd.infer_freq(self.target.index),
-                                                                             tz   = self.target.index.tz,
                                                                              )
-        self.inputs_training   = self.inputs.loc[self.dt_training]#   for k, v in self.inputs.items()}
-        self.inputs_validation = self.inputs.loc[self.dt_validation]# for k, v in self.inputs.items()}
+        self.inputs_training   = self.inputs.loc[self.dt_training]
+        self.inputs_validation = self.inputs.loc[self.dt_validation]
         self.target_training   = self.target.loc[self.dt_training]
         self.target_validation = self.target.loc[self.dt_validation]
 
@@ -163,7 +161,6 @@ class Experience(object):
                                              data_type = 'pickle',
                                              )
 
-    #profile
     def load_predictions(self):
         # Load the predictions 
         if not config.load_predictions:
@@ -181,7 +178,6 @@ class Experience(object):
         self.prediction_validation = self.predictions['prediction_validation']
 
             
-    #profile
     def learning_process(self, ):   
         # 
         print('learning_process')
@@ -324,22 +320,4 @@ class Experience(object):
         print('MODEL : ')
         performances.print_performances(self.performances['model']['validation'])
 
-
-#    def plot_results(self):        
-#        print(colored('BEGIN PLOTS', 'green'))
-#        try:
-#            if self.hprm.get('exp_plot_1d_effect') and self.hprm['method'] == 'approx_tf':
-#                archives_plot.plot_1d_effect(self)
-#            if self.hprm.get('exp_plot_1d_effect_sum') and self.hprm['method'] == 'approx_tf':
-#                archives_plot.plot_1d_effect_sum(self)
-#            if self.hprm.get('exp_plot_1d_marginal'):
-#                plot_1d_marginal(self)
-#            if self.hprm.get('exp_plot_covariance_residuals'):
-#                plot_covariance_residual(self)
-#            if self.hprm.get('exp_plot_1d_norm_residuals'):
-#                plot_1d_norm_residuals(self)
-#            if self.hprm.get('exp_plot_pred'):
-#                plot_pred(self)
-#        except Exception as e:
-#            print(colored('\n\n' + str(e) + '\n', 'red', 'on_cyan'))  
 

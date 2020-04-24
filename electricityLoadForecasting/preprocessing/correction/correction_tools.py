@@ -118,7 +118,7 @@ def correct_with_regression(df_load, dikt_errors, prefix = None, prefix_plot = N
                         'verbose'           : False,
                         'lambda1'           : 0.03*X_train.shape[0],
                         'lambda2'           : 0.1, # For elastic_net
-                        'it0'               : 10, # iter between two dual gap computations
+                        'it0'               : 10, # nb_iter between two dual gap computations
                         'max_it'            : int(1e4), # (optional, maximum number of iterations, 100 by default)
                         'L0'                : 0.1, # (optional, initial parameter L in fista, 0.1 by default, should be small enough)
                         'regul'             : 'l2',
@@ -175,9 +175,7 @@ def correct_with_regression(df_load, dikt_errors, prefix = None, prefix_plot = N
                                                                                                                rr_test  = rr_test,
                                                                                                                ))
             df_corrected_load[site].iloc[ind_unknown] = y_hat_pred  
-        df_corrected_load.to_csv(fname_load, 
-                                 #index_label = df_load.columns.name,
-                                 )
+        df_corrected_load.to_csv(fname_load)
         with open(fname_trash, 'wb') as f:
             pickle.dump(trash_sites, f)
     if bool_plot_trash:    

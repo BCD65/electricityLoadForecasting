@@ -16,17 +16,10 @@ import electricityLoadForecasting.forecasting.file_names as file_names
 import electricityLoadForecasting.forecasting.models     as models
 
 
-#%%
-#profile
 def main(hprm = None, data = None):
     if hprm is None:
         hprm = set_hyperparameters()
-
-    #%%
-    print('init')
     exp = Experience(hprm)
-
-    #%%
     print('get_data')
     if data is None:
         exp.data = load_input_data(paths.path_database(hprm['database']))
@@ -42,31 +35,24 @@ def main(hprm = None, data = None):
                                                 dt_training   = exp.target_training.index,
                                                 dt_validation = exp.target_validation.index,
                                                 )
-    #%%
     try:
         print('load_performances')
         exp.load_performances()
-#        exp.pre_treatment_adjust()
         print('performances loaded')
-    #%%
     except exceptions.loading_errors as e:
         print(repr(e))
         print('performances not loaded')
         try:
             print('load_predictions')
             exp.load_predictions()
-#            exp.model, exp.beta, exp.obj_train, exp.obj_test  = ['pred_loaded' for k in range(4)]
             print('predictions loaded')
-    #%%
         except exceptions.loading_errors as e:
             print(repr(e))
             print('predictions not loaded')
-            #%%
             if models.bool_separated(exp.hprm):
                 models.separated(exp)  
             else:
                 exp.learning_process()
-                #%% 
             try:
                 exp.save_predictions()
             except exceptions.saving_errors:
@@ -77,13 +63,9 @@ def main(hprm = None, data = None):
         except exceptions.saving_errors:
             print('performances not saved')
     exp.print_performances()
-    #%%    
-    #if exp.hprm['any_plot'] and exp.hprm['exp_plot']:
-    #    exp.plot_results()
     exp.print_finish()
     return exp
 
-#%%
 
 if __name__ == "__main__":   
     exp  = main()

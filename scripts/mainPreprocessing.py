@@ -6,8 +6,7 @@ import shutil
 from termcolor import colored
 #
 import electricityLoadForecasting.tools as tools
-from electricityLoadForecasting.dataPreparation import correction, detection, files
-import electricityLoadForecasting.dataPreparation.eCO2mix as eCO2mix
+from electricityLoadForecasting.dataPreparation import correction, detection, eCO2mix, files
 
 
 """
@@ -71,7 +70,10 @@ def main_weather():
                                                                                                                       eCO2mix.config.LEVEL,
                                                                                                                       ),
                                                                                            )
-    print(colored('{0} weather stations have been dropped'.format(len(trash_weather)), 'red'))
+    print(colored('{0} weather station{1} have been dropped'.format(len(trash_weather),
+                                                                    's' if len(trash_weather) > 1 else '',
+                                                                    ), 
+                  'red'))
 
     # Checks
     tools.check_dates(df_weather.index)
@@ -99,7 +101,9 @@ if __name__ == '__main__':
                                ), 
                   ignore_errors = True,
                   )
-    if os.path.isdir(eCO2mix.etc.dikt_folders['tmp_data']) and not bool(os.listdir(eCO2mix.etc.dikt_folders['tmp_data'])):
+    if (     os.path.isdir(eCO2mix.etc.dikt_folders['tmp_data'])
+        and not bool(os.listdir(eCO2mix.etc.dikt_folders['tmp_data']))
+        ):
         shutil.rmtree(eCO2mix.etc.dikt_folders['tmp_data'], 
                       ignore_errors = True,
                       )
