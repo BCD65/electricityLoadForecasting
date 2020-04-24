@@ -156,7 +156,7 @@ class additive_features_model:
                                               for tt in self.partition_posts_to_tuples.values()
                                               }
                 
-        if (self.hprm['afm.algorithm.afm_plot'] or self.hprm['afm.algorithm.early_stop_ind_validation']):
+        if (self.hprm['plot.afm'] or self.hprm['afm.algorithm.early_stop_ind_validation']):
             self.M_mean    = np.ones((self.k, self.k))/self.k
             
         # Warm-start
@@ -321,7 +321,7 @@ class additive_features_model:
                 # Initialize arrays
                 self.change_sparse_structure()
                 self.fit_training     = np.zeros(self.max_iter)
-                if self.hprm['afm_plot'] or self.hprm['tf_early_stop_ind_validation']:
+                if self.hprm['plot.afm'] or self.hprm['tf_early_stop_ind_validation']:
                     self.fit_ind_training = np.zeros((self.max_iter, self.k))
                     self.fit_mean_training = np.zeros(self.max_iter)
                 self.fit_gp_training  = np.zeros(self.max_iter)
@@ -335,7 +335,7 @@ class additive_features_model:
                 self.gap_B, self.gap_U, self.gap_V, self.gap_D, self.gap_W, self.gap_Z = [[] for k in range(6)] 
                 if self.compute_validation:
                     self.fit_validation     = np.zeros(self.max_iter)
-                    if self.hprm['afm_plot'] or self.hprm['tf_early_stop_ind_validation']:
+                    if self.hprm['plot.afm'] or self.hprm['tf_early_stop_ind_validation']:
                         self.fit_ind_validation = np.zeros((self.max_iter, self.k))                
                         self.fit_mean_validation = np.zeros(self.max_iter)                
                     self.fit_gp_validation  = np.zeros(self.max_iter)
@@ -368,7 +368,7 @@ class additive_features_model:
                 assert np.abs(self.cur_fit_training + self.cur_fit_gp_training + self.cur_reg + self.cur_ridge - self.cur_obj_training ) <= 1e-12
                 print('Update arrays')
                 self.fit_training[self.iteration]     = self.cur_fit_training
-                if (   self.hprm['afm_plot'] 
+                if (   self.hprm['plot.afm'] 
                     or self.hprm['tf_early_stop_ind_validation']
                     ):
                     self.fit_ind_training[self.iteration]  = self.evaluate_ind_fit(self.coef, dataset = 'training')
@@ -383,7 +383,7 @@ class additive_features_model:
                 if self.compute_validation : 
                     print('Compute fit validation')
                     self.cur_fit_validation = self.evaluate_fit(self.coef, dataset = 'validation')
-                    if self.hprm['afm_plot'] or self.hprm['tf_early_stop_ind_validation']:
+                    if self.hprm['plot.afm'] or self.hprm['tf_early_stop_ind_validation']:
                         self.fit_ind_validation[self.iteration]  = self.evaluate_ind_fit(self.coef, dataset = 'validation')
                         self.fit_mean_validation[self.iteration] = self.evaluate_fit(self.coef, dataset = 'validation', gp_matrix = self.M_mean, gp_pen = 1)
                     self.cur_fit_gp_validation = self.evaluate_fit(self.coef, dataset = 'validation', gp_matrix = self.gp_matrix, gp_pen = self.gp_pen) if self.active_gp else 0
@@ -558,9 +558,9 @@ class additive_features_model:
                     if self.precompute_validation and self.iteration >= self.flag_compute_validation :
                         q_gp_validation            = {}
                         old_part_fit_gp_validation = 0
-                if self.hprm['afm_plot'] or self.hprm['tf_early_stop_ind_validation']:
+                if self.hprm['plot.afm'] or self.hprm['tf_early_stop_ind_validation']:
                     old_part_fit_ind_training  = self.part_fit(coef_old_masked, coor_upd, q_training,    extra_part_training,    dataset = 'training', indi = True)
-                if self.hprm['afm_plot']:
+                if self.hprm['plot.afm']:
                     q_mean_training, extra_part_mean_training, _ = self.compute_part_grad(coor_upd, mask_upd, dataset = 'training',  MMt = self.M_mean, gp_pen = 1)
                     old_part_fit_mean_training = self.part_fit(coef_old_masked, coor_upd, q_mean_training, extra_part_mean_training, dataset = 'training') 
                     if self.precompute_validation:
@@ -653,7 +653,7 @@ class additive_features_model:
             self.eta1s       [slice_inner_iter] = self.eta1s       [self.iteration - 1]
             self.eta2s       [slice_inner_iter] = self.eta2s       [self.iteration - 1]
             self.fit_training   [slice_inner_iter] = self.fit_training   [self.iteration - 1]
-            if self.hprm['afm_plot'] or self.hprm['tf_early_stop_ind_validation']:
+            if self.hprm['plot.afm'] or self.hprm['tf_early_stop_ind_validation']:
                 self.fit_ind_training[slice_inner_iter] = self.fit_ind_training[self.iteration - 1]
                 self.fit_mean_training[slice_inner_iter] = self.fit_mean_training[self.iteration - 1]
             if self.active_gp:
@@ -663,7 +663,7 @@ class additive_features_model:
             self.obj_training[slice_inner_iter] = self.obj_training[self.iteration - 1]
             if self.compute_validation:# and False: 
                 self.fit_validation   [slice_inner_iter] = self.fit_validation[self.iteration - 1]
-                if self.hprm['afm_plot'] or self.hprm['tf_early_stop_ind_validation']:
+                if self.hprm['plot.afm'] or self.hprm['tf_early_stop_ind_validation']:
                     self.fit_ind_validation[slice_inner_iter]  = self.fit_ind_validation[self.iteration - 1]
                     self.fit_mean_validation[slice_inner_iter] = self.fit_mean_validation[self.iteration - 1]
                 if self.active_gp:
@@ -729,7 +729,7 @@ class additive_features_model:
                 self.reg         [self.iteration] = self.cur_reg      
                 self.ridge       [self.iteration] = self.cur_ridge    
                 self.obj_training   [self.iteration] = self.cur_obj_training
-                if self.hprm['afm_plot'] or self.hprm['tf_early_stop_ind_validation']:
+                if self.hprm['plot.afm'] or self.hprm['tf_early_stop_ind_validation']:
                     if self.batch_cd:# or self.vr:
                         assert 0, 'not implemented'
                     else:
@@ -738,12 +738,12 @@ class additive_features_model:
                             self.fit_ind_training[self.iteration]  = self.fit_ind_training[self.iteration-1]
                             self.fit_ind_training[self.iteration][mask_upd] = self.fit_ind_training[self.iteration][mask_upd] - old_part_fit_ind_training + new_part_fit_ind_training
                             assert (self.fit_ind_training[self.iteration] > 0).all() 
-                            if self.hprm['afm_plot']:
+                            if self.hprm['plot.afm']:
                                 new_part_fit_mean_training             = self.evaluate_fit_bcd(coor_upd, coef_tmp, q_mean_training, dataset = 'training', mask = mask_upd, MMt = self.M_mean, gp_pen = 1)
                                 self.fit_mean_training[self.iteration] = self.fit_mean_training[self.iteration-1] - old_part_fit_mean_training + new_part_fit_mean_training
                         else:
                             self.fit_ind_training[self.iteration]  = self.fit_ind_training [self.iteration-1]
-                            if self.hprm['afm_plot']:
+                            if self.hprm['plot.afm']:
                                 self.fit_mean_training[self.iteration] = self.fit_mean_training[self.iteration-1]
                 if self.compute_validation and self.iteration >= self.flag_compute_validation: 
                     if self.batch_cd:# or self.vr:
@@ -761,7 +761,7 @@ class additive_features_model:
                                     new_part_fit_gp_validation             = self.evaluate_fit_bcd(coor_upd, coef_tmp, q_gp_validation, dataset = 'validation', mask = mask_upd, MMt = self.MMt, gp_pen = self.gp_pen)
                                     self.cur_fit_gp_validation             = self.fit_gp_validation[self.iteration-1] - old_part_fit_gp_validation + new_part_fit_gp_validation
                                     self.fit_gp_validation[self.iteration] = self.cur_fit_gp_validation    
-                                if self.hprm['afm_plot'] or self.hprm['tf_early_stop_ind_validation']:
+                                if self.hprm['plot.afm'] or self.hprm['tf_early_stop_ind_validation']:
                                     new_part_fit_ind_validation = self.evaluate_fit_bcd(coor_upd, coef_tmp, q_validation, dataset = 'validation', mask = mask_upd, indi = True)
                                     self.fit_ind_validation[self.iteration]  = self.fit_ind_validation[self.iteration-1]
                                     self.fit_ind_validation[self.iteration][mask_upd] = self.fit_ind_validation[self.iteration][mask_upd] - old_part_fit_ind_validation + new_part_fit_ind_validation
@@ -772,7 +772,7 @@ class additive_features_model:
                                 self.fit_validation[self.iteration] = self.fit_validation[self.iteration-1]
                                 if self.active_gp:
                                     self.fit_gp_validation[self.iteration] = self.fit_gp_validation[self.iteration-1]  
-                                if self.hprm['afm_plot'] or self.hprm['tf_early_stop_ind_validation']:
+                                if self.hprm['plot.afm'] or self.hprm['tf_early_stop_ind_validation']:
                                     self.fit_ind_validation [self.iteration] = self.fit_ind_validation[self.iteration-1]
                                     self.fit_mean_validation[self.iteration] = self.fit_mean_validation[self.iteration-1]
                     self.obj_validation[self.iteration] = self.fit_validation[self.iteration] + self.fit_gp_validation[self.iteration] + self.reg[self.iteration] + self.ridge[self.iteration]
@@ -786,13 +786,13 @@ class additive_features_model:
                         print('\nCheck fit gp')
                         assert np.abs(self.evaluate_fit(self.coef, dataset = 'training', gp_matrix = self.gp_matrix, gp_pen = self.gp_pen) - self.cur_fit_gp_training) <= 1e-12, ('pb_ch3', self.evaluate_fit(self.coef, dataset = 'training', gp_matrix = self.gp_matrix, gp_pen = self.gp_pen), self.cur_fit_gp_training)
                         assert np.abs(self.evaluate_fit(self.coef, dataset = 'validation',  gp_matrix = self.gp_matrix, gp_pen = self.gp_pen) - self.cur_fit_gp_validation ) <= 1e-12, ('pb_ch4', self.evaluate_fit(self.coef, dataset = 'validation',  gp_matrix = self.gp_matrix, gp_pen = self.gp_pen), self.cur_fit_gp_validation)
-                    if self.iteration >= self.flag_check_fit and (self.hprm['afm_plot'] or self.hprm['tf_early_stop_ind_validation']):  
+                    if self.iteration >= self.flag_check_fit and (self.hprm['plot.afm'] or self.hprm['tf_early_stop_ind_validation']):  
                         print('\nCheck fit ind')
                         assert np.allclose(self.evaluate_ind_fit(self.coef, dataset = 'training'),   self.fit_ind_training[self.iteration]), ('pb_ch32', self.evaluate_ind_fit(self.coef, dataset = 'training'), self.fit_ind_training[self.iteration])
                         assert np.allclose(self.evaluate_ind_fit(self.coef, dataset = 'training').sum(), self.fit_training[self.iteration]),'incoherence between ind_fit and fit training'
                         assert np.allclose(self.evaluate_ind_fit(self.coef, dataset = 'validation' ),   self.fit_ind_validation [self.iteration]), ('pb_ch42', self.evaluate_ind_fit(self.coef, dataset = 'validation'),  self.fit_ind_validation [self.iteration]) 
                         assert np.allclose(self.evaluate_ind_fit(self.coef, dataset = 'validation' ).sum(), self.fit_validation [self.iteration]),'incoherence between ind_fit and fit validation'
-                    if self.iteration >= self.flag_check_fit and (self.hprm['afm_plot'] or self.hprm['tf_early_stop_ind_validation']):  
+                    if self.iteration >= self.flag_check_fit and (self.hprm['plot.afm'] or self.hprm['tf_early_stop_ind_validation']):  
                         print('\nCheck fit mean')
                         assert np.abs(self.evaluate_fit(self.coef, dataset = 'training', gp_matrix = self.M_mean, gp_pen = 1) - self.fit_mean_training[self.iteration]) <= 1e-12, ('pb_ch32', self.evaluate_fit(self.coef, dataset = 'training', gp_matrix = self.M_mean, gp_pen = 1), self.fit_mean_training[self.iteration])
                         assert np.abs(self.evaluate_fit(self.coef, dataset = 'validation',  gp_matrix = self.M_mean, gp_pen = 1) - self.fit_mean_validation [self.iteration]) <= 1e-12, ('pb_ch42', self.evaluate_fit(self.coef, dataset = 'validation',  gp_matrix = self.M_mean, gp_pen = 1), self.fit_mean_validation [self.iteration])  
@@ -2771,7 +2771,7 @@ class additive_features_model:
 
     
     def warm_start(self, ):
-        if (not self.given_coef) and self.hprm['tf_try_ws'] and (not self.hprm['afm_plot']): # No coef has been directly given 
+        if (not self.given_coef) and self.hprm['tf_try_ws'] and (not self.hprm['plot.afm']): # No coef has been directly given 
             wanted      = self.dikt['model_wo_hyperp']
             list_wanted = [e for a in wanted.split('/') for e in a.split('_')]
             try:

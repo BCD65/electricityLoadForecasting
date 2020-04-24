@@ -70,13 +70,13 @@ class Experience(object):
                                                              axis  = 1,
                                                              level = tools.transcoding.user_source,
                                                              )
-        
         # Restrict the weather stations to a rectangle defined by the sites
         subset_weather = tools.geography.subset_weather(self.data['df_coordinates_weather'],
                                                         self.data['df_coordinates_sites'],
                                                         self.hprm['weather.extra_latitude'],
                                                         self.hprm['weather.extra_longitude'],
                                                         )
+        assert not subset_weather.empty
         self.data['df_weather']             = self.data['df_weather']                [subset_weather]
         self.data['df_coordinates_weather'] = self.data['df_coordinates_weather'].loc[subset_weather]        
         

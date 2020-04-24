@@ -11,13 +11,14 @@ def aggregation_sites(list_sites, aggregation_level):
         dikt = list_sites
     elif aggregation_level == 'sum':
         dikt = {k : 'sum' for k in list_sites}
-    elif aggregation_level == 'AdministrativeRegions':
+    elif aggregation_level == 'administrative_regions':
+        import ipdb; ipdb.set_trace()
         dikt = get_dikt_regions_admin()
-    elif aggregation_level == 'AdministrativeRegions':
-        dikt = get_dikt_regions_admin()
-    elif aggregation_level == 'RTERegions':
+    elif aggregation_level == 'RTE_regions':
+        import ipdb; ipdb.set_trace()
         dikt = get_dikt_regions_rte()
-    elif aggregation_level == 'Districts':
+    elif aggregation_level == 'districts':
+        import ipdb; ipdb.set_trace()
         dikt = get_dikt_districts()
     else:
         raise ValueError
@@ -25,12 +26,14 @@ def aggregation_sites(list_sites, aggregation_level):
 
 
 def get_dikt_districts():
+    import ipdb; ipdb.set_trace()
     with open(paths.extras + 'dikt_districts.pkl', 'rb') as f: 
         dikt_districts = pickle.load(f)
     return dikt_districts
 
 
 def get_dikt_regions_admin():
+    import ipdb; ipdb.set_trace()
     dikt_regions_admin     = {}
     csv_file = pd.read_csv(paths.extras + 'corresp_poste_regionAdministrative.csv')
     for idx, (site, region) in csv_file.iterrows():
@@ -46,6 +49,7 @@ def get_dikt_regions_admin():
 
 
 def get_dikt_regions_rte():
+    import ipdb; ipdb.set_trace()
     dikt_regions_rte     = {}
     csv_file = pd.read_csv(paths.extras + 'corresp_poste_regionRTE.csv')
     for idx, (site, region) in csv_file.iterrows():

@@ -9,8 +9,8 @@ import types
 def check_hyperparameters(hprm):
     
     if hprm['sites.zone'] == 'all' and hprm['sites.aggregation'] == 'sum':
-        assert hprm['stations.zone']        == 'all'
-        assert hprm['stations.aggregation'] == 'weighted_mean'    
+        assert hprm['weather.zone']        == 'all', hprm['weather.zone']
+        assert hprm['weather.aggregation'] == 'national_weighted_mean', hprm['weather.aggregation']   
 
 
     if hprm['learning.model'] in {'afm'}:

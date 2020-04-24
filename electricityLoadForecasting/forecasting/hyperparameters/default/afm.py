@@ -381,7 +381,7 @@ stopping_criteria = {
                      }
 
 stopping_criteria.update({
-                          ('RTE.substations','Sum')                    : cp.deepcopy(stopping_criteria['eCO2mix.France', None]),
+                          ('RTE.substations','sum')                    : cp.deepcopy(stopping_criteria['eCO2mix.France', None]),
                           ('RTE.substations','Administrative_regions') : cp.deepcopy(stopping_criteria['eCO2mix.France', None]),
                           ('RTE.substations','RTE_Regions')            : cp.deepcopy(stopping_criteria['eCO2mix.France', None]),
                           ('RTE.substations','Districts')              : cp.deepcopy(stopping_criteria['eCO2mix.France', None]),

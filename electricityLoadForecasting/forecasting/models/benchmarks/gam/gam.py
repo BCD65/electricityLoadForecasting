@@ -4,8 +4,11 @@ import os
 import re
 import pandas as pd
 import subprocess
+import warnings
 try:
+    warnings.simplefilter(action="ignore", category=FutureWarning)
     from rpy2.robjects import pandas2ri, r
+    warnings.resetwarnings()
 except ModuleNotFoundError:
     pass
 #

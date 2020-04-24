@@ -15,9 +15,9 @@ conda install -c r rpy2 r-mgcv
 
 ================================================================
 
-The script mainPreprocessing.py downloads, formats and saves public data from MeteoFrance and RTE websites. The load data and the weather data are saved in two separate multiindexed pandas dataframes. The objective is to have a public dataset that can then be used as the input of forecasting algorithms. In preprocessing/eCO2mix/config.py, you can choose either the national database 'France' or the 'administrative_regions'.
+The script preprocessing_main.py downloads, formats and saves public data from MeteoFrance and RTE websites. The load data and the weather data are saved in two separate multiindexed pandas dataframes. The objective is to have a public dataset that can then be used as the input of forecasting algorithms. In preprocessing/eCO2mix/config.py, you can choose either the national database 'France' or the 'administrative_regions'.
 
-Running the script mainForecasting.py launches the whole learning process with the dataset selected in forecasting/hyperparameters/choose_dataset.py : selecting the inputs according to the chosen hyperparameters, computing the features and optimizing the coefficients.
+Running the script forecasting_main.py launches the whole learning process with the dataset selected in forecasting/hyperparameters/choose_dataset.py : selecting the inputs according to the chosen hyperparameters, computing the features and optimizing the coefficients.
 
 ================================================================
 
