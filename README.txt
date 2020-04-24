@@ -8,10 +8,10 @@ cd electricityLoadForecasting
 conda create --name elec python=3.7 pip
 conda activate elec
 pip install -e .
-# However, the packages xgboost, spams and rpy2 have to be installed separately
+# [Optional] However, the packages xgboost, spams and rpy2 have to be installed separately
 conda install -c conda-forge python-spams xgboost sklearn-contrib-py-earth ipdb 
 conda install -c r rpy2
-# Also, the mgcv library should be available in R if the GAM are to be tested.
+# [Optional] Also, the mgcv library should be available in R if the GAM are to be tested.
 
 ================================================================
 
