@@ -1,16 +1,11 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-
 
 import numpy as np
 import scipy as sp
 from termcolor import colored
 #
-from .lbfgs_tools import bfgs_ridge, grad_bfgs_ridge, cat_bound, make_coef
-
+from .lbfgs_tools import bfgs_regularization, grad_bfgs_regularization, cat_bound, make_coef
 
 EXTRA_CHECK = 0
-
 
 """
 This script contains different functions used for optimization with the function sp.optimize.fmin_l_bfgs_b in lbfgs_tools.py
@@ -121,36 +116,38 @@ def start_lbfgs(model, ):
     # Concatenation of the covariates in a single matrix
     if model.sparseX:
         model.concat_training_csc = sp.sparse.hstack([model.X_training[key]
-                                                   for key in model.sorted_keys
-                                                   ], 
-                                                  format = 'csc',
-                                                  )
-        model.concat_training_csr = sp.sparse.csr_matrix(model.concat_training_csc)
-        
-        model.concat_shared_training = model.concat_training_csc[:,model.concat_slice_shared]
-        
-        model.concat_validation_csc     = sp.sparse.hstack([model.X_validation[key]
                                                       for key in model.sorted_keys
                                                       ], 
                                                      format = 'csc',
                                                      )
-        model.concat_shared_validation  = model.concat_validation_csc[:,model.concat_slice_shared]
+        model.concat_training_csr = sp.sparse.csr_matrix(model.concat_training_csc)
+        
+        model.concat_shared_training = model.concat_training_csc[:,model.concat_slice_shared]
+        
+        model.concat_validation_csc = sp.sparse.hstack([model.X_validation[key]
+                                                        for key in model.sorted_keys
+                                                        ], 
+                                                       format = 'csc',
+                                                       )
+        model.concat_shared_validation = model.concat_validation_csc[:,model.concat_slice_shared]
         
     else:
-        model.concat_training        = np.concatenate([model.X_training[key]
-                                                       for key in model.sorted_keys
-                                                       ], 
-                                                      axis = 1, 
-                                                      )
+        model.concat_training = np.concatenate([model.X_training[key]
+                                                for key in model.sorted_keys
+                                                ], 
+                                               axis = 1, 
+                                               )
         model.concat_shared_training = model.concat_training[:,model.concat_slice_shared]
-        model.concat_owned_training  = np.concatenate([model.concat_training[:,model.concat_large_masks_owned[:,k].indices][:,:,None] 
-                                                    for k in range(model.concat_large_masks_owned.shape[1])
-                                                    ], axis = 2)
-        model.concat_validation         = np.concatenate([model.X_validation[key] 
-                                                          for key in model.sorted_keys
-                                                          ], 
-                                                         axis = 1, 
-                                                         )
+        model.concat_owned_training = np.concatenate([model.concat_training[:,model.concat_large_masks_owned[:,k].indices][:,:,None] 
+                                                      for k in range(model.concat_large_masks_owned.shape[1])
+                                                      ],
+                                                     axis = 2,
+                                                     )
+        model.concat_validation = np.concatenate([model.X_validation[key] 
+                                                  for key in model.sorted_keys
+                                                  ], 
+                                                 axis = 1, 
+                                                 )
         model.concat_shared_validation  = model.concat_validation[:,model.concat_slice_shared]
 
     model.precompute = model.hprm['afm.algorithm.lbfgs_precompute']
@@ -174,29 +171,28 @@ def start_lbfgs(model, ):
                                                  ], 
                                                 axis = 1,
                                                 )
-        if model.precompute or True: # The question of precomputations is mainly relevant for gp_pen
-            print('precompute xowtxow')
-            model.nxtx_ow_training = {}
-            for k in range(model.k):
-                print('\r    '+'{0:5} / {1:5}'.format(k, model.k), end = '')
-                model.nxtx_ow_training[k] = (1/model.n_training) * model.concat_training_csc[:,model.concat_large_masks_owned[:,k].indices].T @ model.concat_training_csc[:,model.concat_large_masks_owned[:,k].indices]
+        print('precompute xowtxow')
+        model.nxtx_ow_training = {}
+        for k in range(model.k):
+            print('\r    '+'{0:5} / {1:5}'.format(k, model.k), end = '')
+            model.nxtx_ow_training[k] = (1/model.n_training) * model.concat_training_csc[:,model.concat_large_masks_owned[:,k].indices].T @ model.concat_training_csc[:,model.concat_large_masks_owned[:,k].indices]
 
-            print('\n'+'precompute xowtxsh')
-            model.nxtx_owsh_training         = {}
-            for k in range(model.k):
-                print('\r    '+'{0:5} / {1:5}'.format(k, model.k), end = '')
-                model.nxtx_owsh_training[k] = (1/model.n_training)*model.concat_training_csc[:,model.concat_large_masks_owned[:,k].indices].T@(model.concat_shared_training if model.active_gp else model.concat_shared_training.multiply(model.submasks_shared[:,k].reshape((1,-1))))
-    
-            print('\n'+'precompute xshtxow')
-            model.nxtx_show_training = {}
-            for k in range(model.k):
-                print('\r    '+'{0:5} / {1:5}'.format(k, model.k), end = '')
-                if   type(model.nxtx_owsh_training[k]) == sp.sparse.csr_matrix :
-                    model.nxtx_show_training[k] = sp.sparse.csr_matrix(model.nxtx_owsh_training[k].T)
-                elif type(model.nxtx_owsh_training[k]) == sp.sparse.csc_matrix :
-                    model.nxtx_show_training[k] = sp.sparse.csc_matrix(model.nxtx_owsh_training[k].T)
-                else:
-                    model.nxtx_show_training[k] = model.nxtx_owsh_training[k].T
+        print('\n'+'precompute xowtxsh')
+        model.nxtx_owsh_training         = {}
+        for k in range(model.k):
+            print('\r    '+'{0:5} / {1:5}'.format(k, model.k), end = '')
+            model.nxtx_owsh_training[k] = (1/model.n_training)*model.concat_training_csc[:,model.concat_large_masks_owned[:,k].indices].T@(model.concat_shared_training if model.active_gp else model.concat_shared_training.multiply(model.submasks_shared[:,k].reshape((1,-1))))
+
+        print('\n'+'precompute xshtxow')
+        model.nxtx_show_training = {}
+        for k in range(model.k):
+            print('\r    '+'{0:5} / {1:5}'.format(k, model.k), end = '')
+            if   type(model.nxtx_owsh_training[k]) == sp.sparse.csr_matrix :
+                model.nxtx_show_training[k] = sp.sparse.csr_matrix(model.nxtx_owsh_training[k].T)
+            elif type(model.nxtx_owsh_training[k]) == sp.sparse.csc_matrix :
+                model.nxtx_show_training[k] = sp.sparse.csc_matrix(model.nxtx_owsh_training[k].T)
+            else:
+                model.nxtx_show_training[k] = model.nxtx_owsh_training[k].T
         
         # Computations of the XtX and XtY parts for the sum-consistent model        
         if model.active_gp:            
@@ -254,8 +250,6 @@ def start_lbfgs(model, ):
                                                                                     @ model.concat_training_csc[:,model.concat_large_masks_owned[:,l].indices]
                                                                                     )
                                 model.nxtx_ow_large_training[k,l] = sp.sparse.csr_matrix(model.nxtx_ow_large_training[k,l])
-            else:
-                pass
 
     else:
         print('Precomputations')
@@ -342,32 +336,29 @@ def start_lbfgs(model, ):
                                                              )
     
     vec_coef_0 = np.zeros(((model.concat_shared_training.shape[1] + model.concat_large_masks_owned[:,0].sum())*model.k,1)).reshape((-1, 1)).copy()
-    
-    # validation functions
-    if False:
+
+    # Test functions
+    if True:
         _ = loss(vec_coef_0, model)
         _ = grad_loss(vec_coef_0, model)
-    ###
- 
+        
     # All concatenations and precomputations are done
     # Begin the descent
-    model.ans_lbfgs, final_grad, info_lbfgs = make_coef(model, loss, grad_loss, vec_coef_0)
+    model.ans_lbfgs, final_grad, info_lbfgs = optimize_coef(model,
+                                                            loss,
+                                                            grad_loss,
+                                                            vec_coef_0,
+                                                            )
 
     # Reshape the results in a matrix with different columns for different substations
-    ans_reshaped = model.ans_lbfgs.reshape((-1, model.k))
-    
-    sparse_coef = 0 # Not useful if memory is not a problem
-    if sparse_coef:
-        model.bfgs_long_coef = sp.sparse.csc_matrix(model.concat_masks.shape)
-    else:
-        model.bfgs_long_coef = np.zeros(model.concat_masks.shape)
-    model.bfgs_long_coef[model.concat_slice_shared] = ans_reshaped[model.concat_slice_shared]
-
+    ans_reshaped         = model.ans_lbfgs.reshape((-1, model.k))
     # Recast the computed coefficients within a larger matrix so that a line corresponds 
     # to one covariate. For instance, the matrix model.bfgs_long_coef has a subset of rows corresponding to 
     # a given weather station and the corresponding coefficients will be nonzero only for the columns corresponding
     # to substations that have access to this weather station
-    for k in range( model.bfgs_long_coef.shape[1]):
+    model.bfgs_long_coef = np.zeros(model.concat_masks.shape)
+    model.bfgs_long_coef[model.concat_slice_shared] = ans_reshaped[model.concat_slice_shared]
+    for k in range(model.bfgs_long_coef.shape[1]):
         model.bfgs_long_coef[model.concat_large_masks_owned[:,k].indices,k] = ans_reshaped[model.concat_slice_owned,k]
     del ans_reshaped
     
@@ -378,28 +369,25 @@ def start_lbfgs(model, ):
         assert np.linalg.norm(model.bfgs_long_coef[:model.submasks_shared.shape[0]][~model.submasks_shared]) == 0
         assert np.linalg.norm(model.bfgs_long_coef[~model.concat_masks.toarray().astype(bool)]) == 0
     
- 
-    del vec_coef_0, 
+    del vec_coef_0
     
 
-#profile    
 def loss(vec_coef, model):
     # Compute the loss (including the sum-consistent term and the differentiable regularization)
     coef = vec_coef.reshape((-1, model.k))
     if model.active_gp:
-        return bfgs_mse_precomp(model, coef) + bfgs_mse_mean_precomp(model, coef) + bfgs_ridge(model, coef, model.normalized_alphas)
+        return bfgs_mse_precomp(model, coef) + bfgs_mse_mean_precomp(model, coef) + bfgs_regularization(model, coef, model.normalized_alphas)
     else:
-        return bfgs_mse_precomp(model, coef) + bfgs_ridge(model, coef, model.normalized_alphas)
+        return bfgs_mse_precomp(model, coef) + bfgs_regularization(model, coef, model.normalized_alphas)
     
 
-#profile            
 def grad_loss(vec_coef, model):
     # Compute the gradient (including the sum-consistent term and the differentiable regularization)
-    coef = vec_coef.reshape((-1, model.k))
-    grad_mse      = grad_bfgs_mse     (model, coef)
+    coef          = vec_coef.reshape((-1, model.k))
+    grad_mse      = grad_bfgs_mse(model, coef)
     grad_mse_mean = grad_bfgs_mse_mean(model, grad_mse, coef)
-    grad_ridge    = grad_bfgs_ridge   (model, coef, model.normalized_alphas)
-    grad_mse     [:model.submasks_shared.shape[0]][~model.submasks_shared] = 0
+    grad_ridge    = grad_bfgs_regularization(model, coef, model.normalized_alphas)
+    grad_mse[:model.submasks_shared.shape[0]][~model.submasks_shared] = 0
     if type(grad_mse_mean) != int:
         grad_mse_mean[:model.submasks_shared.shape[0]][~model.submasks_shared] = 0
     if model.active_gp:
@@ -412,7 +400,7 @@ def grad_loss(vec_coef, model):
         assert np.linalg.norm(grad_ridge[:model.submasks_shared.shape[0]][~model.submasks_shared]) == 0
     return ans
     
-##profile            
+
 def bfgs_pred(model, coef, data = 'training'):
     # Compute the prediction from coef, paying attention to the fact that the substations have access to different covariates
     assert data in {'training', 'validation'}
@@ -453,7 +441,7 @@ def bfgs_pred(model, coef, data = 'training'):
                                      )        
     return pred_sh + pred_ow
 
-#profile            
+
 def bfgs_mse_precomp(model, coef, data = 'training'):
     # Compute the dat-fitting term
     print('In bfgs_mse_precomp - ', end = '')
@@ -525,7 +513,7 @@ def bfgs_mse_precomp(model, coef, data = 'training'):
                    - ytxsh_csh - ytxow_cow
                    )
 
-#profile            
+
 def bfgs_mse_mean_precomp(model, coef, data = 'training'):
     # Compute the sum-consistent term
     print('In bfgs_mse_mean_precomp - ', end = '')
@@ -548,20 +536,13 @@ def bfgs_mse_mean_precomp(model, coef, data = 'training'):
         xow_cow = {k : model.concat_training_csr[:,model.concat_large_masks_owned[:,k].indices] @ coef_ow[:,k]
                    for k in range(coef.shape[1])
                    }
-    
     # Coef
-        
-    """
-    model.nxtx_ow_large_training[k,l] = (1/model.n_training)*model.concat_training_csc[:,model.concat_large_masks_owned[:,k].indices].T@ model.concat_training_csc[:,model.concat_large_masks_owned[:,l].indices]
-    """
-    
     coef_sh_sum     = {}
     csh_xshtxsh_csh = {} 
     csh_xshtxow_cow = {} 
     cow_xowtxow_cow = {} 
     ytxsh_csh       = {} 
     ytxow_cow       = {}
-    
     for tuple_indices in model.partition_tuples:
         
         coef_sh_sum    [tuple_indices] = coef[model.concat_slice_shared][:,list(tuple_indices)].sum(axis = 1)
@@ -571,7 +552,6 @@ def bfgs_mse_mean_precomp(model, coef, data = 'training'):
                                                    coef_sh_sum[tuple_indices], 
                                                    nxtx_sh @ coef_sh_sum[tuple_indices],
                                                    )
-
         if model.sparseX:
             ###        
             csh_xshtxow_cow[tuple_indices] = coef_sh_sum[tuple_indices].T @ np.sum([nxtx_show[k] @ coef_ow[:,k]
@@ -623,7 +603,6 @@ def bfgs_mse_mean_precomp(model, coef, data = 'training'):
                                    nxowty_large_sum, 
                                    coef_ow,
                                    )   
-        
     return np.sum([(0.5*len(model.partition_tuples_to_posts[tuple_indices])/len(tuple_indices)**2
                     )*(  ny2_sum[tuple_indices]
                        + csh_xshtxsh_csh[tuple_indices]
@@ -636,8 +615,6 @@ def bfgs_mse_mean_precomp(model, coef, data = 'training'):
                    ])
 
                     
-
-#profile            
 def grad_bfgs_mse(model, coef):
     # Compute the gradient of the data-fitting term
     print('In grad_bfgs_mse - ', end = '')
@@ -673,7 +650,6 @@ def grad_bfgs_mse(model, coef):
                                 nxtx_show,
                                 coef_ow
                                 )
-
     grad = np.concatenate([
                            xtx_csh + xshtxow_cow - nxshty, 
                            xtx_cow + xowtxsh_csh - nxowty, 
@@ -681,7 +657,7 @@ def grad_bfgs_mse(model, coef):
     print('finished')
     return grad
 
-#profile            
+
 def grad_bfgs_mse_mean(model, grad_mse, coef):
     # Compute the gradient of the sum-consistent term
     if not model.active_gp:
@@ -702,17 +678,15 @@ def grad_bfgs_mse_mean(model, grad_mse, coef):
                                            ], 
                                            axis = 1,
                                            )
-                
         
-        nxtx_owsh        = model.nxtx_owsh_training
         # Coef
         coef_sh          = coef[model.concat_slice_shared]
         coef_ow          = coef[model.concat_slice_owned]
         
-        
+        nxtx_owsh        = model.nxtx_owsh_training
         if model.precompute:
             print('model.precompute = {0}'.format(model.precompute))
-            nxtx_ow_large    = model.nxtx_ow_large_training
+            nxtx_ow_large = model.nxtx_ow_large_training
         else:
             assert model.sparseX
             xow_cow = {k : model.concat_training_csr[:,model.concat_large_masks_owned[:,k].indices] @ coef_ow[:,k]
@@ -782,7 +756,6 @@ def grad_bfgs_mse_mean(model, grad_mse, coef):
                    + xowtxow_cow
                    - model.part_xowty
                    )
-        
         grad = model.gp_pen * np.concatenate([
                                               grad_sh, 
                                               grad_ow, 

@@ -1,6 +1,3 @@
- #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-
 
 import numpy as np
 import scipy.signal  as sig
@@ -10,8 +7,6 @@ from termcolor import colored
 from numbers   import Number
 #
 import electricityLoadForecasting.tools  as tools
-
-
 
 
 def cat_bound(col_cat_matching):
@@ -31,12 +26,15 @@ def cat_bound(col_cat_matching):
     return cat_bound_matching
 
             
-#profile            
-def bfgs_ridge(model, coef, alphas):
+def bfgs_regularization(model,
+                        coef,
+                        alphas,
+                        ):
     reg = 0
     # Compute the differentiable penalizations
     # Simple computations for Ridge
     # Computations of the convolutions first for the smoothing splines penalizations
+    import ipdb; ipdb.set_trace()
     for var in model.formula.index.get_level_values('coefficient'):
         for key in set([tuple(row) 
                         for row in model.col_key_large_matching[model.concat_masks[:,0].indices 
@@ -140,10 +138,11 @@ def bfgs_ridge(model, coef, alphas):
     return reg
                  
 
-def grad_bfgs_ridge(model, coef, alphas):
+def grad_bfgs_regularization(model, coef, alphas):
     # Compute the gradient of the differentiable plenalizations
     # The slmoothing spline regularizations require the computations of the convolutions first
     grad = np.zeros(coef.shape)
+    import ipdb; ipdb.set_trace()
     for var in model.formula.index.get_level_values('coefficient'):
         for key in set([tuple(row) 
                         for row in model.col_key_large_matching[model.concat_masks[:,0].indices 
@@ -380,7 +379,11 @@ def grad_bfgs_ridge(model, coef, alphas):
     return grad                    
 
 
-def make_coef(model, loss, grad_loss, vec_coef_0):
+def optimize_coef(model,
+                  loss,
+                  grad_loss,
+                  vec_coef_0,
+                  ):
     # Optimization of the differentiable objectives with the function sp.optimize.fmin_l_bfgs_b
     try:
         # Try to load
@@ -425,7 +428,7 @@ def make_coef(model, loss, grad_loss, vec_coef_0):
     return ans_lbfgs
         
         
-def sort_keys(keys, masks): # No reason to be lbfgs specific
+def sort_keys(keys, masks):
     cat_owned = {}
     # Sort the categories of covariates
     keys_shared = []
