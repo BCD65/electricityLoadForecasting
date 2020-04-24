@@ -347,7 +347,8 @@ dikt_formula['eCO2mix.administrative_regions', None]      = cp.deepcopy(dikt_for
 dikt_formula['RTE.substations', 'sum']                    = cp.deepcopy(dikt_formula['eCO2mix.France', None])
 dikt_formula['RTE.substations', 'administrative_regions'] = cp.deepcopy(dikt_formula['eCO2mix.France', None])
 dikt_formula['RTE.substations', 'RTE_regions']            = cp.deepcopy(dikt_formula['eCO2mix.France', None])
-dikt_formula['RTE.substations','districts']               = cp.deepcopy(dikt_formula['eCO2mix.France', None])
+dikt_formula['RTE.substations', 'districts']              = cp.deepcopy(dikt_formula['eCO2mix.France', None])
+dikt_formula['RTE.quick_test',  None]                     = cp.deepcopy(dikt_formula['RTE.substations', None])
           
 ###############################################################################
 ###                       Stopping Criteria                                 ###

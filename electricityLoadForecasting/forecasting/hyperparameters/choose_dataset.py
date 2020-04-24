@@ -9,7 +9,7 @@ def choose_dataset(hprm):
    
     hprm.update({
                  # Choose the database
-                 'database' : 'eCO2mix.administrative_regions',
+                 'database' : 'RTE.quick_test',
                  })
     assert hprm['database'] in [
                                 'eCO2mix.France',
@@ -29,13 +29,13 @@ def choose_dataset(hprm):
                  'weather.source'            : 'observed', 
                  'weather.aggregation'       : {'eCO2mix.France'                 : 'mean',
                                                 'eCO2mix.administrative_regions' :  None, 
-                                                }[hprm['database']],
+                                                }.get(hprm['database']),
                  'weather.extra_latitude'    : {'eCO2mix.France'                 : 5,
                                                 'eCO2mix.administrative_regions' : 0.1, 
-                                                }[hprm['database']],
+                                                }.get(hprm['database'], 0.1),
                  'weather.extra_longitude'   : {'eCO2mix.France'                 : 8,
                                                 'eCO2mix.administrative_regions' : 0.1, 
-                                                }[hprm['database']],
+                                                }.get(hprm['database'], 0.1),
                  
                  # Select the training and the test set
                  'training_set.form'         : 'continuous', #'two_sets', # Continuous/Discontinuous training sets

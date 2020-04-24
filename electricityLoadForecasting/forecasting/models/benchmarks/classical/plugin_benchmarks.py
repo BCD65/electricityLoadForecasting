@@ -46,7 +46,7 @@ def fit_and_predict(inputs_training, Y_training, inputs_validation, hprm, assign
         model = {}
         if hprm['learning.individual_designs']:
             for ii, site_name in enumerate(Y_training.columns):
-                print('\r{0}/{1}'.format(ii, Y_training.shape[1]), end = '\r')
+                print('\r{0}/{1}'.format(ii, Y_training.shape[1]), end = '')
                 columns_to_keep = [
                                    (name_input, transformation, parameter, location)
                                    for (name_input, transformation, parameter, location) in inputs_training.columns
@@ -61,7 +61,7 @@ def fit_and_predict(inputs_training, Y_training, inputs_validation, hprm, assign
                                                                                                        )
         else :
             for ii, site_name in enumerate(Y_training.columns):
-                print('\r{0}/{1}'.format(ii, Y_training.shape[1]), end = '\r')
+                print('\r{0}/{1}'.format(ii, Y_training.shape[1]), end = '')
                 Y_hat_training[site_name], Y_hat_validation[site_name], model[site_name] = call_fitter(inputs_training, 
                                                                                                        Y_training[site_name],
                                                                                                        inputs_validation,
