@@ -9,7 +9,6 @@ def load_coordinates_sites(path_inputs):
                                                  'df_coordinates_sites.csv',
                                                  ), 
                                     index_col = [0],
-                                    #header    = [0],
                                     )
     return coordinates_sites
 
@@ -19,7 +18,6 @@ def load_coordinates_weather(path_inputs):
                                                    'df_coordinates_weather.csv',
                                                    ), 
                                       index_col = [0],
-                                      #header    = [0],
                                       )
     return coordinates_weather
 
@@ -29,9 +27,8 @@ def load_target(path_inputs):
                                         'df_sites.csv',
                                         ), 
                            index_col = [0],
-                           #header    = [0],
                            )
-    df_sites.index = pd.to_datetime(df_sites.index)#.tz_localize('UTC') 
+    df_sites.index = pd.to_datetime(df_sites.index)
     assert df_sites.index.tz.zone == 'UTC'
     return df_sites
 
@@ -43,7 +40,7 @@ def load_weather(path_inputs):
                              index_col = [0],
                              header    = [0,1,2],
                              )
-    df_weather.index = pd.to_datetime(df_weather.index)#.tz_localize('UTC') 
+    df_weather.index = pd.to_datetime(df_weather.index)
     assert df_weather.index.tz.zone == 'UTC'
     return df_weather
 

@@ -56,7 +56,6 @@ def make_dikt_files(hprm, nb_sites = None, nb_weather = None, dt_training = None
     ###         Variables                   ###
     #=========================================#
     if hprm['learning.model'] not in {'afm'}:
-        # dikt_gam_to_str(dikt_uni, dikt_bi, data_cat)  
         str_inputs = {}
         for variable in hprm['inputs.selection']:
             list_attr = []
@@ -189,46 +188,4 @@ def make_dikt_files(hprm, nb_sites = None, nb_weather = None, dt_training = None
                ]:
         print("dikt['{0}']\n{1}".format(ss, dikt[ss].replace(os.sep, '/\n\t\t\t')))
     return dikt
-
-
-###############################################################################
-
-
-def dikt_gam_to_str(dikt_uni, dikt_bi, data_cat):
-    # save the gam formula as a string
-    s = []
-    for cat,(spline, kw) in dikt_uni.items():
-        s += [cat, 
-              spline, 
-              kw.replace('c(','' )
-                .replace('(' ,'' )
-                .replace(')' ,'' )
-                .replace(' ' ,'' )
-                .replace('"' ,'' )
-                .replace('=' ,'_')
-                .replace(',' ,'_'),
-              ]
-    for (cat1,cat2),modeling in dikt_bi.items():
-        assert type(modeling) == tuple
-        if len(modeling) == 1:
-            s += [
-                  cat1+'#'+cat2,
-                  'by', 
-                  ]
-        elif len(modeling) == 2:
-            (spline, kw) = modeling
-            s += [cat1+'#'+cat2, 
-                  spline, 
-                  kw.replace('c(','' )
-                    .replace('(' ,'' )
-                    .replace(')' ,'' )
-                    .replace(' ' ,'' )
-                    .replace('"' ,'' )
-                    .replace('=' ,'_')
-                    .replace(',' ,'_'),
-                  ]
-        else:
-            raise ValueError
-    return '_'.join(s)  
-
 

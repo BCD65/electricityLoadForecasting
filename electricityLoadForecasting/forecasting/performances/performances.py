@@ -1,10 +1,5 @@
 
-
-
 import numpy as np
-#import misc
-
-
 
 def get_performances(target, prediction):
     mask = np.logical_or(np.isnan(target),
