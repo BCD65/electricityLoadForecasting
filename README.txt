@@ -3,7 +3,7 @@
 
 #It can be installed with
 cd ~/Downloads
-git clone git@github.com:BCD65/electricityLoadForecasting.git
+git clone https://github.com:BCD65/electricityLoadForecasting.git
 cd electricityLoadForecasting
 conda create --name elec
 conda activate elec
