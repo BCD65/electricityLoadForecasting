@@ -7,13 +7,12 @@ It successively calls the functions in exp.py
 """
 
 #
-import electricityLoadForecasting.paths  as paths
+from electricityLoadForecasting                             import paths
 from electricityLoadForecasting.tools                       import exceptions, transcoding
+from electricityLoadForecasting.forecasting                 import file_names, models
 from electricityLoadForecasting.forecasting.experience      import Experience
 from electricityLoadForecasting.forecasting.hyperparameters import set_hyperparameters
 from electricityLoadForecasting.forecasting.inputs          import load_input_data
-import electricityLoadForecasting.forecasting.file_names as file_names
-import electricityLoadForecasting.forecasting.models     as models
 
 
 def main(hprm = None, data = None):

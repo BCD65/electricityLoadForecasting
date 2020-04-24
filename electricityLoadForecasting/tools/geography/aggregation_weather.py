@@ -2,7 +2,7 @@
 import os
 import pandas as pd
 #
-import electricityLoadForecasting.paths as paths
+from electricityLoadForecasting import paths
 from .. import format_text
 
 

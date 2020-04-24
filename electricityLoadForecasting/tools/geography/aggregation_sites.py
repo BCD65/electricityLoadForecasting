@@ -6,8 +6,6 @@ import electricityLoadForecasting.paths as paths
 from .. import format_text
 
 
-
-            
 def aggregation_sites(list_sites, aggregation_level):
     if aggregation_level is None:
         dikt = list_sites

@@ -1,14 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-import os
-import shutil
-from termcolor import colored
-#
-import electricityLoadForecasting.tools as tools
-from electricityLoadForecasting.dataPreparation import correction, detection, eCO2mix, files
-
-
 """
 Run to prepare the raw data (main function is at the end)
 It detects corrupted data
@@ -16,6 +8,13 @@ It proposes modifications of the corrupted data
 It saves everything in the end
 This script takes about 24 hours and has not been optimized but only has to be run once.
 """
+
+import os
+import shutil
+from termcolor import colored
+#
+from electricityLoadForecasting import tools
+from electricityLoadForecasting.dataPreparation import correction, detection, eCO2mix, files
 
 ###############################################################################
 

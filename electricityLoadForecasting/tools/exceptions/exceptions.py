@@ -4,8 +4,6 @@ import subprocess
 import pickle
 
 
-     
-
 loading_errors = (
                   AssertionError, 
                   AttributeError, 

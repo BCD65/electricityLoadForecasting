@@ -11,12 +11,6 @@ New indicators can be defined for new machines and then activated in the file pr
 ####################################################################    
 
 
-#mac     = 'Darwin' in platform.platform() #socket.gethostname() == 'MB6.local'
-#imm     = socket.gethostname() == 'imm'
-#clu     = 'clustern' in socket.gethostname()
-#rio     = socket.gethostname() == 'rio'
-##vd      = platform.platform()  =='Windows-7-6.1.7601-SP1'
-
 ###############################################################################
 load     = True
 save     = True

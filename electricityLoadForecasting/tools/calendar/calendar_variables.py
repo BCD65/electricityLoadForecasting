@@ -63,7 +63,6 @@ def binary_summer_break(date):
     return 0
 
 
-#@profile
 def binary_daytime(samples_dt):
     city_name          = 'Paris'
     a                  = astral.Astral()

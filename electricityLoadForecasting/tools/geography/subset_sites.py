@@ -1,18 +1,16 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 
 
 import numpy as np
 #
-import electricityLoadForecasting.paths as paths
-from .. import transcoding
-from .aggregation_sites import get_dikt_districts, get_dikt_regions_admin, get_dikt_regions_rte
+from electricityLoadForecasting import paths
+from .aggregation_sites         import get_dikt_districts, get_dikt_regions_admin, get_dikt_regions_rte
+from ..                         import transcoding
 
 
 
 def subset_sites(coordinates_sites, zone):
    
-    if   zone == 'all': # all the substations
+    if   zone == 'all': # all the sites
         subset = slice(None)
     
     elif zone == 'Paris': # the substations in a rectangle around Paris
@@ -28,8 +26,6 @@ def subset_sites(coordinates_sites, zone):
         subset = subsample_region(coordinates_sites.index, zone)
         
     return subset
-            
-            
             
 
 def subsample_Normandie(list_sites):
