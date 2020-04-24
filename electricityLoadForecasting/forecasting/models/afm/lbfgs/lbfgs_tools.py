@@ -34,32 +34,30 @@ def bfgs_regularization(model,
     # Compute the differentiable penalizations
     # Simple computations for Ridge
     # Computations of the convolutions first for the smoothing splines penalizations
-    import ipdb; ipdb.set_trace()
     for var in model.formula.index.get_level_values('coefficient'):
-        for key in set([tuple(row) 
-                        for row in model.col_key_large_matching[model.concat_masks[:,0].indices 
-                                                                if sp.sparse.issparse(model.concat_masks) 
-                                                                else 
-                                                                model.concat_masks[:,0]
-                                                                ]
-                        ]):
-            if (key,0) not in model.key_slice_matching_zero:
+        for inpt, location in model.col_key_large_matching.loc[model.concat_masks[:,0].indices 
+                                                               if sp.sparse.issparse(model.concat_masks) 
+                                                               else 
+                                                               model.concat_masks[:,0],
+                                                               0
+                                                               ].unique():
+            if (inpt, location,0) not in model.key_slice_matching_zero:
                 continue
-            key_slice = model.key_slice_matching_zero[key,0]
-            cat       = model.hprm['data_cat'][key] 
-            alpha     = alphas[var].get(cat,0)
+            import ipdb; ipdb.set_trace()
+            key_slice = model.key_slice_matching_zero[(inpt, location),0]
+            alpha     = alphas[var].get(inpt,0)
             if (   type(alpha) == tuple and alpha[0] !=0
                 or isinstance(alpha, Number) and alpha != 0
                 ):
                 cc   = coef[key_slice]                      
                 ##### rsm #####
-                if   model.pen[var].get(cat) == 'rsm':
+                if   model.pen[var].get(inpt) == 'rsm':
                     conv  = cc
                     reg += 0.5 * alpha * np.linalg.norm(conv)**2
-                elif model.pen[var].get(cat) == 'r1sm':
-                    reshape_tensor = '#' in cat and np.all([e > 1 for e in model.size_tensor2[key]]) 
+                elif model.pen[var].get(inpt) == 'r1sm':
+                    reshape_tensor = '#' in inpt and np.all([e > 1 for e in model.size_tensor2[inpt,location]]) 
                     if reshape_tensor:
-                        cc = cc.reshape(*model.size_tensor2[key], -1)                        
+                        cc = cc.reshape(*model.size_tensor2[inpt], -1)                        
                     if not reshape_tensor:
                         ker  = np.array([[1],[-1]])
                     else:
@@ -67,72 +65,72 @@ def bfgs_regularization(model,
                                         [[ 2],[ -1]], 
                                         [[-1],[  0]], 
                                         ])
-                    if not reshape_tensor and model.hprm['qo_modulo'].get(cat):
+                    if not reshape_tensor and model.hprm['qo_modulo'].get(inpt):
                         conv = spim.filters.convolve(cc,ker,mode = 'wrap')
                     else:
                         conv = sig.convolve(cc, ker, mode = 'valid')
                     reg += 0.5 * alpha * np.linalg.norm(conv)**2
                 ##### r2sm #####
-                elif model.pen[var].get(cat) == 'r2sm':
-                    reshape_tensor = '#' in cat 
+                elif model.pen[var].get(inpt) == 'r2sm':
+                    reshape_tensor = (type(inpt[0]) == tuple) 
                     if not reshape_tensor:
                         if cc.shape[0] > 2:
                             ker  = np.array([[1],[-2],[1]])
-                            if model.hprm['qo_modulo'].get(cat):
+                            if model.hprm['qo_modulo'].get(inpt):
                                 conv = spim.filters.convolve(cc,ker,mode = 'wrap')
                             else:
                                 conv = sig.convolve(cc, ker, mode = 'valid')
                             reg += 0.5 * alpha * np.linalg.norm(conv)**2
                     else:
-                        cc = cc.reshape(*model.size_tensor2[key], -1)  
-                        cat1, cat2 = cat.split('#')
+                        cc = cc.reshape(*model.size_tensor2[inpt,location], -1)  
+                        inpt1, inpt2 = inpt
                         if cc.shape[0] > 2:
                             ker1  = np.array([[[1]],[[-2]],[[1]]]) 
-                            if model.hprm['qo_modulo'].get(cat1):
+                            if model.hprm['qo_modulo'].get(inpt1):
                                 conv1 = spim.filters.convolve(cc,ker1,mode = 'wrap')
                             else:
                                 conv1 = sig.convolve(cc, ker1, mode = 'valid')
                             reg += 0.5 * alpha * np.linalg.norm(conv1)**2
                         if cc.shape[1] > 2:
                             ker2  = np.array([[[1 ],[ -2 ],[ 1]]])
-                            if model.hprm['qo_modulo'].get(cat2):
+                            if model.hprm['qo_modulo'].get(inpt2):
                                 conv2 = spim.filters.convolve(cc,ker2,mode = 'wrap')
                             else:
                                 conv2 = sig.convolve(cc, ker2, mode = 'valid')
                             reg += 0.5 * alpha * np.linalg.norm(conv2)**2  
                 ##### group r2sm #####
-                elif model.pen[var][cat]   == 'row2sm':
-                    assert type(model.alpha[var].get(cat)) == tuple
-                    assert len(model.alpha[var][cat]) == 2
-                    aa, pp = model.alpha[var][cat]
-                    reshape_tensor = '#' in cat 
+                elif model.pen[var][inpt]   == 'row2sm':
+                    assert type(model.alpha[var].get(inpt)) == tuple
+                    assert len(model.alpha[var][inpt]) == 2
+                    aa, pp = model.alpha[var][inpt]
+                    reshape_tensor = (type(inpt[0]) == tuple)
                     if not reshape_tensor:
                         if cc.shape[0] > 2:
                             ker  = np.array([[1],[-2],[1]])
-                            if model.hprm['qo_modulo'].get(cat):
+                            if model.hprm['qo_modulo'].get(inpt):
                                 conv = spim.filters.convolve(cc,ker,mode = 'wrap')
                             else:
                                 conv = sig.convolve(cc, ker, mode = 'valid')
                             reg += 0.5 * aa * (np.linalg.norm(conv, axis = 1)**pp).sum()
                     else:
-                        cc = cc.reshape(*model.size_tensor2[key], -1)  
-                        cat1, cat2 = cat.split('#')
+                        cc = cc.reshape(*model.size_tensor2[inpt,location], -1)  
+                        inpt1, inpt2 = inpt
                         if cc.shape[0] > 2:
                             ker1  = np.array([[[1]],[[-2]],[[1]]]) 
-                            if model.hprm['qo_modulo'].get(cat1):
+                            if model.hprm['qo_modulo'].get(inpt1):
                                 conv1 = spim.filters.convolve(cc,ker1,mode = 'wrap')
                             else:
                                 conv1 = sig.convolve(cc, ker1, mode = 'valid')
                             reg += 0.5 * aa * (np.linalg.norm(conv1, axis = 2)**pp).sum()
                         if cc.shape[1] > 2:
                             ker2  = np.array([[[1 ],[ -2 ],[ 1]]])
-                            if model.hprm['qo_modulo'].get(cat2):
+                            if model.hprm['qo_modulo'].get(inpt2):
                                 conv2 = spim.filters.convolve(cc,ker2,mode = 'wrap')
                             else:
                                 conv2 = sig.convolve(cc, ker2, mode = 'valid')
                             reg += 0.5 * aa * (np.linalg.norm(conv2, axis = 2)**pp).sum()
                 else:
-                    assert model.pen.get(cat,'') == ''
+                    assert model.pen.get(inpt,'') == ''
                     conv = 0
                     reg += 0
     return reg
@@ -142,33 +140,30 @@ def grad_bfgs_regularization(model, coef, alphas):
     # Compute the gradient of the differentiable plenalizations
     # The slmoothing spline regularizations require the computations of the convolutions first
     grad = np.zeros(coef.shape)
-    import ipdb; ipdb.set_trace()
     for var in model.formula.index.get_level_values('coefficient'):
-        for key in set([tuple(row) 
-                        for row in model.col_key_large_matching[model.concat_masks[:,0].indices 
-                                                                if sp.sparse.issparse(model.concat_masks) 
-                                                                else 
-                                                                model.concat_masks[:,0]
-                                                                ]
-                        ]):
-            if (key,0) not in model.key_slice_matching_zero:
+        for inpt, location in model.col_key_large_matching.loc[model.concat_masks[:,0].indices 
+                                                               if sp.sparse.issparse(model.concat_masks) 
+                                                               else 
+                                                               model.concat_masks[:,0],
+                                                               0
+                                                               ].unique():
+            if ((inpt,location),0) not in model.key_slice_matching_zero:
                 continue
-            key_slice = model.key_slice_matching_zero[key,0]
-            cat       = model.hprm['data_cat'][key] 
-            alpha     = alphas[var].get(cat,0)
+            key_slice = model.key_slice_matching_zero[(inpt,location),0]
+            alpha     = alphas[var].get(inpt,0)
             if (   type(alpha) == tuple and alpha[0] !=0
                 or isinstance(alpha, Number) and alpha != 0
                 ):
                 cc = coef[key_slice]
                 ##### rsm #####
-                if model.pen[var].get(cat, 0) == 'rsm':
+                if model.pen[var].get(inpt, 0) == 'rsm':
                     grad[key_slice] = alpha * cc
                 ##### r1sm #####
-                elif model.pen[var].get(cat) == 'r1sm':
-                    reshape_tensor = '#' in cat and np.all([e > 1 for e in model.size_tensor2[key]]) 
+                elif model.pen[var].get(inpt) == 'r1sm':
+                    reshape_tensor = (type(inpt[0]) == tuple)  and np.all([e > 1 for e in model.size_tensor2[inpt,location]]) 
                     if reshape_tensor:
-                        cc = cc.reshape(*model.size_tensor2[key], -1)
-                    if not reshape_tensor and model.hprm['qo_modulo'].get(cat):
+                        cc = cc.reshape(*model.size_tensor2[inpt,location], -1)
+                    if not reshape_tensor and model.hprm['qo_modulo'].get(inpt):
                         ker  = np.array([[-1],[2],[-1]])
                         conv = spim.filters.convolve(cc,ker,mode = 'wrap')
                         grad[key_slice] = alpha * conv
@@ -180,7 +175,7 @@ def grad_bfgs_regularization(model, coef, alphas):
                             grad[slice(key_slice.start,   key_slice.stop-1)] += alpha * conv
                             grad[slice(key_slice.start+1, key_slice.stop  )] -= alpha * conv
                         else:
-                            cc = cc.reshape(*model.size_tensor2[key], -1)
+                            cc = cc.reshape(*model.size_tensor2[inpt,location], -1)
                             ker  = np.array(
                                              [[[ 2],[-1]], 
                                              [[-1],[ 0]], 
@@ -191,12 +186,12 @@ def grad_bfgs_regularization(model, coef, alphas):
                             grad_tmp[  :, :-1] += alpha * conv
                             grad[slice(key_slice.start, key_slice.stop  )] = grad_tmp.reshape((grad[slice(key_slice.start, key_slice.stop  )].shape))
                 ##### r2sm #####
-                elif model.pen[var].get(cat) == 'r2sm':
-                    reshape_tensor = '#' in cat
+                elif model.pen[var].get(inpt) == 'r2sm':
+                    reshape_tensor = (type(inpt[0]) == tuple) 
                     assert key_slice.stop >= key_slice.start+2
                     if not reshape_tensor:
                         if cc.shape[0] > 2:
-                            if model.hprm['qo_modulo'].get(cat):
+                            if model.hprm['qo_modulo'].get(inpt):
                                 ker  = np.array([[1],[-4],[6],[-4],[1]])
                                 conv = spim.filters.convolve(cc,ker,mode = 'wrap')
                                 grad[key_slice] = alpha * conv
@@ -208,11 +203,11 @@ def grad_bfgs_regularization(model, coef, alphas):
                                 grad[slice(key_slice.start+1, key_slice.stop-1)] -= alpha * 2*conv
                                 grad[slice(key_slice.start+2, key_slice.stop  )] += alpha * conv
                     else:
-                        cc = cc.reshape(*model.size_tensor2[key], -1)
+                        cc = cc.reshape(*model.size_tensor2[inpt,location], -1)
                         grad_tmp = np.zeros(cc.shape)
-                        cat1, cat2 = cat.split('#')
+                        inpt1, inpt2 = inpt.split('#')
                         if cc.shape[0] > 2:
-                            if model.hprm['qo_modulo'].get(cat1):
+                            if model.hprm['qo_modulo'].get(inpt1):
                                 ker1  = np.array([[[1],[-4],[6],[-4],[1]]])
                                 conv1     = spim.filters.convolve(cc,ker1,mode = 'wrap')
                                 grad_tmp += alpha * conv1
@@ -223,7 +218,7 @@ def grad_bfgs_regularization(model, coef, alphas):
                                 grad_tmp[1:-1,:] -= alpha * 2*conv1
                                 grad_tmp[2:  ,:] += alpha * conv1
                         if cc.shape[1] > 2: 
-                            if model.hprm['qo_modulo'].get(cat2):
+                            if model.hprm['qo_modulo'].get(inpt2):
                                 ker2  = np.array([[[1],[-4],[6],[-4],[1]]])
                                 conv2 = spim.filters.convolve(cc,ker2,mode = 'wrap')
                                 grad_tmp += alpha * conv2
@@ -235,15 +230,15 @@ def grad_bfgs_regularization(model, coef, alphas):
                                 grad_tmp[:,2:  ] += alpha *   conv2
                         grad[slice(key_slice.start, key_slice.stop)] = grad_tmp.reshape((grad[slice(key_slice.start, key_slice.stop)].shape))
                 ##### group r2sm #####
-                elif model.pen[var].get(cat) == 'row2sm':
-                    assert len(alphas[var][cat])  == 2, alphas[var][cat] 
-                    assert type(alphas[var][cat]) == tuple, alphas[var][cat] 
-                    aa, pp = alphas[var][cat]
-                    reshape_tensor = '#' in cat
+                elif model.pen[var].get(inpt) == 'row2sm':
+                    assert len(alphas[var][inpt])  == 2, alphas[var][inpt] 
+                    assert type(alphas[var][inpt]) == tuple, alphas[var][inpt] 
+                    aa, pp = alphas[var][inpt]
+                    reshape_tensor = (type(inpt[0]) == tuple) 
                     assert key_slice.stop >= key_slice.start+2
                     if not reshape_tensor:
                         if cc.shape[0] > 2:
-                            if model.hprm['qo_modulo'].get(cat):
+                            if model.hprm['qo_modulo'].get(inpt):
                                 ker  = np.array([[1],[-2],[1]])
                                 conv = spim.filters.convolve(cc,ker,mode = 'wrap')
                                 norm_conv     = np.linalg.norm(conv, axis = 1)
@@ -274,11 +269,11 @@ def grad_bfgs_regularization(model, coef, alphas):
                                 grad[slice(key_slice.start+1, key_slice.stop-1)] -= (0.5 * aa * pp) * 2*conv * norm_conv_pm2
                                 grad[slice(key_slice.start+2, key_slice.stop  )] += (0.5 * aa * pp) *   conv * norm_conv_pm2
                     else:
-                        cc = cc.reshape(*model.size_tensor2[key], -1)
+                        cc = cc.reshape(*model.size_tensor2[inpt,location], -1)
                         grad_tmp = np.zeros(cc.shape)
-                        cat1, cat2 = cat.split('#')
+                        inpt1, inpt2 = inpt
                         if cc.shape[0] > 2:
-                            if model.hprm['qo_modulo'].get(cat1):
+                            if model.hprm['qo_modulo'].get(inpt1):
                                 ker1           = np.array([[[ 1],
                                                             [-4],
                                                             [ 6],
@@ -326,7 +321,7 @@ def grad_bfgs_regularization(model, coef, alphas):
                                 grad_tmp[1:-1,:] -= (0.5 * aa * pp) * 2*conv1 * norm_conv1_pm2
                                 grad_tmp[2:  ,:] += (0.5 * aa * pp) *   conv1 * norm_conv1_pm2
                         if cc.shape[1] > 2: 
-                            if model.hprm['qo_modulo'].get(cat2):
+                            if model.hprm['qo_modulo'].get(inpt2):
                                 ker2           = np.array([[[ 1],
                                                             [-4],
                                                             [ 6],
@@ -375,7 +370,7 @@ def grad_bfgs_regularization(model, coef, alphas):
                                 grad_tmp[:,2:  ] += (0.5 * aa * pp) *     conv2 * norm_conv2_pm2
                         grad[slice(key_slice.start, key_slice.stop)] = grad_tmp.reshape((grad[slice(key_slice.start, key_slice.stop)].shape))
                 else:
-                    assert model.pen.get(cat,'') == ''            
+                    assert model.pen.get(inpt,'') == ''            
     return grad                    
 
 

@@ -15,7 +15,6 @@ def set_afm(hprm):
     # Design and optimization problem
     assert hprm['learning.model'] == 'afm'
     hprm.update({
-                  'afm.features.boundary_scaling'           : False, # Activate to select a different scaling of the splines near the boundary (does not improve the results)
                   'afm.features.natural_splines'            : True, # Activate to extrapolate linearly
                   'afm.features.order_splines'              : 1,    # 1 for piecewise linear
                   'afm.features.bivariate.combine_function' : np.prod, # Use product or minimum of splines for interactions

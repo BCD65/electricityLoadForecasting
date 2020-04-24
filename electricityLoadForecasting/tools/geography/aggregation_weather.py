@@ -20,7 +20,9 @@ def aggregation_weather(df_weather, df_coordinates, aggregation_level):
                                                              )
         agg_coordinates_weather = df_coordinates.mean(axis = 0).to_frame().T
         agg_coordinates_weather.index = ['mean']
-    else:
+    elif aggregation_level in ['national_weighted_mean',
+                               'regional_weighted_mean',
+                               ]:
         df_weights                = pd.read_csv(os.path.join(paths.extras, 'poids_stations_meteo.csv'), sep = ';', decimal=',')
         df_weights                = df_weights.fillna(0)
         df_weights['Nom station'] = df_weights['Nom station'].apply(format_text.format_weather_station_name)
@@ -42,4 +44,6 @@ def aggregation_weather(df_weather, df_coordinates, aggregation_level):
                                             names = ['physical_quantity', 'name'],
                                             axis  = 1,
                                             ).reorder_levels((1,0), axis = 1)
+    else:
+        raise ValueError('Incorrect aggregation_level = {0}'.format(aggregation_level))
     return agg_df_weather, agg_coordinates_weather

@@ -9,7 +9,7 @@ def choose_dataset(hprm):
    
     hprm.update({
                  # Choose the database
-                 'database' : 'RTE.substations',
+                 'database' : 'eCO2mix.France',
                  })
     assert hprm['database'] in [
                                 'eCO2mix.France',
@@ -21,9 +21,13 @@ def choose_dataset(hprm):
     hprm.update({
                  # Choose the electricity load data
                  'sites.zone'                : 'all', 
-                 'sites.aggregation'         : 'sum',
+                 'sites.aggregation'         : None,
                  'sites.trash'               : [],# Eliminate additional sites from the dataset
                  })
+    assert hprm['sites.aggregation'] in [
+                                         None,
+                                         'sum',
+                                         ]
                  
     hprm.update({
                  # Choose the weather data
@@ -43,8 +47,8 @@ def choose_dataset(hprm):
                                                 ('RTE.substations',               'administrative_regions') : 5,
                                                 ('RTE.substations',               'RTE_regions')            : 5,
                                                 }.get((hprm['database'], hprm['sites.aggregation']), 0.1),
-                 'weather.extra_longitude'   : {'eCO2mix.France'                 : 8,
-                                                'eCO2mix.administrative_regions' : 0.1, 
+                 'weather.extra_longitude'   : {('eCO2mix.France',                 None)     : 8,
+                                                ('eCO2mix.administrative_regions', None)     : 0.1, 
                                                 ('RTE.substations' ,               None)     : 0.1, 
                                                 ('RTE.substations',               'sum')     : 8,
                                                 ('RTE.substations',               'administrative_regions') : 8, 

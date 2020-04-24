@@ -1,9 +1,10 @@
 
 import numpy as np
+import pandas as pd
 import scipy as sp
 from termcolor import colored
 #
-from .lbfgs_tools import bfgs_regularization, grad_bfgs_regularization, cat_bound, make_coef
+from .lbfgs_tools import bfgs_regularization, grad_bfgs_regularization, cat_bound, optimize_coef
 
 EXTRA_CHECK = 0
 
@@ -46,7 +47,7 @@ def start_lbfgs(model, ):
     model.col_key_large_matching = []
     for key in model.key_col_large_matching:
         model.col_key_large_matching += [key for ii in range(*model.key_col_large_matching[key])]
-    model.col_key_large_matching = np.array(model.col_key_large_matching)
+    model.col_key_large_matching = pd.Series(model.col_key_large_matching).to_frame()
     
     for key in model.key_col_large_matching:
         assert model.key_col_large_matching[key][0] < model.key_col_large_matching[key][1], (key, model.key_col_large_matching[key][0], model.key_col_large_matching[key][1])
@@ -60,7 +61,7 @@ def start_lbfgs(model, ):
     print('start masks')
     model.concat_masks = []
     for pp in range(model.k):
-        print('\r'+str(pp), '/', model.k, end = '\r')
+        print('\r'+str(pp), '/', model.k, end = '')
         bool_sel = []
         for key in model.sorted_keys:
             mm = model.mask.get(key, slice(None))
@@ -69,6 +70,7 @@ def start_lbfgs(model, ):
             else:
                 bool_sel += [0]*model.X_training[key].shape[1]
         model.concat_masks.append(sp.sparse.csc_matrix(bool_sel).reshape((-1, 1)))
+    print()
     model.concat_masks  = sp.sparse.hstack(model.concat_masks,
                                            format = 'csc',
                                            )
@@ -159,11 +161,11 @@ def start_lbfgs(model, ):
                                    }
     
     # Computation of the XtX and XtY part
-    print('model.sparseX : ', model.sparseX)
+    print('model.sparseX :', model.sparseX)
     if model.sparseX:
         print('precompute xshtxsh')
         model.nxtx_sh_training = (1/model.n_training)*model.concat_shared_training.T @ model.concat_shared_training
-        print('\n'+'precompute xshtxy')
+        print('precompute xshtxy')
         model.nxshty_training  = (1/model.n_training)*model.concat_shared_training.T @ model.Y_training
         print('precompute xowtxy')
         model.nxowty_training     = np.concatenate([(1/model.n_training)*model.concat_training_csc[:,model.concat_large_masks_owned[:,k].indices].T@model.Y_training[:,k][:,None]
@@ -174,35 +176,38 @@ def start_lbfgs(model, ):
         print('precompute xowtxow')
         model.nxtx_ow_training = {}
         for k in range(model.k):
-            print('\r    '+'{0:5} / {1:5}'.format(k, model.k), end = '')
+            print('\r    {0:5} / {1:5}'.format(k, model.k), end = '')
             model.nxtx_ow_training[k] = (1/model.n_training) * model.concat_training_csc[:,model.concat_large_masks_owned[:,k].indices].T @ model.concat_training_csc[:,model.concat_large_masks_owned[:,k].indices]
-
-        print('\n'+'precompute xowtxsh')
+        print()
+        
+        print('precompute xowtxsh')
         model.nxtx_owsh_training         = {}
         for k in range(model.k):
-            print('\r    '+'{0:5} / {1:5}'.format(k, model.k), end = '')
+            print('\r    {0:5} / {1:5}'.format(k, model.k), end = '')
             model.nxtx_owsh_training[k] = (1/model.n_training)*model.concat_training_csc[:,model.concat_large_masks_owned[:,k].indices].T@(model.concat_shared_training if model.active_gp else model.concat_shared_training.multiply(model.submasks_shared[:,k].reshape((1,-1))))
-
-        print('\n'+'precompute xshtxow')
+        print()
+        
+        print('precompute xshtxow')
         model.nxtx_show_training = {}
         for k in range(model.k):
-            print('\r    '+'{0:5} / {1:5}'.format(k, model.k), end = '')
+            print('\r    {0:5} / {1:5}'.format(k, model.k), end = '')
             if   type(model.nxtx_owsh_training[k]) == sp.sparse.csr_matrix :
                 model.nxtx_show_training[k] = sp.sparse.csr_matrix(model.nxtx_owsh_training[k].T)
             elif type(model.nxtx_owsh_training[k]) == sp.sparse.csc_matrix :
                 model.nxtx_show_training[k] = sp.sparse.csc_matrix(model.nxtx_owsh_training[k].T)
             else:
                 model.nxtx_show_training[k] = model.nxtx_owsh_training[k].T
+        print()
         
         # Computations of the XtX and XtY parts for the sum-consistent model        
         if model.active_gp:            
-            print('\n'+'precompute xshty_sum')
+            print('precompute xshty_sum')
             model.nxshty_sum_training = {tuple_indices : model.nxshty_training[:,list(tuple_indices)].sum(axis = 1)
                                       for tuple_indices in model.partition_tuples
                                       }
+            print()
             
-            print('\n'+'precompute xowtxy_large_sum')
-
+            print('precompute xowtxy_large_sum')
             model.nxowty_large_sum_training = {}
             for ii, tuple_indices in enumerate(model.partition_tuples):
                 model.nxowty_large_sum_training[tuple_indices] = np.zeros((model.concat_training_csc[:,model.concat_large_masks_owned[:,0].indices].shape[1], 
@@ -210,7 +215,7 @@ def start_lbfgs(model, ):
                                                                         ))
 
                 for pp in tuple_indices:
-                    print('\r' + '{0:5} / {1:5} - {2:5} / {3:5}'.format(ii, 
+                    print('\r{0:5} / {1:5} - {2:5} / {3:5}'.format(ii, 
                                                                         len(model.partition_tuples), 
                                                                         pp, 
                                                                         model.k, 
@@ -218,6 +223,7 @@ def start_lbfgs(model, ):
                     model.nxowty_large_sum_training[tuple_indices][:,pp] = (1/model.n_training) * (  model.concat_training_csc[:,model.concat_large_masks_owned[:,pp].indices].T
                                                                                                    @ model.Y_training[:,list(tuple_indices)].sum(axis = 1)
                                                                                                    )
+            print()
             model.part_xowty = np.concatenate([np.sum([(len(model.partition_tuples_to_posts[tuple_indices])/len(tuple_indices)**2) * 
                                                        model.nxowty_large_sum_training[tuple_indices][:,pp]
                                                        for tuple_indices in model.partition_tuples
@@ -231,18 +237,19 @@ def start_lbfgs(model, ):
                                                )
             
             if model.precompute:
-                print('\n'+'precompute xowtxow_large')
+                print('precompute xowtxow_large')
                 model.nxtx_ow_large_training = {}
                 counter_xowtxow = 0
                 for ii, tuple_indices in enumerate(model.partition_tuples):
                     for k in tuple_indices:
                         for l in tuple_indices:
                             print('\r    '+'{0:5} / {1:5} - {2:5} / {3:5} - {4:5} / {5:5} - counter = {6:5}'.format(
-                                                                                  ii,  len(model.partition_tuples), 
-                                                                                  k,  model.k, 
-                                                                                  l, model.k,
-                                                                                  counter_xowtxow,
-                                                                                  ), end = '') 
+                                                                                                                    ii,
+                                                                                                                    len(model.partition_tuples), 
+                                                                                                                    k,  model.k, 
+                                                                                                                    l, model.k,
+                                                                                                                    counter_xowtxow,
+                                                                                                                    ), end = '') 
                             if (k,l) not in model.nxtx_ow_large_training:
                                 counter_xowtxow += 1
                                 model.nxtx_ow_large_training[k,l] = (1/model.n_training)*(
@@ -250,7 +257,7 @@ def start_lbfgs(model, ):
                                                                                     @ model.concat_training_csc[:,model.concat_large_masks_owned[:,l].indices]
                                                                                     )
                                 model.nxtx_ow_large_training[k,l] = sp.sparse.csr_matrix(model.nxtx_ow_large_training[k,l])
-
+                print()
     else:
         print('Precomputations')
         model.nxtx_sh_training = (1/model.n_training)*model.concat_shared_training.T @ model.concat_shared_training
@@ -317,22 +324,22 @@ def start_lbfgs(model, ):
     model.cat_bound_matching = cat_bound(model.col_cat_matching)
     
     ###
-    model.idx_key_matching = np.concatenate([model.col_key_large_matching[model.concat_masks[:,k].indices] 
-                                             for k in range(model.concat_masks.shape[1])
-                                             ], 
-                                            axis = 1,
-                                            )
+    model.idx_key_matching = pd.concat([model.col_key_large_matching.loc[model.concat_masks[:,k].indices] 
+                                        for k in range(model.concat_masks.shape[1])
+                                        ], 
+                                       axis = 1,
+                                       )
     
     model.key_slice_matching_zero = {}
     for key in model.sorted_keys:
         for k in range(1):
-            idx = np.where(model.idx_key_matching[:,k]==key)[0]
+            idx = np.where(model.idx_key_matching.loc[:,k] == key)[0]
             assert idx.ndim == 1
             assert np.all(idx[1:] - idx[:-1] == 1)
             if np.prod(idx.shape[0]):
                 model.key_slice_matching_zero[key,k] = slice(
-                                                             np.where(model.idx_key_matching[:,k]==key)[0].min(), 
-                                                             np.where(model.idx_key_matching[:,k]==key)[0].max()+1, 
+                                                             np.where(model.idx_key_matching.loc[:,k] == key)[0].min(), 
+                                                             np.where(model.idx_key_matching.loc[:,k] == key)[0].max()+1, 
                                                              )
     
     vec_coef_0 = np.zeros(((model.concat_shared_training.shape[1] + model.concat_large_masks_owned[:,0].sum())*model.k,1)).reshape((-1, 1)).copy()

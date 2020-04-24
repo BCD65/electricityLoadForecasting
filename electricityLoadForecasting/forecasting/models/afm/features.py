@@ -492,7 +492,6 @@ def make_cov(list_funcs,
                                  index_func = ii,
                                  nb_funcs   = len(list_funcs),
                                  cyclic     = hprm['inputs.cyclic'].get(inpt_name, False), 
-                                 bd_scal    = hprm['afm.features.boundary_scaling'],
                                  )
                           for ii, func in enumerate(list_funcs)
                           ], 
