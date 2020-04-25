@@ -140,4 +140,16 @@ def combine_masks(key1, key2, mask12):
     return m
 
 
+def cross_mask(mask1,
+               mask2,
+               ):   
+    if bool(mask1) and bool(mask2):
+        if (   (type(mask1) == type(slice(None)) and  mask1 == slice(None))
+            or (type(mask2) == type(slice(None)) and  mask2 == slice(None))
+            ):
+            return True
+        else:
+            return bool(set(mask1) &  set(mask2))
+    else:
+        return True
  

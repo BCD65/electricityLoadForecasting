@@ -15,6 +15,7 @@ from termcolor import colored
 #
 import electricityLoadForecasting.tools  as tools
 import electricityLoadForecasting.paths  as paths
+from . import masks
 
 
 path_data =  os.path.join(paths.outputs,
@@ -49,11 +50,7 @@ def compute_design(inputs,
         assert bool(dikt_func)
     else:
         raise ValueError('Incorret db')
-    precompute = not (   hprm['afm.algorithm'] == 'L-BFGS' 
-                      or (    db == 'validation'
-                          and not hprm['tf_precompute_validation']
-                          )
-                      )        
+    precompute = not (hprm['afm.algorithm'] == 'L-BFGS')        
     ### Univariate part
     if hprm['afm.features.sparse_x1']: # Format to store the univariate covariates
         print(colored('X1_SPARSE', 'green'))
@@ -160,15 +157,15 @@ def compute_design(inputs,
                 print('finished XtX1')
             else:
                 print('X1tX1 too large to save : len (X1tX1) = {0}'.format(len(X1tX1)))
-        for e in list(X1tX1.keys()):
-            assert type(X1tX1[e]) in {np.ndarray, sp.sparse.csr_matrix}
-            j, k = e.split('@')
-            if (j != k) and (k+'@'+j) not in X1tX1:
-                X1tX1.update({k+'@'+j : (sp.sparse.csr_matrix(X1tX1[e].T)
-                                         if type(X1tX1[e]) == sp.sparse.csr_matrix
-                                         else
-                                         X1tX1[e].T
-                                         )})
+        for keys in list(X1tX1.keys()):
+            assert type(X1tX1[keys]) in {np.ndarray, sp.sparse.csr_matrix}
+            key1, key2 = keys
+            if (key1 != key2) and (key2, key1) not in X1tX1:
+                X1tX1.update({(key2, key1) : (sp.sparse.csr_matrix(X1tX1[keys].T)
+                                              if type(X1tX1[keys]) == sp.sparse.csr_matrix
+                                              else
+                                              X1tX1[keys].T
+                                              )})
         
         X.update({'X1tX1_{0}'.format(db) : X1tX1})
     ### Bivariate part
@@ -301,22 +298,22 @@ def compute_design(inputs,
                 print('finished XtX2')
         if precompute:
             X2tX1 = {}
-            for e in list(X1tX2.keys()):
-                j, k  = e.split('@')
-                X2tX1.update({k+'@'+j : sp.sparse.csr_matrix(X1tX2[e].T) 
-                                        if type(X1tX2[e]) == sp.sparse.csr_matrix 
-                                        else 
-                                        X1tX2[e].T
-                                        })
-            for e in list(X2tX2.keys()):
-                assert type(X2tX2[e]) == sp.sparse.csr_matrix
-                j, k = e.split('@')
-                if j!=k:
-                    X2tX2.update({k+'@'+j : X2tX2[e].T})
-                    if type(X2tX2[e]) == sp.sparse.csr_matrix:
-                        X2tX2[k+'@'+j] = sp.sparse.csr_matrix(X2tX2[k+'@'+j])
-            for e in list(X2tX2.keys()):
-                assert type(X2tX2[e]) in {np.ndarray, sp.sparse.csr_matrix}
+            for keys in list(X1tX2.keys()):
+                key1, key2  = keys
+                X2tX1.update({(key2, key1) : sp.sparse.csr_matrix(X1tX2[keys].T) 
+                                             if type(X1tX2[keys]) == sp.sparse.csr_matrix 
+                                             else 
+                                             X1tX2[keys].T
+                                             })
+            for keys in list(X2tX2.keys()):
+                assert type(X2tX2[keys]) == sp.sparse.csr_matrix
+                key1, key2 = keys
+                if key1!=key2:
+                    X2tX2.update({(key2,key1) : X2tX2[keys].T})
+                    if type(X2tX2[keys]) == sp.sparse.csr_matrix:
+                        X2tX2[key2,key1] = sp.sparse.csr_matrix(X2tX2[key2,key1])
+            for keys in list(X2tX2.keys()):
+                assert type(X2tX2[keys]) in {np.ndarray, sp.sparse.csr_matrix}
             X.update({
                       'X1tX2_'+db : X1tX2, 
                       'X2tX1_'+db : X2tX1, 
@@ -549,59 +546,79 @@ def make_X2(X12,
     return X2, size2, size_tensor_bivariate
     
 
-def precomputations_1(X1, mask, all_products = 0):
-    raise NotImplementedError
+def precomputations_1(X1, mask_univariate, all_products = 0):
     # Compute the products between univariate covariates
-#    print('Start X1tX1')
-#    X1tX1 = {}
-#    for ii, key1 in enumerate(X1):
-#        for jj, key2 in enumerate(X1):
-#            print('\r{0:{wid}}'.format(jj, wid = len(str(len(X1)))), '/', len(X1), ' - ', '{0:{wid}}'.format(ii, wid = len(str(len(X1)))), '/', len(X1), end = '\r')
-#            if key1 <= key2:
-#                if approx_tf.cross_mask(mask, key1, mask, key2) or all_products:
-#                    X1tX1[key1+'@'+key2] = X1[key1].T @ X1[key2]
-#                    if type(X1tX1[key1+'@'+key2]) in {sp.sparse.csc_matrix, sp.sparse.csr_matrix}:
-#                        X1tX1[key1+'@'+key2] = sp.sparse.csr_matrix(X1tX1[key1+'@'+key2])
-#                    assert type(X1tX1[key1+'@'+key2]) in {np.ndarray, sp.sparse.csr_matrix}
-#    print()
-#    return X1tX1
+    print('Start X1tX1')
+    X1tX1 = {}
+    for ii, key1 in enumerate(X1):
+        for jj, key2 in enumerate(X1):
+            print('\r{0:{wid}} / {1} - {2:{wid}} / {3} - '.format(jj,
+                                                                  len(X1),
+                                                                  ii,
+                                                                  len(X1),
+                                                                  wid = len(str(len(X1))),
+                                                                  ),
+                  end = '',
+                  )
+            if str(key1) <= str(key2):
+                if masks.cross_mask(mask_univariate.get(key1), mask_univariate.get(key2)) or all_products:
+                    X1tX1[key1,key2] = X1[key1].T @ X1[key2]
+                    if type(X1tX1[key1,key2]) in {sp.sparse.csc_matrix, sp.sparse.csr_matrix}:
+                        X1tX1[key1,key2] = sp.sparse.csr_matrix(X1tX1[key1,key2])
+                    assert type(X1tX1[key1,key2]) in {np.ndarray, sp.sparse.csr_matrix}
+    print()
+    return X1tX1
 
 
-def precomputations_2(X1, X2, mask1, mask2, hprm, all_products = 0):
-    raise NotImplementedError
-#    # Compute the products between univariate/bivariate covariates
-#    # We only have to compute the product between pairs of covariates that are accessed a same sustation if the models are independent
-#    # but have to compute all the product for the sum consistent loss
-#    if all_products:
-#        # all_products is an indicator that all products should be compuetd
-#        assert hprm['afm.features.sparse_x2']
-#        print(colored('\n \n X2 will be very large with all interactions ie might be too big \n \n', 'red', 'on_cyan'))
-#    print('Start X1tX2')
-#    X1tX2 = {}
-#    # Products between univariate covariates and bivariate covariates
-#    for ii, key1 in enumerate(X1):
-#        for jj, key2 in enumerate(X2):
-#            if approx_tf.cross_mask(mask1, key1, mask2, key2) or all_products:
-#                print('\r{0:{wid}}'.format(jj, wid = len(str(len(X2)))), '/', len(X2), ' - ', '{0:{wid}}'.format(ii, wid = len(str(len(X1)))), '/', len(X1), end = '\r')
-#                X1tX2[key1+'@'+key2] = X1[key1].T @ X2[key2]
-#                if type(X1tX2[key1+'@'+key2]) in {sp.sparse.csc_matrix, sp.sparse.csr_matrix}:
-#                    X1tX2[key1+'@'+key2] = sp.sparse.csr_matrix(X1tX2[key1+'@'+key2])
-#                assert type(X1tX2[key1+'@'+key2]) in {np.ndarray, sp.sparse.csr_matrix}
-#    print()
-#    print('Start X2tX2')
-#    X2tX2 = {}
-#    # Products between bivariate covariates
-#    for ii, key1 in enumerate(X2):
-#        for jj, key2 in enumerate(X2):
-#            if key1 <= key2:
-#                if approx_tf.cross_mask(mask2, key1, mask2, key2) or all_products:
-#                    print('\r{0:{wid}}'.format(jj, wid = len(str(len(X2)))), '/', len(X2), ' - ', '{0:{wid}}'.format(ii, wid = len(str(len(X2)))), '/', len(X2), end = '\r')
-#                    X2tX2[key1+'@'+key2] = X2[key1].T @ X2[key2]
-#                    if type(X2tX2[key1+'@'+key2]) in {sp.sparse.csc_matrix, sp.sparse.csr_matrix}:
-#                        X2tX2[key1+'@'+key2] = sp.sparse.csr_matrix(X2tX2[key1+'@'+key2])
-#                    assert type(X2tX2[key1+'@'+key2]) in {np.ndarray, sp.sparse.csr_matrix}
-#    print()
-#    return X1tX2, X2tX2
+def precomputations_2(X1, X2, mask_univariate, mask_bivariate, hprm, all_products = 0):
+    # Compute the products between univariate/bivariate covariates
+    # We only have to compute the product between pairs of covariates that are accessed a same sustation if the models are independent
+    # but have to compute all the product for the sum consistent loss
+    if all_products:
+        # all_products is an indicator that all products should be compuetd
+        assert hprm['afm.features.sparse_x2']
+        print(colored('\n \n X2 will be very large with all interactions ie might be too big \n \n', 'red', 'on_cyan'))
+    print('Start X1tX2')
+    X1tX2 = {}
+    # Products between univariate covariates and bivariate covariates
+    for ii, key1 in enumerate(X1):
+        for jj, key2 in enumerate(X2):
+            print('\r{0:{wid2}} / {1} - {2:{wid1}} / {3} - '.format(jj,
+                                                                    len(X2),
+                                                                    ii,
+                                                                    len(X1),
+                                                                    wid1 = len(str(len(X1))),
+                                                                    wid2 = len(str(len(X2))),
+                                                                    ),
+                  end = '',
+                  )
+            if masks.cross_mask(mask_univariate.get(key1), mask_bivariate.get(key2)) or all_products:
+                X1tX2[key1,key2] = X1[key1].T @ X2[key2]
+                if type(X1tX2[key1,key2]) in {sp.sparse.csc_matrix, sp.sparse.csr_matrix}:
+                    X1tX2[key1,key2] = sp.sparse.csr_matrix(X1tX2[key1,key2])
+                assert type(X1tX2[key1,key2]) in {np.ndarray, sp.sparse.csr_matrix}
+    print()
+    print('Start X2tX2')
+    X2tX2 = {}
+    # Products between bivariate covariates
+    for ii, key1 in enumerate(X2):
+        for jj, key2 in enumerate(X2):
+            print('\r{0:{wid}} / {1} - {2:{wid}} / {3} - '.format(jj,
+                                                                  len(X2),
+                                                                  ii,
+                                                                  len(X2),
+                                                                  wid = len(str(len(X2))),
+                                                                  ),
+                  end = '',
+                  )
+            if str(key1) <= str(key2):
+                if masks.cross_mask(mask_bivariate.get(key1), mask_bivariate.get(key2)) or all_products:
+                    X2tX2[key1,key2] = X2[key1].T @ X2[key2]
+                    if type(X2tX2[key1,key2]) in {sp.sparse.csc_matrix, sp.sparse.csr_matrix}:
+                        X2tX2[key1,key2] = sp.sparse.csr_matrix(X2tX2[key1,key2])
+                    assert type(X2tX2[key1,key2]) in {np.ndarray, sp.sparse.csr_matrix}
+    print()
+    return X1tX2, X2tX2
 
 
 def func1d(x,

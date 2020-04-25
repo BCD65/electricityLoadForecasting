@@ -55,7 +55,7 @@ def set_afm(hprm):
                   })
     # Algorithm
     hprm.update({
-                  'afm.algorithm'                  : 'FirstOrder',
+                  'afm.algorithm'                           : 'FirstOrder',
                   #'afm.algorithm.sparse_coef'               : False, # Memory size of coef does not seem to be a problem, at least when there is no interactions
                   'afm.algorithm.sparse_coef_after_optim'   : True,  # After the optimization, store the coefficients in a sparse format
                   'afm.algorithm.frozen_variables'          : {},
@@ -73,7 +73,7 @@ def set_afm(hprm):
                                                                            }, # In the BCD procedure, activate to have column update instead of larger block updates
                                                                            #'wh':True,
                                                                            #'yd':True,
-                  #'afm.algorithm.first_order.tol'                       : 1e-8,  # Is compared with the decrease of the objective
+                  'afm.algorithm.first_order.tol'                       : 1e-8,  # Is compared with the decrease of the objective
                   'afm.algorithm.first_order.early_small_decrease'      : True,  # Use decrease of objective as a stopping criteria 
                   'afm.algorithm.first_order.early_stop_small_grad'     : True,  # Use norm of grad as a stopping criteria 
                   'afm.algorithm.first_order.norm_grad_min'             : 1e-8, 
