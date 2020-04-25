@@ -155,7 +155,7 @@ def start_lbfgs(model):
                                                  )
         model.concat_shared_validation  = model.concat_validation[:,model.concat_slice_shared]
 
-    model.precompute = model.hprm['afm.algorithm.lbfgs_precompute']
+    model.precompute = model.hprm['afm.algorithm.lbfgs.precompute']
 
     model.ny2_training      = (1/model.n_training)*np.linalg.norm(model.Y_training)**2
     if model.active_gp:
@@ -327,22 +327,22 @@ def start_lbfgs(model):
     model.cat_bound_matching = cat_bound(model.col_cat_matching)
     
     ###
-    model.idx_key_matching = pd.concat([model.col_key_large_matching.loc[model.concat_masks[:,k].indices] 
-                                        for k in range(model.concat_masks.shape[1])
-                                        ], 
-                                       axis = 1,
-                                       )
+    model.idx_key_matching = np.concatenate([model.col_key_large_matching.iloc[model.concat_masks[:,k].indices].values
+                                             for k in range(model.concat_masks.shape[1])
+                                             ], 
+                                            axis = 1,
+                                            )
     
     model.key_slice_matching_zero = {}
     for key in model.sorted_keys:
         for k in range(1):
-            idx = np.where(model.idx_key_matching.loc[:,k] == key)[0]
+            idx = np.where(model.idx_key_matching[:,k] == key)[0]
             assert idx.ndim == 1
             assert np.all(idx[1:] - idx[:-1] == 1)
             if np.prod(idx.shape[0]):
                 model.key_slice_matching_zero[key,k] = slice(
-                                                             np.where(model.idx_key_matching.loc[:,k] == key)[0].min(), 
-                                                             np.where(model.idx_key_matching.loc[:,k] == key)[0].max()+1, 
+                                                             np.where(model.idx_key_matching[:,k] == key)[0].min(), 
+                                                             np.where(model.idx_key_matching[:,k] == key)[0].max()+1, 
                                                              )
     
     vec_coef_0 = np.zeros(((model.concat_shared_training.shape[1] + model.concat_large_masks_owned[:,0].sum())*model.k,1)).reshape((-1, 1)).copy()

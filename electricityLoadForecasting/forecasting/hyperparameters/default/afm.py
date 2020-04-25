@@ -359,8 +359,8 @@ stopping_criteria = {
                       ) : {
                            'afm.algorithm.lbfgs.maxfun'  : 1e8,
                            'afm.algorithm.lbfgs.maxiter' : 1e8,                             
-                           'afm.algorithm.lbfgs.tol'     : 1e-8,
-                           'afm.algorithm.lbfgs.pgtol'   : 1e-8,
+                           'afm.algorithm.lbfgs.tol'     : 1e-10,
+                           'afm.algorithm.lbfgs.pgtol'   : 1e-10,
                            },
                      ('eCO2mix.administrative_regions',
                       None,

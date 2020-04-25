@@ -274,11 +274,12 @@ class additive_features_model:
                     self.XtX_training[keys] = self.XtX_training[keys] / (self.normalization[inpt1]*self.normalization[inpt2])
                     if self.precompute_validation:
                         self.XtX_validation[keys] = self.XtX_validation[keys] / (self.normalization[inpt1]*self.normalization[inpt2])
-                for key in self.XtY_training.keys():
-                    inpt, location = key
-                    self.XtY_training[key] = self.XtY_training[key] / self.normalization[inpt]
-                    if self.precompute_validation:
-                        self.XtY_validation[key] = self.XtY_validation [key] / self.normalization[inpt]
+                if not self.lbfgs:
+                    for key in self.XtY_training.keys():
+                        inpt, location = key
+                        self.XtY_training[key] = self.XtY_training[key] / self.normalization[inpt]
+                        if self.precompute_validation:
+                            self.XtY_validation[key] = self.XtY_validation [key] / self.normalization[inpt]
             if self.lbfgs:
                 lbfgs.start_lbfgs(self)
                 # Reorganize the coefficients
@@ -412,11 +413,12 @@ class additive_features_model:
                     self.XtX_training[keys] *= self.normalization[inpt1]*self.normalization[inpt2]
                     if self.precompute_validation:
                         self.XtX_validation[keys] *= self.normalization[inpt1]*self.normalization[inpt2]
-                for key in self.XtY_training.keys():
-                    inpt, location = key
-                    self.XtY_training[key] *= self.normalization[inpt]
-                    if self.precompute_validation:
-                        self.XtY_validation[key] *= self.normalization[inpt]
+                if not self.lbfgs:
+                    for key in self.XtY_training.keys():
+                        inpt, location = key
+                        self.XtY_training[key] *= self.normalization[inpt]
+                        if self.precompute_validation:
+                            self.XtY_validation[key] *= self.normalization[inpt]
             # Change coef accordingly
             for ii, (var,key) in enumerate(self.coef.keys()):
                 inpt, location = key
@@ -476,7 +478,7 @@ class additive_features_model:
                 # Extra checks
                 orig_mask = self.orig_masks.get(coor_upd, slice(None))
                 orig_mask = np.arange(self.k) if type(orig_mask) == type(slice(None)) else orig_mask
-                out_mask  = [k for k in orig_mask if k not in (mask_upd if type(mask_upd) == np.ndarray else np.arange(self.k))]
+                out_mask  = [k for k in orig_mask if k not in (mask_upd if hasattr(type(mask_upd), 'len') else np.arange(self.k))]
                 if not self.life_sentences:
                     if type(self.coef[coor_upd[:2]]) in {np.ndarray, np.matrix}:
                         assert np.linalg.norm(self.coef[coor_upd[:2]][:,out_mask]) == 0
@@ -978,7 +980,7 @@ class additive_features_model:
                                                  ) 
                     assert np.abs(  fit_ctrl 
                                   - fit_tmp
-                                  ) < 1e-12
+                                  ) < 1e-10
                     if self.active_gp:
                         assert old_fit_gp_training == self.cur_fit_gp_training
                         fit_gp_ctrl = self.evaluate_fit(new_coef,
@@ -1205,9 +1207,9 @@ class additive_features_model:
         if gp_pen:
             assert type(MMt) != type(None)
             mask_out   = np.array([k for k in     (self.orig_masks[coor_upd] 
-                                                   if type(self.orig_masks.get(coor_upd)) == np.ndarray and not self.col_upd.get(coor_upd[1],False) 
+                                                   if hasattr(self.orig_masks.get(coor_upd), 'len') and not self.col_upd.get(coor_upd[1],False) 
                                                    else range(self.k))
-                                     if  k not in (mask  if type(mask)  == np.ndarray else range(self.k))
+                                     if  k not in (mask  if type(mask) == np.ndarray else range(self.k))
                                    ]).astype(int)
             mask_Y = slice(None)
         else:
@@ -1940,7 +1942,7 @@ class additive_features_model:
                 orig_mask  = self.orig_masks[coor_upd]
                 same_mask  = type(mask) == type(orig_mask) and (mask == orig_mask if type(mask) == type(slice(None)) else np.allclose(mask, orig_mask))
                 slope_mask = slice(None) if same_mask else [k for k in (orig_mask 
-                                                                        if type(orig_mask) == np.ndarray 
+                                                                        if type(orig_mask) == np.ndarray
                                                                         else 
                                                                         np.arange(self.coef[coor_upd[:2]].shape[1])
                                                                         ) if k in mask]
@@ -1990,7 +1992,7 @@ class additive_features_model:
         self.life_sentences = set()
         self.nb_sentences   = {}
         #method_init_UV = self.hprm.get('tf_method_init_UV')
-        print('method_init_UV : ', method_init_UV)
+        #print('method_init_UV : ', method_init_UV)
         fac = 1e-4
         self.keys = {key : []
                      for key in self.formula.index.get_level_values('coefficient').unique()
@@ -2021,7 +2023,7 @@ class additive_features_model:
         if 'B' in self.keys.keys():
             for inpt,location in self.X_training.keys():
                 if inpt in self.formula.loc['B'].index:
-                    if not ((inpt,location) in self.mask and type(self.mask[(inpt,location)])==np.ndarray and self.mask[(inpt,location)].shape[0] == 0):
+                    if not ((inpt,location) in self.mask and type(self.mask[(inpt,location)]) == np.ndarray and self.mask[(inpt,location)].shape[0] == 0):
                         self.keys['B'].append((inpt,location))
                     if 'B' not in self.frozen_variables:
                         if self.pen['B'].get(inpt) != 'rlasso' and self.hprm['afm.algorithm.first_order.column_update'].get(('B', inpt)):
@@ -2170,9 +2172,9 @@ class additive_features_model:
             var, key, ind = coor_upd
             if ind == ():
                 if key in self.mask:
-                    d_masks[coor_upd] = self.mask[key]
+                    d_masks[coor_upd] = np.array(self.mask[key])
                 elif key[::-1] in self.mask:
-                    d_masks[coor_upd] = self.mask['#'.join(key[::-1])]
+                    d_masks[coor_upd] = np.array(self.mask[key[::-1]])
                 else:
                     d_masks[coor_upd] = slice(None)
             else:
@@ -2180,7 +2182,7 @@ class additive_features_model:
                 assert len (ind) == 1
                 assert type(ind[0]) == int
                 d_masks[coor_upd] = np.array(ind)
-            if hasattr(d_masks[coor_upd], 'len') and len(d_masks[coor_upd]) == 0:
+            if type(d_masks[coor_upd]) == np.ndarray and len(d_masks[coor_upd]) == 0:
                 self.keys_upd.remove(coor_upd)
             if var == 'bu': 
                 del d_masks[coor_upd]
@@ -2325,7 +2327,7 @@ class additive_features_model:
                 self.list_coor = [coor 
                                   for coor in self.keys_upd
                                   if (    (coor not in self.prison_coor) 
-                                      and not (    type(self.dikt_masks.get(coor)) == np.ndarray 
+                                      and not (    type(self.dikt_masks.get(coor)) == np.ndarray
                                                and self.dikt_masks.get(coor).ndim == 1 
                                                and self.dikt_masks.get(coor).shape[0] == 0
                                                )
@@ -2348,7 +2350,7 @@ class additive_features_model:
         orig_mask = self.orig_masks.get(coor, slice(None))
         if self.life_sentences:
             orig_mask = np.array([k for k in (orig_mask
-                                              if type(orig_mask) == np.ndarray 
+                                              if type(orig_mask) == np.ndarray
                                               else np.arange(self.k)
                                               )
                                     if k not in self.life_sentences
@@ -2357,7 +2359,7 @@ class additive_features_model:
         if sub_prison:
             new_mask = np.array([k 
                                  for k in (orig_mask
-                                           if type(orig_mask) == np.ndarray 
+                                           if type(orig_mask) == np.ndarray
                                            else np.arange(self.k)
                                            ) 
                                  if (*coor[:2],k) not in sub_prison
@@ -2373,16 +2375,6 @@ class additive_features_model:
     def precomputationsY(self, X, Y, dataset = None):
         assert dataset in {'training', 'validation'}
         assert not self.active_gp
-        # X1    = {key:value for key, value in (self.X_training if dataset == 'training' else self.X_validation).items() if '#' not in key}
-        # X1tX1 = X.get('X1tX1_'+dataset, {})
-        # X2    = {key:value for key, value in (self.X_training if dataset == 'training' else self.X_validation).items() if type(key[0]) == tuple} 
-        # X1tX2 = X.get('X1tX2_'+dataset, {})
-        # X2tX1 = X.get('X2tX1_'+dataset, {})
-        # X2tX2 = X.get('X2tX2_'+dataset, {})
-        # for key, value in {**X1tX2, **X2tX1, **X2tX2}.items():
-        #     assert type(value) in {np.ndarray, sp.sparse.csr_matrix}
-        #     assert (key in X1tX2) + (key in X2tX1) + (key in X2tX2) == 1
-        #Y = self.Y_training if dataset == 'training' else self.Y_validation
              
         # Compute everything with Y
         print(colored('compute YtY', 'red'))
@@ -2405,7 +2397,6 @@ class additive_features_model:
             XtY  = {}
             for key in X.keys():
                 mask = self.mask.get(key, slice(None))
-                #XtY[key] = sp.sparse.csc_matrix(np.zeros((X[key].shape[1], Y.shape[1])))
                 XtY[key] = np.zeros((X[key].shape[1], Y.shape[1]))
                 XtY[key][:,mask] = X[key].T.dot(Y[:,mask]) 
             if len(XtY) < 1e3:
@@ -2422,40 +2413,7 @@ class additive_features_model:
                     raise e
         L = XtY
         self.print_gso(L)
-            
-            
-                    
-        # if bool(X2):
-        #     print(colored('compute X2tY', 'red'))        
-        #     try:
-        #         X2tY = tools.batch_load(path_data,
-        #                                 prefix    = self.dikt['features.{0}.bivariate'.format(dataset)],
-        #                                 data_name = 'X2tY_'+dataset,
-        #                                 data_type = 'dict_sp' if bool(X2) else 'dict_np',
-        #                                 )
-        #     except Exception: 
-        #         print(colored('compute X2tY', 'red'))
-        #         X2tY = {}
-        #         for key in X2.keys():
-        #             mask = self.mask.get(key, slice(None))
-        #             X2tY[key] = sp.sparse.csr_matrix(np.zeros((X2[key].shape[1], Y.shape[1])))
-        #             X2tY[key][:,mask] = X2[key].T.dot(Y[:,mask]) 
-        #         if len(X2tY) < 1e3:
-        #             try:
-        #                 tools.batch_save(path_data,
-        #                                  data      = X2tY,
-        #                                  prefix    = self.dikt['features.{0}.bivariate'.format(dataset)],
-        #                                  data_name = 'X2tY_' + dataset,
-        #                                  data_type = ('dict_sp'
-        #                                               if bool(X2)
-        #                                               else
-        #                                               'dict_np'
-        #                                               ),
-        #                                  )
-        #             except tools.loading_errors:
-        #                 pass
-        #             except Exception as e:
-        #                 raise e
+ 
         ### Check
         if EXTRA_CHECK:
             key     = next(iter(XtY.keys()))
@@ -2468,31 +2426,7 @@ class additive_features_model:
             else:
                 assert np.allclose(XtY[key], control)#.all()          
         return Y_sqfrob, YtY, XtY
-        # if dataset == 'training':
-        #     #self.Y_training        = Y
-        #     self.YtY_training      = YtY
-        #     #self.XtX_training      = {}
-        #     self.XtY_training      = {}
-        #     self.Y_sqfrob_training = Y_sqfrob
-        #     # if bool(X1tX1):
-        #     #     self.XtX_training.update({**X1tX1})
-        #     #     self.XtY_training.update({**X1tY})
-        #     # if bool(X2tX2):
-        #     #     self.XtX_training.update({**X1tX2, **X2tX1, **X2tX2})
-        #     #     self.XtY_training.update({**X2tY})
 
-        # elif dataset == 'validation':
-        #     self.Y_validation        = Y
-        #     self.YtY_validation      = YtY
-        #     self.XtX_validation      = {}
-        #     self.XtY_validation      = {}
-        #     self.Y_sqfrob_validation = Y_sqfrob
-        #     if bool(X1tX1):
-        #         self.XtX_validation.update({**X1tX1})
-        #         self.XtY_validation.update({**X1tY})
-        #     if bool(X2tX2):
-        #         self.XtX_validation.update({**X1tX2, **X2tX1, **X2tX2})
-        #         self.XtY_validation.update({**X2tY})
     
     
     def predict(self, coef = None, dataset = None, drop = {}, X_new = None, n_new = None):
@@ -2731,11 +2665,11 @@ class additive_features_model:
             if type(new_ind_slope.get(coor_upd, None)) != type(None):
                 orig_mask  = self.orig_masks.get(coor_upd, slice(None))
                 inner_mask = np.array([i for i, k in enumerate(orig_mask 
-                                                               if type(orig_mask) == np.ndarray 
+                                                               if type(orig_mask) == np.ndarray
                                                                else 
                                                                np.arange(self.k)
                                                                ) if k in (mask 
-                                                                          if type(mask) == np.ndarray 
+                                                                          if type(mask) == np.ndarray
                                                                           else 
                                                                           np.arange(self.k)
                                                                           )])
