@@ -349,9 +349,9 @@ def optimize_coef(model,
         model.machine_precision = np.finfo(float).eps
         model.tol_lbfgs         = model.hprm['afm.algorithm.lbfgs.tol']
         model.factr             = model.k*model.tol_lbfgs/model.machine_precision
-        print('{0:20.20}{1}{2:.3e}\n{3:20.20}{4}{5:.3e}\n{6:20.20}{7}{8:.3e}'.format('machine_precision',       ' : ', model.machine_precision, 
-                                                                                     'afm.algorithm.lbfgs.tol', ' : ', model.tol_lbfgs, 
-                                                                                     'model.factr',             ' : ', model.factr,
+        print('{0:20.20} : {1:.3e}\n{2:20.20} : {3:.3e}\n{4:20.20} : {5:.3e}'.format('machine_precision',       model.machine_precision, 
+                                                                                     'afm.algorithm.lbfgs.tol', model.tol_lbfgs, 
+                                                                                     'model.factr',             model.factr,
                                                                                      )) 
         ans_lbfgs  = sp.optimize.fmin_l_bfgs_b(
                                                loss, 

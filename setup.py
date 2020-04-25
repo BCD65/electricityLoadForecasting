@@ -6,7 +6,7 @@ setup(
       name             = 'electricityLoadForecasting',
       version          = '0.1.dev0',
       packages         = setuptools.find_packages(),
-      scripts          = ['scripts/forecasting_main.py',
+      scripts          = ['scripts/main_forecasting.py',
                           'scripts/preprocessing_main.py',
                           ],
       author           = 'Ben',
