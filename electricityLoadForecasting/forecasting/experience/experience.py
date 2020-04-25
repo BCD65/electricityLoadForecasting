@@ -102,7 +102,7 @@ class Experience(object):
 
     def unfold_data(self, ):
         self.data['df_calendar'] = tools.calendar.compute_calendar_variables(self.data['df_sites'].index)
-        basket_original_data     = {**{key : self.data['df_calendar'][[key]].rename({key : ''}, axis = 1)
+        basket_original_data     = {**{key : self.data['df_calendar'][[key]].rename({key : 'na'}, axis = 1)
                                        for key in self.data['df_calendar']
                                        }, 
                                     **{physical_quantity : self.data['df_weather'].xs(key = physical_quantity, axis = 1, level = tools.transcoding.user_physical_quantity)

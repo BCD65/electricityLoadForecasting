@@ -166,7 +166,6 @@ def compute_design(inputs,
                                               else
                                               X1tX1[keys].T
                                               )})
-        
         X.update({'X1tX1_{0}'.format(db) : X1tX1})
     ### Bivariate part
     if not hprm['afm.formula'].loc[hprm['afm.formula']['nb_intervals'].apply(lambda x : (type(x) == tuple and len(x) == 2))].empty: # ie if there are interactions

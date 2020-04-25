@@ -111,8 +111,8 @@ def fit_and_predict(inputs_training,
     """
     Predictions
     """
-    Y_hat_training   = model_pred.predict(dataset = 'training',    adjust_A = False, verbose = True)
-    Y_hat_validation = model_pred.predict(dataset = 'validation',  adjust_A = False, verbose = True)
+    Y_hat_training   = model_pred.predict(dataset = 'training')
+    Y_hat_validation = model_pred.predict(dataset = 'validation')
 
     
     return design, model_pred, Y_hat_training, Y_hat_validation

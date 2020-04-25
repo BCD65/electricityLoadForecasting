@@ -45,7 +45,7 @@ dikt_formula = {
                       ### National standard bivariate
                       'bivariate': pd.DataFrame([
                                                   # Univariate features
-                                                  ('B', ('target',        'lag',        pd.DateOffset(hours = 24)),     4,        'smoothing_reg', 1e-4, None),
+                                                  # ('B', ('target',        'lag',        pd.DateOffset(hours = 24)),     4,        'smoothing_reg', 1e-4, None),
                                                   ('B', ('temperature',   '',           ''),                            16,       'smoothing_reg', 1e-4, None),
                                                   ('B', ('temperature',   'lag',        pd.DateOffset(hours = 24)),     16,       'smoothing_reg', 1e-2, None),
                                                   ('B', ('temperature',   'maximum',    pd.DateOffset(hours = 24)),     16,       'smoothing_reg', 1e-2, None),

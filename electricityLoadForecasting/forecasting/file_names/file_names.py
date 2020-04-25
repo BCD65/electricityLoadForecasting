@@ -158,7 +158,9 @@ def make_dikt_files(hprm, nb_sites = None, nb_weather = None, dt_training = None
         else:
             raise ValueError('Incorrect algorithm : {0}'.format(hprm['afm.algorithm']))                  
             
-        dikt['experience.whole'] = dikt['experience.model'] + [stop, gp_reg]
+        dikt['experience.whole'] = dikt['experience.model'] + [gp_reg,
+                                                               (stop,),
+                                                               ]
         
 
     for k in dikt: 

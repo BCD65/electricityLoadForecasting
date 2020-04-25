@@ -97,7 +97,6 @@ class additive_features_model:
 
         print('Formula      :', str(self.formula), '\n')      
         print('batch' if self.batch_cd else 'bcd per col for ' + repr([k for k, v in self.col_upd.items() if v]))
-        #print('sparse_coef' if self.hprm['afm.algorithm.first_order.sparse_coef'] else 'not sparse coef')
         assert self.batch_cd + self.bcd == 1    
 
     def fit(self, 
@@ -112,8 +111,8 @@ class additive_features_model:
             ):
         # Fot the model given the training and validation matrices (used for stopping criteria)
         self.Y_training   = Y_training
-        self.X_training   = X_training#.copy()
-        self.XtX_training = XtX_training#.copy()
+        self.X_training   = X_training
+        self.XtX_training = XtX_training
         del X_training, Y_training, XtX_training
         self.n_training   = self.Y_training.shape[0]
         self.k            = self.Y_training.shape[1]
@@ -272,16 +271,16 @@ class additive_features_model:
                     key1, key2 = keys
                     inpt1, location1 = key1
                     inpt2, location2 = key2
-                    self.XtX_training[keys] = self.XtX_training[keys] / self.normalization[inpt1]*self.normalization[inpt2]
+                    self.XtX_training[keys] = self.XtX_training[keys] / (self.normalization[inpt1]*self.normalization[inpt2])
                     if self.precompute_validation:
-                        self.XtX_validation[keys] = self.XtX_validation[keys] / self.normalization[inpt1]*self.normalization[inpt2]
+                        self.XtX_validation[keys] = self.XtX_validation[keys] / (self.normalization[inpt1]*self.normalization[inpt2])
                 for key in self.XtY_training.keys():
                     inpt, location = key
                     self.XtY_training[key] = self.XtY_training[key] / self.normalization[inpt]
                     if self.precompute_validation:
                         self.XtY_validation[key] = self.XtY_validation [key] / self.normalization[inpt]
             if self.lbfgs:
-                lbfgs.start_lbfgs(self) # Launch the lbfgs algorithm
+                lbfgs.start_lbfgs(self)
                 # Reorganize the coefficients
                 for ii, key in enumerate(self.X_training.keys()):
                     self.coef['B',key] = cp.deepcopy(self.bfgs_long_coef[slice(self.key_col_large_matching[key][0], 
@@ -392,7 +391,9 @@ class additive_features_model:
                 self.start_descent()
                 self.last_iteration = self.iteration
                 print('last iteration : ', self.last_iteration)
-                if (self.hprm['any_plot'] and self.hprm['tf_plot']) and '_sv_' not in self.dikt['experience.whole']:
+                if (    self.hprm['plot.afm']
+                    and '_sv_' not in self.dikt['experience.whole']
+                    ):
                     try:
                         tools.plotting.afm.plot_fit(self, io = 0, ltx = 1)
                     except Exception as e:
@@ -408,7 +409,7 @@ class additive_features_model:
                     key1, key2 = keys
                     inpt1, location1 = key1
                     inpt2, location2 = key2                    
-                    self.XtX_training[key] *= self.normalization[inpt1]*self.normalization[inpt2]
+                    self.XtX_training[keys] *= self.normalization[inpt1]*self.normalization[inpt2]
                     if self.precompute_validation:
                         self.XtX_validation[keys] *= self.normalization[inpt1]*self.normalization[inpt2]
                 for key in self.XtY_training.keys():
@@ -439,7 +440,7 @@ class additive_features_model:
         if hasattr(self, 'fit_gp_validation' ) and not self.active_gp:
             del self.fit_gp_validation
 
-    #profile
+    
     def start_descent(self):
         if hasattr(self, 'X_validation'):
             assert len(self.X_training) == len(self.X_validation), (len(self.X_training), len(self.X_validation))
@@ -521,15 +522,26 @@ class additive_features_model:
                         q_gp_validation            = {}
                         old_part_fit_gp_validation = 0
                 if self.hprm['plot.afm'] or self.hprm['afm.algorithm.first_order.early_stop_ind_validation']:
-                    old_part_fit_ind_training  = self.part_fit(coef_old_masked, coor_upd, q_training,    extra_part_training,    dataset = 'training', indi = True)
+                    old_part_fit_ind_training  = self.part_fit(coef_old_masked,
+                                                               coor_upd,
+                                                               q_training,
+                                                               extra_part_training,
+                                                               dataset = 'training',
+                                                               indi    = True,
+                                                               )
                 if self.hprm['plot.afm']:
-                    q_mean_training, extra_part_mean_training, _ = self.compute_part_grad(coor_upd, mask_upd, dataset = 'training',  MMt = self.M_mean, gp_pen = 1)
+                    q_mean_training, extra_part_mean_training, _ = self.compute_part_grad(coor_upd,
+                                                                                          mask_upd,
+                                                                                          dataset = 'training',
+                                                                                          MMt     = self.M_mean,
+                                                                                          gp_pen = 1,
+                                                                                          )
                     old_part_fit_mean_training = self.part_fit(coef_old_masked, coor_upd, q_mean_training, extra_part_mean_training, dataset = 'training') 
                     if self.precompute_validation:
                         old_part_fit_ind_validation  = self.part_fit(coef_old_masked, coor_upd, q_validation,    extra_part_validation,    dataset = 'validation', indi = True)
                         q_mean_validation, extra_part_mean_validation = self.compute_part_grad(coor_upd, mask_upd, dataset = 'validation',  MMt = self.M_mean, gp_pen = 1)
                         old_part_fit_mean_validation = self.part_fit(coef_old_masked, coor_upd, q_mean_validation, extra_part_mean_validation, dataset = 'validation') 
-                old_part_ridge        = self.cur_ind_ridge.get(coor_upd, 0)
+                old_part_ridge           = self.cur_ind_ridge.get(coor_upd, 0)
                 old_part_fit_training    = self.part_fit(coef_old_masked, coor_upd, q_training,    extra_part_training,    dataset = 'training')
                 old_part_fit_gp_training = self.part_fit(coef_old_masked, coor_upd, q_gp_training, extra_part_gp_training, dataset = 'training') if self.active_gp else 0
             dikt_ridge_grad = self.compute_grad_ridge(list(dikt_fit_grad.keys()), self.dikt_masks)
@@ -776,21 +788,21 @@ class additive_features_model:
 ###############################################################################
 
     
-    #profile
+    
     def backtracking_ls(self, 
-                        grad,                          # Gradient of the dataset-fitting term
-                        grad_gp,                       # Gradient of the sum-consistent-fitting term 
-                        ridge_grad,                    # Gradient of the ridge term
+                        grad,                    # Gradient of the dataset-fitting term
+                        grad_gp,                 # Gradient of the sum-consistent-fitting term 
+                        ridge_grad,              # Gradient of the ridge term
                         old_fit_training         = None, 
                         old_fit_gp_training      = None, 
                         old_part_fit_training    = None, 
                         old_part_fit_gp_training = None, 
-                        old_ridge             = None, 
-                        old_part_ridge        = None, 
+                        old_ridge                = None, 
+                        old_part_ridge           = None, 
                         quant_training           = None, 
                         quant_gp_training        = None, 
-                        cur_ind_reg           = None, 
-                        mask_upd              = None,
+                        cur_ind_reg              = None, 
+                        mask_upd                 = None,
                         ):
         # Backtracking line-search, given a gradient descent direction
         condition_ls  = 0
@@ -799,9 +811,7 @@ class additive_features_model:
         if self.bcd:
             coor_upd = next(iter(grad.keys()))
             (s,key,ind) = coor_upd
-            if s in {'A'}:
-                eta = self.etaA
-            elif s in {'B', 'bu', 'Cb'}:
+            if s in {'B', 'bu', 'Cb'}:
                 eta = self.eta1
             elif s in {'U', 'V', 'Csp', 'Cu', 'Cv', 'Cm'}:
                 eta = self.eta2
@@ -818,7 +828,7 @@ class additive_features_model:
                 else:
                     print(colored(' \n    eta too small for {0} - > end BLS   \n'.format(coor_upd if len(grad) == 1 else 'unknown'), 'red', 'on_cyan'))
                     return self.cur_fit_training, self.cur_fit_gp_training, {}, self.cur_fit_training + self.cur_ridge, {}, nb_inner_iter, eta/self.theta, False
-            coef_tmp    = self.foba_step(grad, grad_gp, ridge_grad, eta, self.dikt_masks)
+            coef_tmp = self.foba_step(grad, grad_gp, ridge_grad, eta, self.dikt_masks)
             if EXTRA_CHECK:
                 for coor_upd in grad.keys():
                     assert coef_tmp[coor_upd].shape == grad[coor_upd].shape
@@ -837,7 +847,12 @@ class additive_features_model:
                 fit_plus_gp_plus_ridge_tilde_old = self.compute_surrogate(grad, 
                                                                           grad_gp, 
                                                                           ridge_grad, 
-                                                                          {(var,key,ind):(self.coef[var,key][:,:,mask_upd] if var in {'Cu','Cv'} else self.coef[var,key][:,mask_upd]) for (var,key,ind) in coef_tmp}, 
+                                                                          {(var,key,ind):(self.coef[var,key][:,:,mask_upd]
+                                                                                          if var in {'Cu','Cv'}
+                                                                                          else self.coef[var,key][:,mask_upd]
+                                                                                          )
+                                                                           for (var,key,ind) in coef_tmp
+                                                                           }, 
                                                                           eta, 
                                                                           old_fit_training + old_fit_gp_training + old_ridge, 
                                                                           self.dikt_masks,
@@ -846,17 +861,35 @@ class additive_features_model:
                 coef_old = {}
                 for coor_upd in grad.keys():
                     var, key, ind      = coor_upd
-                    coef_old[coor_upd] = (self.coef[var,key][:,:,mask_upd] if var in {'Cu','Cv'} else self.coef[var,key][:,mask_upd])
+                    coef_old[coor_upd] = (self.coef[var,key][:,:,mask_upd]
+                                          if var in {'Cu','Cv'}
+                                          else
+                                          self.coef[var,key][:,mask_upd]
+                                          )
                 ind_old_regbis, _, _ = self.evaluate_ind_reg(coef_old)
                 tmp_ind_reg,    _, _ = self.evaluate_ind_reg(coef_tmp)
                 new_part_reg = np.sum([tmp_ind_reg[key] for key in tmp_ind_reg])
                 other_reg    = np.sum([cur_ind_reg[key] for key in cur_ind_reg if key not in tmp_ind_reg])
                 old_part_reg = np.sum([cur_ind_reg[key] for key in tmp_ind_reg])
                 
-                assert np.abs(fit_plus_gp_plus_ridge_tilde_old + other_reg + old_part_reg - self.cur_obj_training  ) <= 1e-12
-                assert np.abs(self.cur_fit_training + self.cur_fit_gp_training + self.cur_reg + self.cur_ridge - self.cur_obj_training ) <= 1e-12
-                
-                if not fit_plus_gp_plus_ridge_tilde_tmp + other_reg + new_part_reg <=  fit_plus_gp_plus_ridge_tilde_old + other_reg + old_part_reg + 1e-12:
+                assert np.abs(  fit_plus_gp_plus_ridge_tilde_old
+                              + other_reg
+                              + old_part_reg
+                              - self.cur_obj_training
+                              ) <= 1e-12
+                assert np.abs(  self.cur_fit_training
+                              + self.cur_fit_gp_training
+                              + self.cur_reg
+                              + self.cur_ridge
+                              - self.cur_obj_training
+                              ) <= 1e-12
+                if not (  fit_plus_gp_plus_ridge_tilde_tmp
+                        + other_reg
+                        + new_part_reg
+                        ) <= (  fit_plus_gp_plus_ridge_tilde_old
+                              + other_reg
+                              + old_part_reg
+                              ) + 1e-12:
                     raise ValueError('Objective has increased')
             
             # # Update low-rank
@@ -867,25 +900,70 @@ class additive_features_model:
             if 'Cbm' in self.formula.index.get_level_values('coefficient').unique():
                 coef_tmp  = self.update_Cbm(coef_tmp)
             if self.batch_cd:
-                fit_tmp   = self.evaluate_fit(coef_tmp) #+ self.evaluate_ridge(coef_tmp)
+                fit_tmp   = self.evaluate_fit(coef_tmp)
                 assert 0, 'MUST ADD fit_gp_tmp'
                 ridge_tmp = self.evaluate_ridge(coef_tmp) 
             elif self.bcd:
                 assert len(coef_tmp) <= 3 or coor_upd[0] == 'Cb'
-                new_part_fit_training = self.evaluate_fit_bcd(coor_upd, coef_tmp, quant_training, dataset = 'training', mask = mask_upd)
+                new_part_fit_training = self.evaluate_fit_bcd(coor_upd,
+                                                              coef_tmp,
+                                                              quant_training,
+                                                              dataset = 'training',
+                                                              mask    = mask_upd,
+                                                              )
                 if self.active_gp:
-                    new_part_fit_gp_training = self.evaluate_fit_bcd(coor_upd, coef_tmp, quant_gp_training, dataset = 'training', mask = mask_upd, MMt = self.MMt, gp_pen = self.gp_pen)
+                    new_part_fit_gp_training = self.evaluate_fit_bcd(coor_upd,
+                                                                     coef_tmp,
+                                                                     quant_gp_training,
+                                                                     dataset = 'training',
+                                                                     mask    = mask_upd,
+                                                                     MMt     = self.MMt,
+                                                                     gp_pen  = self.gp_pen,
+                                                                     )
                 if EXTRA_CHECK:
-                    check_old_part_fit_training = self.evaluate_fit_bcd(coor_upd, {(var,key,ind):(self.coef[var,key][:,:,mask_upd] if var in {'Cu','Cv'} else self.coef[var,key][:,mask_upd]) for (var,key,ind) in coef_tmp}, quant_training, dataset = 'training', mask = mask_upd)
-                    assert np.abs(check_old_part_fit_training - old_part_fit_training) < 1e-12, ('pb5', check_old_part_fit_training, old_part_fit_training)
+                    check_old_part_fit_training = self.evaluate_fit_bcd(coor_upd,
+                                                                        {(var,key,ind):(self.coef[var,key][:,:,mask_upd]
+                                                                                        if var in {'Cu','Cv'}
+                                                                                        else
+                                                                                        self.coef[var,key][:,mask_upd]
+                                                                                        )
+                                                                         for (var,key,ind) in coef_tmp
+                                                                         }, quant_training,
+                                                                        dataset = 'training',
+                                                                        mask    = mask_upd,
+                                                                        )
+                    assert np.abs(  check_old_part_fit_training
+                                  - old_part_fit_training
+                                  ) < 1e-12, ('pb5', check_old_part_fit_training, old_part_fit_training)
                     if self.active_gp:
-                        check_old_part_fit_gp_training = self.evaluate_fit_bcd(coor_upd, {(var,key,ind):(self.coef[var,key][:,:,mask_upd] if var in {'Cu','Cv'} else self.coef[var,key][:,mask_upd]) for (var,key,ind) in coef_tmp}, quant_gp_training, dataset = 'training', mask = mask_upd, MMt = self.MMt, gp_pen = self.gp_pen)
+                        check_old_part_fit_gp_training = self.evaluate_fit_bcd(coor_upd,
+                                                                               {(var,key,ind):(self.coef[var,key][:,:,mask_upd]
+                                                                                               if var in {'Cu','Cv'}
+                                                                                               else self.coef[var,key][:,mask_upd]
+                                                                                               )
+                                                                                for (var,key,ind) in coef_tmp
+                                                                                },
+                                                                               quant_gp_training,
+                                                                               dataset = 'training',
+                                                                               mask    = mask_upd,
+                                                                               MMt     = self.MMt,
+                                                                               gp_pen  = self.gp_pen,
+                                                                               )
                         assert np.abs(check_old_part_fit_gp_training - old_part_fit_gp_training) < 1e-12, ('pb6', check_old_part_fit_gp_training, old_part_fit_gp_training)
-                new_ind_ridge         = self.evaluate_ind_ridge(coef_tmp) 
-                new_part_ridge        = np.sum([v for k, v in new_ind_ridge.items()])
-                ridge_tmp             = old_ridge        - old_part_ridge        + new_part_ridge
-                fit_tmp               = old_fit_training    - old_part_fit_training    + new_part_fit_training
-                fit_gp_tmp            =(old_fit_gp_training - old_part_fit_gp_training + new_part_fit_gp_training) if self.active_gp else 0
+                new_ind_ridge  = self.evaluate_ind_ridge(coef_tmp) 
+                new_part_ridge = np.sum([v for k, v in new_ind_ridge.items()])
+                ridge_tmp      = (  old_ridge
+                                  - old_part_ridge
+                                  + new_part_ridge
+                                  )
+                fit_tmp        = (  old_fit_training
+                                  - old_part_fit_training
+                                  + new_part_fit_training
+                                  )
+                fit_gp_tmp     = (  old_fit_gp_training
+                                  - old_part_fit_gp_training
+                                  + new_part_fit_gp_training
+                                  ) if self.active_gp else 0
                 if EXTRA_CHECK:
                     new_coef = cp.deepcopy(self.coef)
                     for coor in coef_tmp:
@@ -893,17 +971,25 @@ class additive_features_model:
                             new_coef[coor[:2]][:,:,mask_upd] = coef_tmp[coor]
                         else:
                             new_coef[coor[:2]][:,  mask_upd] = coef_tmp[coor]
-                    """
-                    FIT CONTROL
-                    """
+                    # control fitting term
                     assert old_fit_training == self.cur_fit_training
-                    fit_ctrl = self.evaluate_fit(new_coef, dataset = 'training') 
-                    assert np.abs(fit_ctrl - fit_tmp) < 1e-12
+                    fit_ctrl = self.evaluate_fit(new_coef,
+                                                 dataset = 'training',
+                                                 ) 
+                    assert np.abs(  fit_ctrl 
+                                  - fit_tmp
+                                  ) < 1e-12
                     if self.active_gp:
                         assert old_fit_gp_training == self.cur_fit_gp_training
-                        fit_gp_ctrl = self.evaluate_fit(new_coef, dataset = 'training', gp_matrix = self.gp_matrix, gp_pen = self.gp_pen) if self.active_gp else 0
-                        assert np.abs(fit_gp_ctrl - fit_gp_tmp) < 1e-12
-                assert new_part_fit_training    != np.nan 
+                        fit_gp_ctrl = self.evaluate_fit(new_coef,
+                                                        dataset   = 'training',
+                                                        gp_matrix = self.gp_matrix,
+                                                        gp_pen    = self.gp_pen
+                                                        ) if self.active_gp else 0
+                        assert np.abs(  fit_gp_ctrl
+                                      - fit_gp_tmp
+                                      ) < 1e-12
+                assert new_part_fit_training != np.nan 
                 if self.active_gp:
                     assert new_part_fit_gp_training != np.nan 
             if fit_tmp < 0 or fit_gp_tmp < 0:
@@ -937,7 +1023,6 @@ class additive_features_model:
                                                   for k, v in coef_tmp.items()
                                                   ],
                                                  width = len_str))
-                assert 0
             assert fit_tmp    >= 0
             assert fit_gp_tmp >= 0
             assert ridge_tmp  >= 0
@@ -964,7 +1049,7 @@ class additive_features_model:
         return fit_tmp, fit_gp_tmp, new_ind_ridge, fit_plus_gp_plus_ridge_tilde_tmp, coef_tmp, nb_inner_iter, eta, condition_ls
 
 
-    #profile
+    
     def best_orth_bv(self, coef, mask = None):
         # Update the orthogonal matrix V in the low-rank optimization problem
         coor_upd      = list(coef.keys())[0]
@@ -1113,7 +1198,7 @@ class additive_features_model:
         return dikt_ridge_grad    
 
 
-    #profile
+    
     def compute_part_grad(self, coor_upd, mask, dataset = None, MMt = None, gp_pen = 0):
         # Compute the gradient with respect to the block selected for the BCD algorithm
         # The computation is decomposed in different parts to avoid redundant computations
@@ -1135,7 +1220,6 @@ class additive_features_model:
         extra_part = {}
         quant      = {}
         extra_part = {}
-        #q_validation           = {}
         if dataset == 'training':
             grad = {}
             n   = self.n_training
@@ -1152,10 +1236,12 @@ class additive_features_model:
             XtY = self.XtY_validation
         
         if var in {'B','Csp','bu','Cb', 'Cm', 'Cu', 'Cv'}:
-            
-            ############# Compute the normal part of quant[coor_upd]
-            
-            mmm = (1/n)*(- (XtY[key][:,mask_Y] if type(XtY[key]) == np.ndarray else XtY[key][:,mask_Y].toarray())
+            #Compute the normal part of quant[coor_upd]
+            mmm = (1/n)*(- (XtY[key][:,mask_Y]
+                            if type(XtY[key]) == np.ndarray
+                            else
+                            XtY[key][:,mask_Y].toarray()
+                            )
                          + np.sum([self.custom_sum_einsum(XtX, 
                                                           self.coef, 
                                                           var2, 
@@ -1168,25 +1254,13 @@ class additive_features_model:
                                   )
 
             if gp_pen:
-                st = time.time()
-                mmm1  = gp_pen * mmm @ MMt[:,mask]
-                bb = time.time()
-                if 0:
-                    #print('This computation can be acccelerated since MMt is just a sum and repeat')
-                    width = len(mask) if type(mask) == np.ndarray else self.k
-                    aa = time.time()
-                    mmm2 = np.repeat((gp_pen/self.k)*mmm.sum(axis = 1)[:,np.newaxis], width, axis = 1)
-                    c = time.time()
-                    assert np.allclose(mmm1, mmm2)
-                    print('Should simplify computations : ', np.round(bb - st, 8), 's', ' VS', np.round(c - aa, 8), 's', ' - ratio : ', np.round((bb - st)/(c - aa), 8), ' - width : ', width)
-                mmm = mmm1
+                mmm = gp_pen * mmm @ MMt[:,mask]
                 if len(mask_out):
                     mmm+= gp_pen * (1/n) * XtX[key,key] @ self.coef[dikt_var_temp.get(var,var),key][:,mask_out] @ MMt[mask_out][:,mask]
             
-            ############# Check the computation of the normal part of quant[coor_upd]
+            # Check the computation of the normal part of quant[coor_upd]
             if EXTRA_CHECK:
-            ############# The computation is different for Cb so the check is different too
-
+            # The computation is different for Cb so the check is different too
                 aaa =   Y[:,mask_Y].copy()
                 for var2 in self.formula.index.get_level_values('coefficient').unique():   
                     for key2 in self.keys[var2]: 
@@ -1204,9 +1278,7 @@ class additive_features_model:
                         mmm_check+= gp_pen * (1/n) * XtX[key,key] @ self.coef[dikt_var_temp.get(var,var),key][:,mask_out] @ MMt[mask_out][:,mask]
                 assert mmm.shape == mmm_check.shape
                 assert np.allclose(mmm, mmm_check)
-
-            ############# Multiply accordingly when the updated variable intervenes as a product in the prediction BM, UV
-
+            # Multiply accordingly when the updated variable intervenes as a product in the prediction BM, UV
             if var == 'bu':
                 quant[coor_upd] = mmm # not multiplied by V since it will also be updated
             elif var == 'Cb':
@@ -1229,7 +1301,6 @@ class additive_features_model:
                                                              )), 
                                           self.coef['Cb', key[0]][:,mask],
                                           )
-                    
             elif var == 'Cu':
                 quant[coor_upd] = np.einsum('pqk,qrk->prk', 
                                             mmm.reshape((-1,
@@ -1265,9 +1336,7 @@ class additive_features_model:
             else:
                 assert var in ['B', 'Csp', ]
                 quant[coor_upd] = mmm
-            
-            ############# Add the part specific to Cb where Cb intervenes in Cbm
-            
+            # Add the part specific to Cb where Cb intervenes in Cbm
             if var == 'Cb': 
                 for keybm in self.keys['Cbm']:
                     bbb = {}
@@ -1297,9 +1366,7 @@ class additive_features_model:
                                                                          )), 
                                                      self.coef['Cm', keybm][:,mask],
                                                      )
-
-                        ############# Check this part of quant[coor_upd] that is specific to Cb
-                        
+                        # Check this part of quant[coor_upd] that is specific to Cb
                         if EXTRA_CHECK:
                             aaa =   Y[:,mask_Y].copy()
                             for var2 in self.formula.index.get_level_values('coefficient').unique():
@@ -1330,23 +1397,23 @@ class additive_features_model:
                 assert quant[coor_upd].shape == mmm_check.shape, (coor_upd, quant[coor_upd].shape, mmm_check.shape)
                 assert np.allclose(quant[coor_upd], mmm_check) 
             
-            ############# Computations of extra_part
+            # Computations of extra_part
             if var == 'bu':
-                ############# Very specific case of bu
+                # Very specific case of bu
                 extra_part[coor_upd] = self.xtra_part_bu(n, XtX, self.coef, coor_upd, mask, gp_pen, MMt)
                 if dataset == 'training': # Special case for bu because both bu and bv are updated at the same time
                     grad[coor_upd] =(quant[coor_upd] + extra_part[coor_upd]) @  self.coef[('bv',key)]#[mask]
             else:
-                ############# Specific case of Cb
+                # Specific case of Cb
                 if var == 'Cb':
                     extra_part[coor_upd] = self.xtra_part_cb(n, XtX, self.coef, coor_upd, mask, gp_pen, MMt)
-                ############# Specific case fo Cm
+                # Specific case fo Cm
                 elif var == 'Cm':
                     extra_part[coor_upd] = self.xtra_part_cm(n, XtX, self.coef, coor_upd, mask, gp_pen, MMt)                                                
-                ############# Specific case of Cu
+                # Specific case of Cu
                 elif var == 'Cu':
                     extra_part[coor_upd] = self.xtra_part_cu(n, XtX, self.coef, coor_upd, mask, gp_pen, MMt)                                               
-                ############# Specific case of Cu
+                # Specific case of Cu
                 elif var == 'Cv':
                     extra_part[coor_upd] = self.xtra_part_cv(n, XtX, self.coef, coor_upd, mask, gp_pen, MMt)
                         
@@ -1392,7 +1459,6 @@ class additive_features_model:
             sq += np.linalg.norm(M)**2
         return np.sqrt(sq)
     
-    
 
     def compute_normalization(self, ):
         print('data normalization')    
@@ -1406,7 +1472,6 @@ class additive_features_model:
             alpha_cat = 0
             for var in sorted(self.alpha):
                 if cat in self.alpha[var]:
-                    #if (var if var != 'bu' else 'Blr') in self.formula.index.get_level_values('coefficient'):
                     if cat in self.formula.loc[var if var != 'bu' else 'Blr'].index:
                         if self.pen[var][cat] in {'ridge', 'smoothing_reg'}:
                             assert not alpha_cat, 'it should not have already been found for the same cat and a penalization in ridge, r2sm, unless it is approximately lowrank but this is not implemented yet'
@@ -1538,7 +1603,7 @@ class additive_features_model:
         return f
     
 
-    ##profile
+    #
     # Decomposition of the gradient computations 
     # because of the restrictions due to the sparse structure
     # and the use of the masks
@@ -1578,7 +1643,7 @@ class additive_features_model:
         else:
             ans = np.zeros((self.X_training[key].shape[1], coef[var2,next(iter(self.keys[var2]))][:,mask].shape[1]))
             for key2 in self.keys[var2]:
-                if (key,key2 in XtX
+                if (    (key,key2) in XtX
                     and not(   (var_upd    and key2 == key)
                             or (cbcbm_upd  and key2[0] == key)
                             or (cbmcb_upd  and key[0]  == key2)
@@ -1643,22 +1708,29 @@ class additive_features_model:
             assert D >= - 1e-14
             return P + D
 
-    #profile
     def evaluate_fit(self, coef, dataset = None, gp_matrix = None, gp_pen = None):
         assert dataset
         if (type(gp_matrix)!=type(None)) and not gp_pen:
             return 0
         w_gp = (type(gp_matrix)!=type(None)) and gp_pen
-        n   = self.n_training if dataset == 'training' else self.n_validation
-        Y   = self.Y_training if dataset == 'training' else self.Y_validation
+        n    = self.n_training if dataset == 'training' else self.n_validation
+        Y    = self.Y_training if dataset == 'training' else self.Y_validation
         if not w_gp:
-            mse =        (0.5/n)*np.linalg.norm((Y - self.predict(coef = coef, dataset = dataset)))**2
+            mse =        (0.5/n)*np.linalg.norm(Y 
+                                                - self.predict(coef    = coef,
+                                                               dataset = dataset,
+                                                               )
+                                                )**2
         else:
-            mse = gp_pen*(0.5/n)*np.linalg.norm((Y - self.predict(coef = coef, dataset = dataset)) @ gp_matrix)**2
+            mse = gp_pen*(0.5/n)*np.linalg.norm((Y
+                                                 - self.predict(coef    = coef,
+                                                                dataset = dataset,
+                                                                )
+                                                 ) @ gp_matrix
+                                                )**2
         return mse
 
 
-    #profile
     def evaluate_ind_fit(self, coef, dataset = None):
         assert dataset
         n       = self.n_training    if dataset == 'training' else self.n_validation
@@ -1669,7 +1741,6 @@ class additive_features_model:
         return ind_mse
 
 
-    #profile
     def evaluate_fit_bcd(self, coor_upd, coef_tmp, quant, mask = None, dataset = None, MMt = None, gp_pen = 0, **kwargs):
         if gp_pen:
             assert type(MMt) != type(None)
@@ -1708,7 +1779,13 @@ class additive_features_model:
                     except Exception as e:
                         print(e)
                         raise e
-                new_fit += self.part_fit(coef_tmp, coor_upd, quant, new_extra_part, dataset = dataset, **kwargs)
+                new_fit += self.part_fit(coef_tmp,
+                                         coor_upd,
+                                         quant,
+                                         new_extra_part,
+                                         dataset = dataset,
+                                         **kwargs,
+                                         )
             elif var in {'Cuv', 'Blr', 'Cbm'}:
                 pass
             else:
@@ -1717,16 +1794,16 @@ class additive_features_model:
 
 
     def evaluate_ind_reg(self, coef):
-        reg    = {}
-        slope  = {}
-        offset = {}
-        cond =  (np.sum([e[0] == 'Cb' for e in coef]) != 1) and len(coef) >= 10 and not EXTRA_CHECK
+        reg    =  {}
+        slope  =  {}
+        offset =  {}
+        cond   = (np.sum([e[0] == 'Cb' for e in coef]) != 1) and len(coef) >= 10 and not EXTRA_CHECK
         for i, (coor, M) in enumerate(coef.items()):
             if   coor[0] in {'Blr', 'bv', 'Cuv', 'Cbm'}:
                 continue
             elif coor[0] in {'B', 'Csp', 'bu', 'Cu', 'Cv', 'Cb', 'Cm'}:
                 if cond:
-                    print('\revaluate_ind_reg', i, '/', len(coef), end = '')
+                    print('\r'+'evaluate_ind_reg', i, '/', len(coef), end = '')
                 var, key, ind = coor
                 pen, alpha    = self.get_pen_alpha(var, key)
                 res           = self.penalization(M, pen, alpha, key) # Compute regularization of one column
@@ -1904,7 +1981,7 @@ class additive_features_model:
             alpha = self.normalized_alphas.get(var,{}).get(inpt,0)
         return pen, alpha
     
-    #profile
+    
     def initialize_coef(self, ):
         coef                = cp.deepcopy(self.given_coef)
         keys_upd            = []
@@ -1912,11 +1989,11 @@ class additive_features_model:
         self.prison_coor    = {}
         self.life_sentences = set()
         self.nb_sentences   = {}
-        method_init_UV = self.hprm.get('tf_method_init_UV')
+        #method_init_UV = self.hprm.get('tf_method_init_UV')
         print('method_init_UV : ', method_init_UV)
         fac = 1e-4
         self.keys = {key : []
-                     for key in self.formula.index.get_level_values('coefficient')
+                     for key in self.formula.index.get_level_values('coefficient').unique()
                      }
         if 'Blr' in self.keys.keys():   
             for inpt, location in list(filter(lambda x : x not in self.mask, self.X_training.keys())):
@@ -1925,7 +2002,7 @@ class additive_features_model:
                     raise ValueError
                     del self.mask[inpt,location]
                     print(colored('\n\nmask of {0} removed to include it in Blr\n\n'.format((inpt,location)), 'red', 'on_cyan'))
-                if inpt in self.formula.loc['Blr']:
+                if inpt in self.formula.loc['Blr'].index:
                     self.keys['Blr'].append((inpt,location))
                     if not (hasattr(self, 'freeze_Blr') and self.freeze_Blr):
                         if self.pen['bu'].get(inpt) != 'rlasso' and self.hprm['afm.algorithm.first_order.column_update'].get(inpt):
@@ -1955,7 +2032,7 @@ class additive_features_model:
                         coef['B',(inpt,location)] = np.zeros((self.size[(inpt,location)], self.k))
         if 'Cuv' in self.keys.keys():
             for (inpt,location) in list(filter(lambda x : type(x[0]) == tuple, self.X_training.keys())):
-                if inpt in self.formula.loc['Cuv']:
+                if inpt in self.formula.loc['Cuv'].index:
                     if str(inpt[1]) < str(inpt[0]):
                        continue
                     if not ((inpt,location) in self.mask and self.mask[inpt,location].shape[0] == 0):
@@ -1987,7 +2064,7 @@ class additive_features_model:
             for (inpt_b,location_b) in (  list(filter(lambda x : '#' not in x, self.X_training.keys()))
                                         + list(map(lambda x : x[0], list(filter(lambda x : '#' in x, self.X_training.keys()))))
                                         ):
-                if inpt_b in self.formula.loc['Cb']:
+                if inpt_b in self.formula.loc['Cb'].index:
                     if not ((inpt_b,location_b) in self.mask and self.mask[inpt_b,location_b].shape[0] == 0) and not ((inpt_b,location_b) in self.keys['Cb']):
                         self.keys['Cb' ].append((inpt_b,location_b))
                     if not (hasattr(self, 'freeze_Cb') and self.freeze_Cb):
@@ -2008,7 +2085,7 @@ class additive_features_model:
                         coef['Cb',(inpt_b,location_b)] = np.zeros((self.size[inpt_b,location_b], self.k))
             for key in list(filter(lambda x : '#' in x, self.X_training.keys())):
                 key_b = key[0]
-                if inpt in self.formula.loc['Cbm']+tuple(['#'.join(e[::-1]) for e in self.formula.loc['Cbm']]):
+                if inpt in self.formula.loc['Cbm'].index + tuple(['#'.join(e[::-1]) for e in self.formula.loc['Cbm']]):
                     if not (key in self.mask and self.mask[inpt,location].shape[0] == 0) and not (key in self.keys['Cbm']):
                         self.keys['Cbm'].append(key)
                     if not (hasattr(self, 'freeze_Cm') and self.freeze_Cm):
@@ -2129,7 +2206,7 @@ class additive_features_model:
         else:
             if EXTRA_CHECK:
                 assert (cof.multiply(extra_part[coor_upd])).sum()>= 0
-            ans  = cof.multiply(quant[coor_upd] + 0.5*extra_part[coor_upd]) 
+            ans  = cof.multiply(quant[coor_upd] + 0.5*extra_part[coor_upd])
         if indi:
             part_fit = ans.sum(axis = 0)
         else:
@@ -2174,7 +2251,7 @@ class additive_features_model:
             elif pen == 'n2cvxclasso' :
                 alpha, beta, gamma = mu
                 p, rcol  = M.shape
-                reg   = 0
+                reg    = 0
                 slope  = np.zeros(rcol)
                 offset = np.zeros(rcol)
                 for j in range(rcol):
@@ -2187,10 +2264,7 @@ class additive_features_model:
                     reg += min(pen1,pen2)
                     slope [j] = alpha if pen1 < pen2 else beta
                     offset[j] = 0     if pen1 < pen2 else gamma
-                return reg, slope, offset
-            elif pen == 'ridge':
-                assert 0
-                return (mu/2)*np.linalg.norm(M)**2                 
+                return reg, slope, offset                
             elif pen == 'enet':
                 if type(M) in {np.ndarray, np.matrix}:
                     return mu*(self.share_enet*np.sum(np.abs(M))     + ((1 - self.share_enet)/2)*np.linalg.norm(M)**2)
@@ -2229,7 +2303,7 @@ class additive_features_model:
                                 assert 0
                 # Clear police station
                 self.punished_coor = set()
-                ### Prison 
+                # Prison 
                 self.prison_coor = {(var,(inpt,location),post) : v-1
                                     for (var,(inpt,location),post), v
                                     in self.prison_coor.items()
@@ -2295,7 +2369,7 @@ class additive_features_model:
         else:
             return orig_mask
         
-    #profile
+    
     def precomputationsY(self, X, Y, dataset = None):
         assert dataset in {'training', 'validation'}
         assert not self.active_gp
@@ -2331,7 +2405,8 @@ class additive_features_model:
             XtY  = {}
             for key in X.keys():
                 mask = self.mask.get(key, slice(None))
-                XtY[key] = sp.sparse.csc_matrix(np.zeros((X[key].shape[1], Y.shape[1])))
+                #XtY[key] = sp.sparse.csc_matrix(np.zeros((X[key].shape[1], Y.shape[1])))
+                XtY[key] = np.zeros((X[key].shape[1], Y.shape[1]))
                 XtY[key][:,mask] = X[key].T.dot(Y[:,mask]) 
             if len(XtY) < 1e3:
                 try:
@@ -2381,20 +2456,17 @@ class additive_features_model:
         #                 pass
         #             except Exception as e:
         #                 raise e
-            # ### Check
-            # if EXTRA_CHECK:
-            #     if len(X2tY) > 0:
-            #         key     = next(iter(X2tY.keys()))
-            #         mask    = self.mask.get(key, slice(None))
-            #         control = np.zeros((X2[key].shape[1], Y.shape[1]))
-            #         control[:,mask] = X2[key].T.dot(Y[:,mask]) 
-            #         if type(X2tY[key]) == sp.sparse.csr_matrix:
-            #             control = sp.sparse.csr_matrix(control)
-            #             assert np.linalg.norm(X2tY[key].data - control.data)  < 1e-8
-            #         else:
-            #             assert np.allclose(X2tY[key], control).all()           
-            # L = X2tY
-            # self.print_gso(L)
+        ### Check
+        if EXTRA_CHECK:
+            key     = next(iter(XtY.keys()))
+            mask    = self.mask.get(key, slice(None))
+            control = np.zeros((X[key].shape[1], Y.shape[1]))
+            control[:,mask] = X[key].T.dot(Y[:,mask]) 
+            if type(XtY[key]) == sp.sparse.csr_matrix:
+                control = sp.sparse.csr_matrix(control)
+                assert np.linalg.norm(XtY[key].data - control.data)  < 1e-8
+            else:
+                assert np.allclose(XtY[key], control)#.all()          
         return Y_sqfrob, YtY, XtY
         # if dataset == 'training':
         #     #self.Y_training        = Y
@@ -2422,10 +2494,8 @@ class additive_features_model:
         #         self.XtX_validation.update({**X1tX2, **X2tX1, **X2tX2})
         #         self.XtY_validation.update({**X2tY})
     
-    #profile
-    def predict(self, coef = None, dataset = None, drop = {}, adjust_A = False, X_new = None, n_new = None, verbose = False):
-        if verbose:
-            print('predict {0}'.format(dataset))
+    
+    def predict(self, coef = None, dataset = None, drop = {}, X_new = None, n_new = None):
         if hasattr(self, 'bfgs_long_coef'):
             return lbfgs.bfgs_pred(self, self.bfgs_long_coef, data = dataset)
         if   dataset == 'training':
@@ -2443,8 +2513,6 @@ class additive_features_model:
             coef = self.coef
         pred2 = np.zeros((n, self.k))
         for ii, coor in enumerate(coef):
-            if verbose:
-                print('\r{0:5} / {1:5}'.format(ii, len(coef)), end = '')
             if len(coor) == 3:
                 var, key, ind = coor
                 cc            = coef[coor]
@@ -2464,10 +2532,6 @@ class additive_features_model:
             if var in self.keys and var not in drop:
                 if key in self.keys[var]:
                     pred2[:,mask] += X[key] @ cc
-        if verbose:
-            print('done' + ' '*20)
-        if adjust_A and ('A','') in coef:
-            pred2 /= (1 - coef['A',''])
         return pred2
     
     
@@ -2611,7 +2675,7 @@ class additive_features_model:
                 new_mean_ft      = self.fit_validation   [self.iteration - self.epoch_stopping_criteria:self.iteration].mean()
                 old_mean_gp_ft   = self.fit_gp_validation[self.iteration - 2*self.epoch_stopping_criteria:self.iteration  - self.epoch_stopping_criteria].mean()
                 new_mean_gp_ft   = self.fit_gp_validation[self.iteration - self.epoch_stopping_criteria:self.iteration].mean()
-                early_stop       = (old_mean_ft + old_mean_gp_ft < new_mean_ft + new_mean_gp_ft) and self.hprm['tf_early_stop_validation']#and not (self.vr) 
+                early_stop       = (old_mean_ft + old_mean_gp_ft < new_mean_ft + new_mean_gp_ft) and self.hprm['afm.algorithm.first_order.early_stop_validation']#and not (self.vr) 
             # Same thing individually
             if self.compute_validation and self.iteration >= self.flag_compute_ind_validation:
                 if self.hprm['afm.algorithm.first_order.early_stop_ind_validation']:
