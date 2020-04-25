@@ -1040,12 +1040,12 @@ class additive_features_model:
             inpt, location = key
             pen, alpha                 = self.get_pen_alpha(var, key)
             mask = d_masks.get(coor_upd, slice(None))
-            if pen == 'rsm':
+            if pen == 'ridge':
                 if coor_upd[0] in {'Cu', 'Cv'}:
-                    dikt_ridge_grad[coor_upd] = alpha*self.coef[var,key][:,:,mask] if (pen == 'rsm') else np.zeros(self.coef[var,key][:,:,mask].shape)
+                    dikt_ridge_grad[coor_upd] = alpha*self.coef[var,key][:,:,mask] if (pen == 'ridge') else np.zeros(self.coef[var,key][:,:,mask].shape)
                 else:
-                    dikt_ridge_grad[coor_upd] = alpha*self.coef[var,key][:,  mask] if (pen == 'rsm') else np.zeros(self.coef[var,key][:,mask].shape)
-            elif pen == 'r2sm':
+                    dikt_ridge_grad[coor_upd] = alpha*self.coef[var,key][:,  mask] if (pen == 'ridge') else np.zeros(self.coef[var,key][:,mask].shape)
+            elif pen == 'smoothing_reg':
                 if coor_upd[0] in {'Cu', 'Cv'}:
                     raise NotImplementedError # coef has then 3 dimensions
                 M   = self.coef[var,key][:,mask]
@@ -1130,7 +1130,7 @@ class additive_features_model:
                             dikt_ridge_grad[coor_upd][2:  ] += alpha * conv1
                     dikt_ridge_grad[coor_upd] = dikt_ridge_grad[coor_upd].reshape(M.shape)
             else:
-                assert pen not in {'rsm', 'r2sm'}
+                assert pen not in {'ridge', 'smoothing_reg'}
                 if coor_upd[0] in {'Cu', 'Cv'}:
                     dikt_ridge_grad[coor_upd] = np.zeros(self.coef[var,key][:,:,mask].shape)
                 else:
@@ -1432,8 +1432,8 @@ class additive_features_model:
                 if cat in self.alpha[var]:
                     #if (var if var != 'bu' else 'Blr') in self.formula.index.get_level_values('coefficient'):
                     if cat in self.formula.loc[var if var != 'bu' else 'Blr'].index:
-                        if self.pen[var][cat] in {'rsm', 'r2sm'}:
-                            assert not alpha_cat, 'it should not have already been found for the same cat and a penalization in rsm, r2sm, unless it is approximately lowrank but this is not implemented yet'
+                        if self.pen[var][cat] in {'ridge', 'smoothing_reg'}:
+                            assert not alpha_cat, 'it should not have already been found for the same cat and a penalization in ridge, r2sm, unless it is approximately lowrank but this is not implemented yet'
                             alpha_cat = self.alpha[var][cat]
             keys_for_cat = [(inpt, location) 
                             for (inpt, location) in self.sorted_keys 
@@ -1480,7 +1480,7 @@ class additive_features_model:
                     else:
                         assert type(self.alpha[var][cat]) == tuple
                         assert len(self.alpha[var][cat])  == 2
-                        assert self.pen[var][cat]         == 'row2sm'
+                        assert self.pen[var][cat]         == 'block_smoothing_reg'
                         self.normalized_alphas[var][cat] = (self.alpha[var][cat][0]/self.normalization[cat]**2, 
                                                             self.alpha[var][cat][1], 
                                                             )                      
@@ -1582,7 +1582,7 @@ class additive_features_model:
 
     def duality_gap(self, pred, grad, var):
         raise NotImplementedError
-        if self.pen[var] in {'', 'rsm'} or self.normalized_alphas[var] == 0:
+        if self.pen[var] in {'', 'ridge'} or self.normalized_alphas[var] == 0:
             return self.cur_fit_training
         else:
             # On somme les duality gaps sur les différents postes
@@ -1740,12 +1740,12 @@ class additive_features_model:
             var, key, ind = coor
             inpt, location = key
             pen, alpha = self.get_pen_alpha(var, key)
-            if pen == 'rsm':
+            if pen == 'ridge':
                 if type(M) in {np.ndarray, np.matrix}:
                     ridge[var,key,ind] = (alpha/2)*np.linalg.norm(M)**2 
                 else:
                     ridge[var,key,ind] = (alpha/2)*sp.sparse.linalg.norm(M)**2
-            elif pen == 'r2sm':
+            elif pen == 'smoothing_reg':
                 if type(M) not in {np.ndarray, np.matrix}:
                     raise NotImplementedError
                 else:
@@ -2144,7 +2144,7 @@ class additive_features_model:
             # Compute the penalizations
             if pen == '':  
                 return 0
-            elif pen in {'rsm', 'r2sm', '0r2sm'}:  
+            elif pen in {'ridge', 'smoothing_reg', '0r2sm'}:  
                 return 0
             elif pen == 'lasso':
                 return mu*np.sum(np.abs(M))                 
@@ -2528,7 +2528,7 @@ class additive_features_model:
         # Proximal operator
         if pen == '':    
             X_tmp = X
-        elif pen in {'rsm', 'r2sm', '0r2sm'}:    
+        elif pen in {'ridge', 'smoothing_reg', '0r2sm'}:    
             X_tmp = X
         elif pen == 'lasso' :
             X_tmp     = tools.proximal.prox_L1(X, eta*mu, coef_zero = coef_zero)

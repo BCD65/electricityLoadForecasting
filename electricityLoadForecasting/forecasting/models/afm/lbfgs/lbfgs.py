@@ -34,7 +34,7 @@ def start_lbfgs(model, ):
     # Check that the regularizations are defined as ridge or smoothing splines or nothing
     for k, d in model.pen.items():
         for a, b in d.items():
-            assert b in {'rsm', 'r1sm', 'r2sm', 'rs2m', '', 'row2sm'}
+            assert b in {'ridge', 'smoothing_reg', 'rs2m', '', 'block_smoothing_reg'}
     
     # These dictionaries are used to locate the different covariates in the unique long vector     
     model.width_col              = [model.X_training[key].shape[1] 
