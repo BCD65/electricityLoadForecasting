@@ -30,14 +30,14 @@ def compute_design(inputs,
                    hprm, 
                    #path, replace with os.path.join(paths.outputs, 'Data')
                    dikt_file_names, 
-                   mask_univariate  = None,
-                   mask_bivariate   = None,
-                   size1            = None, 
-                   size2            = None, 
-                   dikt_func        = None,       
-                   dikt_func12      = None,  
-                   db               = None,
-                   size_tensor2     = None, 
+                   mask_univariate       = None,
+                   mask_bivariate        = None,
+                   size1                 = None, 
+                   size2                 = None, 
+                   dikt_func             = None,       
+                   dikt_func12           = None,  
+                   db                    = None,
+                   size_tensor_bivariate = None, 
                    ):
     # This is the main script where the functions for the univariate and the bivariate covariates are called
     # From the number of nodes defined in the parameters, 
@@ -182,10 +182,10 @@ def compute_design(inputs,
             # Try to load the covariates corresponding to the interactions
             # Important because they may demand many more computations
             if db == 'training':
-                dikt_nodes12  = tools.batch_load(path_data, prefix_features_bivariate, data_name = 'dikt_nodes12',   data_type = 'np')
-                dikt_func12   = tools.batch_load(path_data, prefix_features_bivariate, data_name = 'dikt_func12',    data_type = 'np')
-                size2         = tools.batch_load(path_data, prefix_features_bivariate, data_name = 'size_bivariate', data_type = 'np')
-                size_tensor2  = tools.batch_load(path_data, prefix_features_bivariate, data_name = 'size_tensor2',   data_type = 'np')
+                dikt_nodes12          = tools.batch_load(path_data, prefix_features_bivariate, data_name = 'dikt_nodes12',          data_type = 'np')
+                dikt_func12           = tools.batch_load(path_data, prefix_features_bivariate, data_name = 'dikt_func12',           data_type = 'np')
+                size2                 = tools.batch_load(path_data, prefix_features_bivariate, data_name = 'size_bivariate',        data_type = 'np')
+                size_tensor_bivariate = tools.batch_load(path_data, prefix_features_bivariate, data_name = 'size_tensor_bivariate', data_type = 'np')
             X2 = tools.batch_load(path_data,
                                   prefix    = prefix_features_bivariate,
                                   data_name = 'X2_' + db,
@@ -225,9 +225,9 @@ def compute_design(inputs,
             print('finished X12')
             print('start X2')
             # Compute the product for the interactions
-            X2, size2, size_tensor2 = make_X2(X12,
-                                              hprm,
-                                              )
+            X2, size2, size_tensor_bivariate = make_X2(X12,
+                                                       hprm,
+                                                       )
             for h,k in X2.keys():
                 if (h,k) in mask_bivariate:
                     mm = mask_bivariate.get((h,k),
@@ -235,25 +235,25 @@ def compute_design(inputs,
                                             )
                     if type(mm) == list and len(mm) == 0:
                         # Discard interactions that are used by zero substations
-                        del X2[k], size2[k], size_tensor2[k]
+                        del X2[k], size2[k], size_tensor_bivariate[k]
             print('finished X2') 
             list_files = [(X2, 'X2_'+db, prefix_features_bivariate, 'dict_sp' if hprm['afm.features.sparse_x2'] else 'dict_np'), 
                           ] if len (X2) < 1e4 else []
             if db == 'training':
                 list_files += [ 
-                               (dikt_nodes12, 'dikt_nodes12',   prefix_features_bivariate, 'np'), 
-                               (dikt_func12,  'dikt_func12',    prefix_features_bivariate, 'np'), 
-                               (size2,        'size_bivariate', prefix_features_bivariate, 'np'),
-                               (size_tensor2, 'size_tensor2',   prefix_features_bivariate, 'np'),
+                               (dikt_nodes12,          'dikt_nodes12',          prefix_features_bivariate, 'np'), 
+                               (dikt_func12,           'dikt_func12',           prefix_features_bivariate, 'np'), 
+                               (size2,                 'size_bivariate',        prefix_features_bivariate, 'np'),
+                               (size_tensor_bivariate, 'size_tensor_bivariate', prefix_features_bivariate, 'np'),
                                ]
             save_list_files(list_files, path_data, hprm)
             
         X.update({'X2_'+db : X2})
         if db == 'training':
             X.update({
-                      'mask_bivariate' : mask_bivariate,
-                      'size_bivariate'          : size2,
-                      'size_tensor2'   : size_tensor2,
+                      'mask_bivariate'        : mask_bivariate,
+                      'size_bivariate'        : size2,
+                      'size_tensor_bivariate' : size_tensor_bivariate,
                       })
         if precompute:
             # Compute the empirical covariance between the univariate/bivariate covariates
@@ -507,7 +507,7 @@ def make_X2(X12,
             ):
     X2      = {}
     size2   = {} 
-    size_tensor2 = {}
+    size_tensor_bivariate = {}
     formula_biv  = hprm['afm.formula'].loc[hprm['afm.formula']['nb_intervals'].apply(lambda x : type(x) == tuple)]
     for (inpt1, (location1,)), v1 in X12.items():
         for (inpt2, (location2,)), v2 in X12.items():
@@ -526,8 +526,8 @@ def make_X2(X12,
                                             )
                 siz2             = interaction.shape[1:]
                 assert len(siz2) == 2
-                size_tensor2[(inpt1, inpt2),(location1, location2)] = siz2
-                size2       [(inpt1, inpt2),(location1, location2)] = np.prod(siz2)
+                size_tensor_bivariate[(inpt1, inpt2),(location1, location2)] = siz2
+                size2                [(inpt1, inpt2),(location1, location2)] = np.prod(siz2)
                 # If the first covariate is associated to p functions and the 
                 # second to q functions and there are n observations
                 # Reshape the interaction of size (n,p,q) into a matrix of size (n, p*q)
@@ -542,12 +542,12 @@ def make_X2(X12,
                          )
                     ):
                     X2[(inpt2, inpt1),(location2, location1)] = interaction.transpose(0,2,1).reshape((-1, siz2[0]*siz2[1]))
-                    size_tensor2[(inpt2, inpt1),(location2, location1)] = siz2[::-1]
-                    size2       [(inpt2, inpt1),(location2, location1)] = np.prod(siz2[::-1])
+                    size_tensor_bivariate[(inpt2, inpt1),(location2, location1)] = siz2[::-1]
+                    size2                [(inpt2, inpt1),(location2, location1)] = np.prod(siz2[::-1])
                     if hprm['afm.features.sparse_x2']:
                         X2[(inpt2, inpt1),(location2, location1)] = sp.sparse.csc_matrix(X2[(inpt2, inpt1),(location2, location1)])
     print()
-    return X2, size2, size_tensor2
+    return X2, size2, size_tensor_bivariate
     
 
 def precomputations_1(X1, mask, all_products = 0):

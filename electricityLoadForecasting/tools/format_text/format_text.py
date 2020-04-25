@@ -28,24 +28,37 @@ def ltx_trsfrm(s):
     return t
 
 
-def format_file_names(s):
+def format_file_names(txt):
+    s = txt.lower()
     dikt_replace = {
                     ### standard caracters
-                    ','         : '',
-                    "'"         : '',
-                    ' '         : '_',
-                    '-'         : 'm',
-                    '<'         : '',
-                    '>'         : '',
-                    ':'         : '',
-                    '='         : '',
+                    ','           : '',
+                    "'"           : '',
+                    '<'           : '',
+                    '>'           : '',
+                    ':'           : '',
+                    '='           : '',
+                    '\*'          : '',
+                    ' '           : '_',
+                    '-'           : 'm',
+                    'none'        : '',
+                    'smoothing'   : 'sm',
+                    'maximum'     : 'max',
+                    'minimum'     : 'min',
+                    'dateoffset'  : 'min',
+                    'daylight'    : 'dl',
+                    'nebulosity'  : 'neb',
+                    'temperature' : 'temp',
+                    'week_hour'   : 'wh',
+                    'year_day'    : 'yd',
                     ### special caracters
-                    '\]'        : '',
-                    '\['        : '',
-                    '\('        : '_',
-                    '\)'        : '_',
-                    '\.'        : 'd',
-                    '\+'        : 'p',
+                    '\]'          : '',
+                    '\['          : '',
+                    '\('          : '_',
+                    '\)'          : '_',
+                    '\.'          : 'd',
+                    '\+'          : 'p',
+                    '\*'          : '',
                     ### regex
                     '_+'                     : '_',
                     '(_{0})+'.format(os.sep) : os.sep,
@@ -53,7 +66,7 @@ def format_file_names(s):
                     }
     for key, value in dikt_replace.items():
         s = re.sub(key, value, s)
-    return s.lower()
+    return s
 
 
 

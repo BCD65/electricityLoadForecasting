@@ -354,21 +354,21 @@ dikt_formula['RTE.quick_test',  None]                     = cp.deepcopy(dikt_for
 ###############################################################################
               
 stopping_criteria = {
+                     ('eCO2mix.France',
+                      None,
+                      ) : {
+                           'afm.algorithm.lbfgs.maxfun'  : 1e8,
+                           'afm.algorithm.lbfgs.maxiter' : 1e8,                             
+                           'afm.algorithm.lbfgs.tol'     : 1e-8,
+                           'afm.algorithm.lbfgs.pgtol'   : 1e-8,
+                           },
                      ('eCO2mix.administrative_regions',
                       None,
                       ) : {
                            'afm.algorithm.lbfgs.maxfun'  : 1e8,
                            'afm.algorithm.lbfgs.maxiter' : 1e8,                             
                            'afm.algorithm.lbfgs.pgtol'   : 1e-6,
-                           'afm.algorithm.lbfgs.tol'     : 1e-4,
-                           },
-                     ('eCO2mix.France',
-                      None,
-                      ) : {
-                           'afm.algorithm.lbfgs.maxfun'  : 1e8,
-                           'afm.algorithm.lbfgs.maxiter' : 1e8,                             
                            'afm.algorithm.lbfgs.tol'     : 1e-6,
-                           'afm.algorithm.lbfgs.pgtol'   : 1e-4,
                            },
                     ('RTE.substations',
                      None,
@@ -376,7 +376,7 @@ stopping_criteria = {
                            'afm.algorithm.lbfgs.maxfun'  : 1e8,
                            'afm.algorithm.lbfgs.maxiter' : 1e8,                             
                            'afm.algorithm.lbfgs.tol'     : 1e-6,
-                           'afm.algorithm.lbfgs.pgtol'   : 1e-4,
+                           'afm.algorithm.lbfgs.pgtol'   : 1e-6,
                            },
                      }
 

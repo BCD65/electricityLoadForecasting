@@ -1,4 +1,5 @@
 
+import os
 import numpy as np
 import scipy.signal  as sig
 import scipy.ndimage as spim
@@ -6,8 +7,9 @@ import scipy as sp
 from termcolor import colored
 from numbers   import Number
 #
-import electricityLoadForecasting.tools  as tools
+from electricityLoadForecasting import tools, paths
 
+path_betas = os.path.join(paths.outputs, 'Saved', 'Betas')
 
 def cat_bound(col_cat_matching):
     # Location of the different categories of variables in the design matrix
@@ -52,7 +54,7 @@ def bfgs_regularization(model,
             cc             = coef[key_slice]
             if reshape_tensor:
                 inpt1, inpt2 = inpt
-                cc           = cc.reshape(*model.size_tensor2[inpt,location], -1)
+                cc           = cc.reshape(*model.size_tensor_bivariate[inpt,location], -1)
             if (   type(alpha) == tuple and alpha[0] !=0
                 or isinstance(alpha, Number) and alpha != 0
                 ):
@@ -140,14 +142,14 @@ def grad_bfgs_regularization(model, coef, alphas):
             cc             = coef[key_slice]
             if reshape_tensor:
                 inpt1, inpt2 = inpt
-                cc           = cc.reshape(*model.size_tensor2[inpt,location], -1)
+                cc           = cc.reshape(*model.size_tensor_bivariate[inpt,location], -1)
                 grad_tmp     = np.zeros(cc.shape)
             if (   type(alpha) == tuple and alpha[0] !=0
                 or isinstance(alpha, Number) and alpha != 0
                 ):
                 ##### Ridge #####
                 if model.pen[var].get(inpt, 0) == 'ridge':
-                    grad[key_slice] = alpha * cc
+                    grad[key_slice] = alpha * cc.reshape((grad[key_slice].shape))
                 ##### smoothing-splines regularization #####
                 elif model.pen[var].get(inpt) == 'smoothing_reg':
                     assert key_slice.stop >= key_slice.start+2
@@ -187,7 +189,7 @@ def grad_bfgs_regularization(model, coef, alphas):
                                 grad_tmp[:, :-2] += alpha *   conv2
                                 grad_tmp[:,1:-1] -= alpha * 2*conv2
                                 grad_tmp[:,2:  ] += alpha *   conv2
-                        grad[slice(key_slice.start, key_slice.stop)] = grad_tmp.reshape((grad[slice(key_slice.start, key_slice.stop)].shape))
+                        grad[key_slice] = grad_tmp.reshape((grad[key_slice].shape))
                 ##### block smoothing-splines regularization #####
                 elif model.pen[var].get(inpt) == 'block_smoothing_reg':
                     assert len(alphas[var][inpt])  == 2, alphas[var][inpt] 
@@ -323,7 +325,7 @@ def grad_bfgs_regularization(model, coef, alphas):
                                 grad_tmp[:, :-2] += (0.5 * aa * pp) *     conv2 * norm_conv2_pm2
                                 grad_tmp[:,1:-1] -= (0.5 * aa * pp) * 2 * conv2 * norm_conv2_pm2
                                 grad_tmp[:,2:  ] += (0.5 * aa * pp) *     conv2 * norm_conv2_pm2
-                        grad[slice(key_slice.start, key_slice.stop)] = grad_tmp.reshape((grad[slice(key_slice.start, key_slice.stop)].shape))
+                        grad[key_slice] = grad_tmp.reshape((grad[key_slice].shape))
                 else:
                     assert model.pen.get(inpt,'') == ''            
     return grad                    
@@ -337,7 +339,7 @@ def optimize_coef(model,
     # Optimization of the differentiable objectives with the function sp.optimize.fmin_l_bfgs_b
     try:
         # Try to load
-        ans_lbfgs = tools.batch_load(model.path_betas, 
+        ans_lbfgs = tools.batch_load(path_betas, 
                                      model.dikt['experience.whole'], 
                                      obj_name = 'ans_lbfgs', 
                                      mod      = 'np',
@@ -366,7 +368,7 @@ def optimize_coef(model,
                                                )
         try:
             tools.batch_save(
-                             model.path_betas, 
+                             path_betas, 
                              data      = ans_lbfgs, 
                              prefix    = model.dikt['experience.whole'], 
                              data_name = 'ans_lbfgs', 

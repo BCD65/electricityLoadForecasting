@@ -141,7 +141,7 @@ class additive_features_model:
         self.size       = specs['size_univariate']
         self.mask.update(specs.get('mask_bivariate', {}))
         self.size.update(specs.get('size_bivariate', {}))
-        self.size_tensor2 = specs.get('size_tensor_bivariate',{})
+        self.size_tensor_bivariate = specs.get('size_tensor_bivariate',{})
         print('masks examples : ')
         self.active_gp = (self.gp_pen > 0) and bool(self.hprm['afm.sum_consistent.gp_matrix']) # indicator of the sum-consistent model
         if self.active_gp: # Parameters for the sum-consistent model
@@ -437,11 +437,7 @@ class additive_features_model:
                 inpt, location = key
                 if var not in {'bv', 'Cv', 'Cm'}:
                     self.coef[var,key] /= self.normalization[inpt] 
-            
-            print()
-            """
-            Save
-            """
+            ### Save
             for obj, name, opt in [(self.coef,       'coef',       'dict_np'), 
                                    (self.keys_upd,   'keys_upd',   'pickle'), 
                                    ]:
@@ -1026,10 +1022,14 @@ class additive_features_model:
         print('change structure X sparse')
         for ii, X in enumerate([self.X_training] + ([self.X_validation] if self.compute_validation else [])):
             for jj, (k, v) in enumerate(X.items()):
-                print('\r{0} / {1} - {2:5} / {3:5}'.format(ii, 1+self.compute_validation, jj, len(X)), end = '')
+                print('\r{0} / {1} - {2:5} / {3:5}'.format(ii,
+                                                           1+self.compute_validation,
+                                                           jj,
+                                                           len(X)),
+                      end = '')
                 if type(v) == sp.sparse.csc_matrix:
                     X[k] = sp.sparse.csr_matrix(v)
-        print('done' + ' '*20)
+        print('\ndone')
 
     def compute_grad_ridge(self, list_coor, d_masks):
         # Compute the gradient of the differentiable regularization (ridge or smoothing-spline)
@@ -1067,7 +1067,7 @@ class additive_features_model:
                             dikt_ridge_grad[coor_upd][1:-1] -= alpha * 2*conv
                             dikt_ridge_grad[coor_upd][2:  ] += alpha * conv
                 else:
-                    cc = M.reshape(*self.size_tensor2[key], -1)
+                    cc = M.reshape(*self.size_tensor_bivariate[key], -1)
                     dikt_ridge_grad[coor_upd] = np.zeros(cc.shape)
                     inpt1, inpt2 = inpt.split('#')
                     if cc.shape[0] > 2:
@@ -1114,7 +1114,7 @@ class additive_features_model:
                             dikt_ridge_grad[coor_upd][1:-1] -= alpha * 2*conv
                             dikt_ridge_grad[coor_upd][2:  ] += alpha * conv
                 else:
-                    cc = M.reshape(*self.size_tensor2[key], -1)
+                    cc = M.reshape(*self.size_tensor_bivariate[key], -1)
                     dikt_ridge_grad[coor_upd] = np.zeros(cc.shape)
                     inpt1, inpt2 = inpt
                     if cc.shape[0] > 2:
@@ -1768,7 +1768,7 @@ class additive_features_model:
                                                     )
                             ridge[var,key,ind] = 0.5 * alpha * np.linalg.norm(conv)**2
                     else:
-                        cc = M.reshape(*self.size_tensor2[key], -1)  
+                        cc = M.reshape(*self.size_tensor_bivariate[key], -1)  
                         cat1, cat2 = inpt
                         if cc.shape[0] > 2:
                             ker1  = np.array([[[1]],[[-2]],[[1]]]) 
@@ -1820,7 +1820,7 @@ class additive_features_model:
                                                     )
                             ridge[var,key,ind] = 0.5 * alpha * np.linalg.norm(conv)**2
                     else:
-                        cc = M.reshape(*self.size_tensor2[key], -1)  
+                        cc = M.reshape(*self.size_tensor_bivariate[key], -1)  
                         inpt1, inpt2 = inpt
                         if cc.shape[0] > 2:
                             ker1  = np.array([[[1]],[[-2]],[[1]]]) 
@@ -1977,10 +1977,10 @@ class additive_features_model:
                         and (key in self.mask or 'classo' in self.pen.get('Cuv',{}).get(self.hprm['data_cat'][key])):
                             assert 0, 'no sparse and einsum'
                         else:
-                            rk = min(self.r_UV, self.size_tensor2[key][0], self.size_tensor2[key][1])
-                            coef['Cu',key ]  = np.zeros((self.size_tensor2[key][0], rk, self.k))
+                            rk = min(self.r_UV, self.size_tensor_bivariate[key][0], self.size_tensor_bivariate[key][1])
+                            coef['Cu',key ]  = np.zeros((self.size_tensor_bivariate[key][0], rk, self.k))
                             coef['Cu',key ][:,:,self.mask.get(key,None)] = np.random.randn(*coef['Cu',key][:,:,self.mask.get(key,None)].shape) 
-                            coef['Cv',key ]  = np.zeros((self.size_tensor2[key][1], rk, self.k))
+                            coef['Cv',key ]  = np.zeros((self.size_tensor_bivariate[key][1], rk, self.k))
                             coef['Cv',key ][:,:,self.mask.get(key,None)] = np.random.randn(*coef['Cv',key][:,:,self.mask.get(key,None)].shape)
                             coef['Cuv',key] = np.einsum('prk,qrk->pqk',
                                                         coef['Cu',key], 
@@ -2028,8 +2028,8 @@ class additive_features_model:
                              ):
                             assert 0, 'no sparse and einsum'
                         else:
-                            assert self.size_tensor2[key][0] == self.size[key_b], 'key : {0} - key_b : {1}'.format(key, key_b)
-                            coef['Cm',key]   = np.zeros((self.size_tensor2[key][1], self.k))
+                            assert self.size_tensor_bivariate[key][0] == self.size[key_b], 'key : {0} - key_b : {1}'.format(key, key_b)
+                            coef['Cm',key]   = np.zeros((self.size_tensor_bivariate[key][1], self.k))
                             coef['Cbm',key]  = np.einsum('pk,qk->pqk',
                                                         coef['Cb',key_b], 
                                                         coef['Cm',key], 

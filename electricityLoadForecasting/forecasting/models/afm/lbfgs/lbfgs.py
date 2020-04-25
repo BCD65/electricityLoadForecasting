@@ -19,7 +19,7 @@ the data-fitting term, the sum-consistent term and the regularizatione
 
 
 #profile
-def start_lbfgs(model, ):
+def start_lbfgs(model):
     print('start lbfgs')
     # Check no column update
     for k, v in model.col_upd.items():
@@ -34,8 +34,11 @@ def start_lbfgs(model, ):
     # Check that the regularizations are defined as ridge or smoothing splines or nothing
     for k, d in model.pen.items():
         for a, b in d.items():
-            assert b in {'ridge', 'smoothing_reg', 'rs2m', '', 'block_smoothing_reg'}
-    
+            assert b in {'',
+                         'ridge',
+                         'smoothing_reg',
+                         'block_smoothing_reg',
+                         }
     # These dictionaries are used to locate the different covariates in the unique long vector     
     model.width_col              = [model.X_training[key].shape[1] 
                                     for key in model.sorted_keys
