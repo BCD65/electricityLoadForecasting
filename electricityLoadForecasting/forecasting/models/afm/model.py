@@ -1093,7 +1093,7 @@ class additive_features_model:
                             dikt_ridge_grad[coor_upd][:,1:-1] -= alpha * 2*conv2
                             dikt_ridge_grad[coor_upd][:,2:  ] += alpha * conv2
                     dikt_ridge_grad[coor_upd] = dikt_ridge_grad[coor_upd].reshape(M.shape)
-            elif pen == '0r2sm':
+            elif pen == 'factor_smoothing_reg':
                 cat = self.hprm['data_cat'][key]
                 if coor_upd[0] in {'Cu', 'Cv'}:
                     raise NotImplementedError # coef has then 3 dimensions
@@ -1799,11 +1799,11 @@ class additive_features_model:
                                                      )
                             ridge[var,key,ind] = 0.5 * alpha * np.linalg.norm(conv2)**2 
                             
-            elif pen == '0r2sm':
+            elif pen == 'factor_smoothing_reg':
                 if type(M) not in {np.ndarray, np.matrix}:
                     raise NotImplementedError
                 else:
-                    reshape_tensor = type(inpt[0]) == tuple
+                    reshape_tensor = (type(inpt[0]) == tuple)
                     if not reshape_tensor:
                         cc = M
                         if cc.shape[0] > 2:
@@ -2144,7 +2144,7 @@ class additive_features_model:
             # Compute the penalizations
             if pen == '':  
                 return 0
-            elif pen in {'ridge', 'smoothing_reg', '0r2sm'}:  
+            elif pen in {'ridge', 'smoothing_reg', 'factor_smoothing_reg'}:  
                 return 0
             elif pen == 'lasso':
                 return mu*np.sum(np.abs(M))                 
@@ -2528,7 +2528,7 @@ class additive_features_model:
         # Proximal operator
         if pen == '':    
             X_tmp = X
-        elif pen in {'ridge', 'smoothing_reg', '0r2sm'}:    
+        elif pen in {'ridge', 'smoothing_reg', 'factor_smoothing_reg'}:    
             X_tmp = X
         elif pen == 'lasso' :
             X_tmp     = tools.proximal.prox_L1(X, eta*mu, coef_zero = coef_zero)
