@@ -1,4 +1,5 @@
 
+import re
 #
 from . import masks
 from . import features
@@ -72,13 +73,23 @@ def fit_and_predict(inputs_training,
     X_training = {h:w 
                   for k, v in design.items()
                   for h, w in v.items()
-                  if 'training' in k
+                  if re.compile('^X\d{1}_training$').match(k)
                   }
+    XtX_training = {h:w 
+                    for k, v in design.items()
+                    for h, w in v.items()
+                    if re.compile('^X\d{1}tX\d{1}_training$').match(k)
+                    }
     X_validation  = {h:w
                      for k, v in design.items() 
                      for h, w in v.items()
-                     if 'validation' in k
+                     if re.compile('^X\d{1}_validation$').match(k)
                      }
+    XtX_validation  = {h:w
+                       for k, v in design.items() 
+                       for h, w in v.items()
+                       if re.compile('^X\d{1}tX\d{1}_validation$').match(k)
+                       }
     specs   = {k:v 
                for k, v in design.items() 
                if (    'training'   not in k 
@@ -89,10 +100,12 @@ def fit_and_predict(inputs_training,
                                          dikt_file_names = dikt_file_names,
                                          )
     model_pred.fit(specs, 
-                   X_training, 
                    Y_training, 
-                   X_validation = X_validation, 
-                   Y_validation = Y_validation, 
+                   X_training,
+                   XtX_training   = XtX_training,
+                   Y_validation   = Y_validation, 
+                   X_validation   = X_validation, 
+                   XtX_validation = XtX_validation, 
                    )
     
     """

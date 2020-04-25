@@ -18,7 +18,7 @@ from . import lbfgs
 path_betas = os.path.join(paths.outputs, 'Betas')
 path_data  = os.path.join(paths.outputs, 'Data')
 
-EXTRA_CHECK = 0
+EXTRA_CHECK = 1
 
 dikt_var_temp = {
                  'bu' : 'Blr', 
@@ -43,23 +43,13 @@ class additive_features_model:
         self.max_iter    = int(self.hprm['afm.algorithm.first_order.max_iter'])
         self.formula     = self.hprm['afm.formula']
         assert not self.formula.empty
-        self.alpha       = {var : {key : self.formula.xs((var,key))['regularization_coef'].item()
+        self.alpha       = {var : {key : self.formula.xs((var,key))['regularization_coef']
                                    for key in self.formula.loc[var].index
-                                   # if (   var in self.formula.index.get_level_values('coefficient').unique()
-                                   #     or (    var in {'Cb','Cm'} 
-                                   #         and 'Cbm' in self.formula.index.get_level_values('coefficient').unique()
-                                   #         )
-                                   #     )
                                    }
                             for var in self.formula.index.get_level_values('coefficient').unique()
                             }
-        self.pen         = {var : {key : self.formula.xs((var,key))['regularization_func'].item()
+        self.pen         = {var : {key : self.formula.xs((var,key))['regularization_func']
                                    for key in self.formula.loc[var].index
-                                   # if (   var in self.formula.index.get_level_values('coefficient').unique()
-                                   #     or (    var in {'Cb','Cm'} 
-                                   #         and 'Cbm' in self.formula.index.get_level_values('coefficient').unique()
-                                   #         )
-                                   #     )
                                    }
                             for var in self.formula.index.get_level_values('coefficient').unique()
                             }
@@ -112,20 +102,23 @@ class additive_features_model:
 
     def fit(self, 
             specs,
-            X_training, 
             Y_training, 
-            X_validation = None, 
-            Y_validation = None, 
-            given_warm   = None,
+            X_training, 
+            XtX_training   = None, 
+            Y_validation   = None, 
+            X_validation   = None, 
+            XtX_validation = None, 
+            given_warm     = None,
             ):
         # Fot the model given the training and validation matrices (used for stopping criteria)
-        self.X_training = X_training#.copy()
-        self.Y_training = Y_training
-        self.n_training = self.Y_training.shape[0]
-        self.k          = self.Y_training.shape[1]
-        #self.factor_A   = bool(set(self.formula.index.get_level_values('coefficient').unique()) & {'A'})
-        self.mask       = specs['mask_univariate']
-        self.size       = specs['size_univariate']
+        self.Y_training   = Y_training
+        self.X_training   = X_training#.copy()
+        self.XtX_training = XtX_training#.copy()
+        del X_training, Y_training, XtX_training
+        self.n_training   = self.Y_training.shape[0]
+        self.k            = self.Y_training.shape[1]
+        self.mask         = specs['mask_univariate']
+        self.size         = specs['size_univariate']
         self.mask.update(specs.get('mask_bivariate', {}))
         self.size.update(specs.get('size_bivariate', {}))
         self.size_tensor_bivariate = specs.get('size_tensor_bivariate',{})
@@ -156,24 +149,30 @@ class additive_features_model:
         # Precomputations training
         if not self.lbfgs:    
             print('Precomputations training')
-            self.precomputationsY(X_training, dataset = 'training')
+            self.Y_sqfrob_training, self.YtY_training, self.XtY_training = self.precomputationsY(self.X_training, 
+                                                                                                 self.Y_training,
+                                                                                                 dataset = 'training',
+                                                                                                 )
             print('Precomputations training done')        
-        del X_training, Y_training
 
         # validation dataset
         self.compute_validation    = bool(X_validation)
         self.precompute_validation = self.compute_validation and (not self.lbfgs)
         if self.compute_validation:
-            self.X_validation  = X_validation
-            self.Y_validation  = Y_validation
-            self.n_validation  = self.Y_validation.shape[0]
+            self.Y_validation    = Y_validation
+            self.X_validation    = X_validation
+            self.XtX_validation  = XtX_validation
+            del X_validation, Y_validation, XtX_validation
+            self.n_validation    = self.Y_validation.shape[0]
             self.print_fit_with_mean(dataset = 'validation', mean = 'training')
             self.print_fit_with_mean(dataset = 'validation', mean = 'validation')
             if self.precompute_validation:
                 print('Precomputations validation')
-                self.precomputationsY(X_validation, dataset = 'validation')
+                self.Y_sqfrob_validation, self.YtY_validation, self.XtY_validation = self.precomputationsY(self.X_validation, 
+                                                                                                           self.Y_validation,
+                                                                                                           dataset = 'validation',
+                                                                                                           )
                 print('Precomputations validation done')
-        del X_validation, Y_validation
         self.iteration = 0
 
         print('Initialize Coefficients')
@@ -273,14 +272,14 @@ class additive_features_model:
                     key1, key2 = keys
                     inpt1, location1 = key1
                     inpt2, location2 = key2
-                    self.XtX_training[key] /= self.normalization[inpt1]*self.normalization[inpt2]
+                    self.XtX_training[keys] = self.XtX_training[keys] / self.normalization[inpt1]*self.normalization[inpt2]
                     if self.precompute_validation:
-                        self.XtX_validation [key] /= self.normalization[inpt1]*self.normalization[inpt2]
+                        self.XtX_validation[keys] = self.XtX_validation[keys] / self.normalization[inpt1]*self.normalization[inpt2]
                 for key in self.XtY_training.keys():
                     inpt, location = key
-                    self.XtY_training[key] /= self.normalization[inpt]
+                    self.XtY_training[key] = self.XtY_training[key] / self.normalization[inpt]
                     if self.precompute_validation:
-                        self.XtY_validation [key] /= self.normalization[inpt]
+                        self.XtY_validation[key] = self.XtY_validation [key] / self.normalization[inpt]
             if self.lbfgs:
                 lbfgs.start_lbfgs(self) # Launch the lbfgs algorithm
                 # Reorganize the coefficients
@@ -385,11 +384,11 @@ class additive_features_model:
                     self.obj_validation[self.iteration] = self.cur_obj_validation
                 self.iteration += 1 
         
-                print('Start Descent')
                 if EXTRA_CHECK:
                     self.Y_training0 = self.Y_training.copy()
                     self.X_training0 = cp.deepcopy(self.X_training)
                 
+                ### Start first-order descent
                 self.start_descent()
                 self.last_iteration = self.iteration
                 print('last iteration : ', self.last_iteration)
@@ -487,7 +486,7 @@ class additive_features_model:
                     print('    - ', 
                           '{0:5.5}' .format(coor_upd[0]), 
                           '-',
-                          '{0:20.20}'.format(coor_upd[1]),
+                          '{0:20.20}'.format(repr(coor_upd[1])),
                           '-',
                           '{0:8.8}' .format(repr(coor_upd[2])),  
                           '-', 
@@ -541,22 +540,22 @@ class additive_features_model:
                     if key in dikt_ridge_grad:
                         assert dikt_fit_grad[key].shape == dikt_ridge_grad[key].shape, (dikt_fit_grad[key].shape, dikt_ridge_grad[key].shape)
             # Backtracking step
-            tmp_fit_training, tmp_fit_gp_training, tmp_ind_ridge, fit_plus_gp_plus_ridge_tilde_tmp, \
-                            coef_tmp, nb_inner_iter, eta, condition_ls = self.backtracking_ls(
-                                                                                              dikt_fit_grad, 
-                                                                                              dikt_fit_gp_grad, 
-                                                                                              dikt_ridge_grad, 
-                                                                                              old_fit_training         = self.cur_fit_training, 
-                                                                                              old_fit_gp_training      = self.cur_fit_gp_training, 
-                                                                                              old_part_fit_training    = old_part_fit_training, 
-                                                                                              old_part_fit_gp_training = old_part_fit_gp_training, 
-                                                                                              old_ridge             = self.cur_ridge, 
-                                                                                              old_part_ridge        = old_part_ridge, 
-                                                                                              quant_training           = q_training,
-                                                                                              quant_gp_training        = q_gp_training,
-                                                                                              cur_ind_reg           = self.cur_ind_reg,
-                                                                                              mask_upd              = mask_upd,
-                                                                                              ) 
+            (tmp_fit_training, tmp_fit_gp_training, tmp_ind_ridge, fit_plus_gp_plus_ridge_tilde_tmp,
+              coef_tmp,        nb_inner_iter,       eta,           condition_ls,
+              ) = self.backtracking_ls(dikt_fit_grad, 
+                                       dikt_fit_gp_grad, 
+                                       dikt_ridge_grad, 
+                                       old_fit_training         = self.cur_fit_training, 
+                                       old_fit_gp_training      = self.cur_fit_gp_training, 
+                                       old_part_fit_training    = old_part_fit_training, 
+                                       old_part_fit_gp_training = old_part_fit_gp_training, 
+                                       old_ridge                = self.cur_ridge, 
+                                       old_part_ridge           = old_part_ridge, 
+                                       quant_training           = q_training,
+                                       quant_gp_training        = q_gp_training,
+                                       cur_ind_reg              = self.cur_ind_reg,
+                                       mask_upd                 = mask_upd,
+                                       ) 
             new_part_ridge = np.sum([tmp_ind_ridge[key] for key in tmp_ind_ridge.keys()])
             tmp_ind_reg, tmp_ind_slope, tmp_ind_offset = self.evaluate_ind_reg(coef_tmp)
             new_part_reg   = np.sum([tmp_ind_reg[key]   for key in tmp_ind_reg.keys()])
@@ -861,11 +860,11 @@ class additive_features_model:
                     raise ValueError('Objective has increased')
             
             # # Update low-rank
-            if 'Blr' in self.config_coef and 'bu' in [e[0] for e in grad.keys()] :
+            if 'Blr' in self.formula.index.get_level_values('coefficient').unique() and 'bu' in [e[0] for e in grad.keys()] :
                 coef_tmp  = self.update_VB(coef_tmp)
-            if 'Cuv' in self.config_coef:
+            if 'Cuv' in self.formula.index.get_level_values('coefficient').unique():
                 coef_tmp  = self.update_Cuv(coef_tmp)
-            if 'Cbm' in self.config_coef:
+            if 'Cbm' in self.formula.index.get_level_values('coefficient').unique():
                 coef_tmp  = self.update_Cbm(coef_tmp)
             if self.batch_cd:
                 fit_tmp   = self.evaluate_fit(coef_tmp) #+ self.evaluate_ridge(coef_tmp)
@@ -911,8 +910,7 @@ class additive_features_model:
                 # Detection of an error
                 len_str = 25
                 print('\n', )
-                for e in [
-                          'self.bcd',
+                for e in ['self.bcd',
                           'self.cur_fit_training', 
                           'fit_tmp', 
                           'fit_gp_tmp', 
@@ -923,15 +921,22 @@ class additive_features_model:
                           'eta',
                           'nb_inner_iter',
                           'set([a for a, b in self.coef.keys()])',
-                          'sorted(self.keys["Cbm"])',
-                          'sorted(self.keys["Cb"])',
-                          'sorted(self.keys["Csp"])',
+                          'sorted(self.keys.get("Cbm"),[])',
+                          'sorted(self.keys.get("Cb"),[])',
+                          'sorted(self.keys.get("Csp"),[])',
                           'sorted(coef_tmp.keys())', 
                           'sorted(coef_tmp.keys())',
                           'self.iteration',
                           ]:
-                    print('{0:{width}} : {1}'.format(e, eval(e), width = len_str)) 
-                print('{0:{width}} : {1}'.format('shape' , [(k, v.shape) for k, v in coef_tmp.items()], width = len_str))
+                    print('{0:{width}} : {1}'.format(e,
+                                                     eval(e),
+                                                     width = len_str,
+                                                     )) 
+                print('{0:{width}} : {1}'.format('shape' ,
+                                                 [(k, v.shape) 
+                                                  for k, v in coef_tmp.items()
+                                                  ],
+                                                 width = len_str))
                 assert 0
             assert fit_tmp    >= 0
             assert fit_gp_tmp >= 0
@@ -968,16 +973,18 @@ class additive_features_model:
         assert not ind, 'no partial/column update for low-rank coefficients'
         assert mask == slice(None) # No mask when Bv
         XtY = self.XtY_training
-        M = (  ((1 - self.coef['A','']) if self.factor_A else 1)*XtY[key][:,mask]   
+        M = (  XtY[key][:,mask]   
              - np.sum([self.custom_sum_einsum(self.XtX_training, 
                                               self.coef, 
                                               var2, 
                                               key, 
                                               slice(None), 
-                                              var_temp = self.dikt_var_temp.get(var,var),
-                                              ) 
-                        for var2 in self.config_coef], 
-                       axis = 0)
+                                              var_temp = dikt_var_temp.get(var,var),
+                                              )
+                       for var2 in self.formula.index.get_level_values('coefficient').unique()
+                       ], 
+                      axis = 0,
+                      )
              )[:,mask].T @ coef.get(('bu', key, ()), coef.get(('bu',key), 'error'))
         A, sig, Bt = np.linalg.svd(M, full_matrices=0)
         v = A @ Bt
@@ -1003,9 +1010,9 @@ class additive_features_model:
         dikt_ridge_grad = {}
         for coor_upd in list_coor:
             assert len(coor_upd) == 3
-            var, key, ind              = coor_upd
+            var, key, ind  = coor_upd
             inpt, location = key
-            pen, alpha                 = self.get_pen_alpha(var, key)
+            pen, alpha     = self.get_pen_alpha(var, key)
             mask = d_masks.get(coor_upd, slice(None))
             if pen == 'ridge':
                 if coor_upd[0] in {'Cu', 'Cv'}:
@@ -1023,54 +1030,7 @@ class additive_features_model:
                     cc = M
                     dikt_ridge_grad[coor_upd] = np.zeros(cc.shape)
                     if cc.shape[0] > 2:
-                        if self.hprm['inputs.cyclic'][inpt]:
-                            ker  = np.array([[1],[-4],[6],[-4],[1]])
-                            conv = spim.filters.convolve(cc,ker,mode = 'wrap')
-                            dikt_ridge_grad[coor_upd] = alpha * conv
-                        else:
-                            ker  = np.array([[1],[-2],[1]])
-                            conv = sig.convolve(cc, ker, mode = 'valid')
-                            dikt_ridge_grad[coor_upd][ :-2] += alpha * conv
-                            dikt_ridge_grad[coor_upd][1:-1] -= alpha * 2*conv
-                            dikt_ridge_grad[coor_upd][2:  ] += alpha * conv
-                else:
-                    cc = M.reshape(*self.size_tensor_bivariate[key], -1)
-                    dikt_ridge_grad[coor_upd] = np.zeros(cc.shape)
-                    inpt1, inpt2 = inpt.split('#')
-                    if cc.shape[0] > 2:
-                        if self.hprm['inputs.cyclic'][inpt1]:
-                            ker1  = np.array([[[1],[-4],[6],[-4],[1]]])
-                            conv1 = spim.filters.convolve(cc,ker1,mode = 'wrap')
-                            dikt_ridge_grad[coor_upd] += alpha * conv1
-                        else:
-                            ker1  = np.array([[[1]],[[-2]],[[ 1]]])
-                            conv1     = sig.convolve(cc, ker1, mode = 'valid')
-                            dikt_ridge_grad[coor_upd][ :-2] += alpha * conv1
-                            dikt_ridge_grad[coor_upd][1:-1] -= alpha * 2*conv1
-                            dikt_ridge_grad[coor_upd][2:  ] += alpha * conv1
-                    if cc.shape[1] > 2: 
-                        if self.hprm['inputs.cyclic'][inpt2]:
-                            ker2  = np.array([[[1],[-4],[6],[-4],[1]]])
-                            conv2 = spim.filters.convolve(cc,ker2,mode = 'wrap')
-                            dikt_ridge_grad[coor_upd] += alpha * conv2
-                        else:
-                            ker2  = np.array([[[1],  [-2],  [1]]])
-                            conv2     = sig.convolve(cc, ker2, mode = 'valid')
-                            dikt_ridge_grad[coor_upd][:, :-2] += alpha * conv2
-                            dikt_ridge_grad[coor_upd][:,1:-1] -= alpha * 2*conv2
-                            dikt_ridge_grad[coor_upd][:,2:  ] += alpha * conv2
-                    dikt_ridge_grad[coor_upd] = dikt_ridge_grad[coor_upd].reshape(M.shape)
-            elif pen == 'factor_smoothing_reg':
-                cat = self.hprm['data_cat'][key]
-                if coor_upd[0] in {'Cu', 'Cv'}:
-                    raise NotImplementedError # coef has then 3 dimensions
-                M   = self.coef[var,key][:,mask]
-                reshape_tensor = '#' in cat and var not in {'Cu', 'Cv', 'Cb', 'Cm'}
-                if not reshape_tensor:
-                    cc = M
-                    dikt_ridge_grad[coor_upd] = np.zeros(cc.shape)
-                    if cc.shape[0] > 2:
-                        if self.hprm['inputs.cyclic'][inpt]:
+                        if self.hprm['inputs.cyclic'].get(inpt):
                             ker  = np.array([[1],[-4],[6],[-4],[1]])
                             conv = spim.filters.convolve(cc,ker,mode = 'wrap')
                             dikt_ridge_grad[coor_upd] = alpha * conv
@@ -1085,7 +1045,55 @@ class additive_features_model:
                     dikt_ridge_grad[coor_upd] = np.zeros(cc.shape)
                     inpt1, inpt2 = inpt
                     if cc.shape[0] > 2:
-                        if self.hprm['inputs.cyclic'][inpt1]:
+                        if self.hprm['inputs.cyclic'].get(inpt1):
+                            ker1  = np.array([[[1],[-4],[6],[-4],[1]]])
+                            conv1 = spim.filters.convolve(cc,ker1,mode = 'wrap')
+                            dikt_ridge_grad[coor_upd] += alpha * conv1
+                        else:
+                            ker1  = np.array([[[1]],[[-2]],[[ 1]]])
+                            conv1     = sig.convolve(cc, ker1, mode = 'valid')
+                            dikt_ridge_grad[coor_upd][ :-2] += alpha * conv1
+                            dikt_ridge_grad[coor_upd][1:-1] -= alpha * 2*conv1
+                            dikt_ridge_grad[coor_upd][2:  ] += alpha * conv1
+                    if cc.shape[1] > 2: 
+                        if self.hprm['inputs.cyclic'].get(inpt2):
+                            ker2  = np.array([[[1],[-4],[6],[-4],[1]]])
+                            conv2 = spim.filters.convolve(cc,ker2,mode = 'wrap')
+                            dikt_ridge_grad[coor_upd] += alpha * conv2
+                        else:
+                            ker2  = np.array([[[1],  [-2],  [1]]])
+                            conv2     = sig.convolve(cc, ker2, mode = 'valid')
+                            dikt_ridge_grad[coor_upd][:, :-2] += alpha * conv2
+                            dikt_ridge_grad[coor_upd][:,1:-1] -= alpha * 2*conv2
+                            dikt_ridge_grad[coor_upd][:,2:  ] += alpha * conv2
+                    dikt_ridge_grad[coor_upd] = dikt_ridge_grad[coor_upd].reshape(M.shape)
+            elif pen == 'factor_smoothing_reg':
+                if coor_upd[0] in {'Cu', 'Cv'}:
+                    raise NotImplementedError # coef has then 3 dimensions
+                M   = self.coef[var,key][:,mask]
+                reshape_tensor = (    type(inpt[0]) == tuple 
+                                  and var not in {'Cu', 'Cv', 'Cb', 'Cm'}
+                                  )
+                if not reshape_tensor:
+                    cc = M
+                    dikt_ridge_grad[coor_upd] = np.zeros(cc.shape)
+                    if cc.shape[0] > 2:
+                        if self.hprm['inputs.cyclic'].get(inpt):
+                            ker  = np.array([[1],[-4],[6],[-4],[1]])
+                            conv = spim.filters.convolve(cc,ker,mode = 'wrap')
+                            dikt_ridge_grad[coor_upd] = alpha * conv
+                        else:
+                            ker  = np.array([[1],[-2],[1]])
+                            conv = sig.convolve(cc, ker, mode = 'valid')
+                            dikt_ridge_grad[coor_upd][ :-2] += alpha * conv
+                            dikt_ridge_grad[coor_upd][1:-1] -= alpha * 2*conv
+                            dikt_ridge_grad[coor_upd][2:  ] += alpha * conv
+                else:
+                    cc = M.reshape(*self.size_tensor_bivariate[key], -1)
+                    dikt_ridge_grad[coor_upd] = np.zeros(cc.shape)
+                    inpt1, inpt2 = inpt
+                    if cc.shape[0] > 2:
+                        if self.hprm['inputs.cyclic'].get(inpt1):
                             ker1  = np.array([[[1],[-4],[6],[-4],[1]]])
                             conv1 = spim.filters.convolve(cc,ker1,mode = 'wrap')
                             dikt_ridge_grad[coor_upd] += alpha * conv1
@@ -1147,16 +1155,15 @@ class additive_features_model:
             
             ############# Compute the normal part of quant[coor_upd]
             
-            mmm = (1/n)*(\
-                         - ((1 - self.coef['A','']) if self.factor_A else 1)*(XtY[key][:,mask_Y] if type(XtY[key]) == np.ndarray else XtY[key][:,mask_Y].toarray())
+            mmm = (1/n)*(- (XtY[key][:,mask_Y] if type(XtY[key]) == np.ndarray else XtY[key][:,mask_Y].toarray())
                          + np.sum([self.custom_sum_einsum(XtX, 
                                                           self.coef, 
                                                           var2, 
                                                           key, 
                                                           'dyn' if gp_pen else mask, 
-                                                          var_temp = self.dikt_var_temp.get(var, var),
+                                                          var_temp = dikt_var_temp.get(var, var),
                                                           ) 
-                                    for var2 in self.config_coef], 
+                                    for var2 in self.formula.index.get_level_values('coefficient').unique()], 
                                    axis = 0)
                                   )
 
@@ -1174,26 +1181,27 @@ class additive_features_model:
                     print('Should simplify computations : ', np.round(bb - st, 8), 's', ' VS', np.round(c - aa, 8), 's', ' - ratio : ', np.round((bb - st)/(c - aa), 8), ' - width : ', width)
                 mmm = mmm1
                 if len(mask_out):
-                    mmm+= gp_pen * (1/n) * XtX[key+'@'+key] @ self.coef[self.dikt_var_temp.get(var,var),key][:,mask_out] @ MMt[mask_out][:,mask]
+                    mmm+= gp_pen * (1/n) * XtX[key,key] @ self.coef[dikt_var_temp.get(var,var),key][:,mask_out] @ MMt[mask_out][:,mask]
             
             ############# Check the computation of the normal part of quant[coor_upd]
             if EXTRA_CHECK:
             ############# The computation is different for Cb so the check is different too
 
                 aaa =   Y[:,mask_Y].copy()
-                for var2 in self.config_coef:   
+                for var2 in self.formula.index.get_level_values('coefficient').unique():   
                     for key2 in self.keys[var2]: 
-                        if key+'@'+key2 in XtX\
-                        and (   (var != 'Cb' and (key2 != key or var2 != self.dikt_var_temp.get(var, var)))
-                             or (var == 'Cb' and (key2.split('#')[0] != key or var2 not in ('Cb', 'Cbm') ))
-                             ):
+                        if (    (key,key2) in XtX
+                            and (   (var != 'Cb' and (key2 != key or var2 != dikt_var_temp.get(var, var)))
+                                 or (var == 'Cb' and (key2[0] != key or var2 not in ('Cb', 'Cbm') ))
+                                 )
+                            ):
                             ss         = self.orig_masks.get((var2,key2,()), slice(None)) if gp_pen else mask
                             aaa[:,ss if gp_pen else slice(None)] += - X[key2] @ self.coef[var2,key2][:,ss] 
                 mmm_check = -(1/n) * X[key].T @ aaa
                 if gp_pen:
                     mmm_check = gp_pen * mmm_check @ MMt[:,mask]
                     if len(mask_out):
-                        mmm_check+= gp_pen * (1/n) * XtX[key+'@'+key] @ self.coef[self.dikt_var_temp.get(var,var),key][:,mask_out] @ MMt[mask_out][:,mask]
+                        mmm_check+= gp_pen * (1/n) * XtX[key,key] @ self.coef[dikt_var_temp.get(var,var),key][:,mask_out] @ MMt[mask_out][:,mask]
                 assert mmm.shape == mmm_check.shape
                 assert np.allclose(mmm, mmm_check)
 
@@ -1206,20 +1214,20 @@ class additive_features_model:
             elif var == 'Cm':
                 quant[coor_upd] = np.einsum('pqk,pk->qk', 
                                             mmm.reshape(( 
-                                                         self.coef['Cb', key.split('#')[0]][:,mask].shape[0], 
+                                                         self.coef['Cb', key[0]][:,mask].shape[0], 
                                                          -1,
-                                                         self.coef['Cb', key.split('#')[0]][:,mask].shape[1],
+                                                         self.coef['Cb', key[0]][:,mask].shape[1],
                                                          )), 
-                                            self.coef['Cb', key.split('#')[0]][:,mask],
+                                            self.coef['Cb', key[0]][:,mask],
                                             )
                 if EXTRA_CHECK:
                     mmm_check = np.einsum('pqk,pk->qk', 
                                           mmm_check.reshape((
-                                                             self.coef['Cb', key.split('#')[0]][:,mask].shape[0],
+                                                             self.coef['Cb', key[0]][:,mask].shape[0],
                                                              -1,
-                                                             self.coef['Cb', key.split('#')[0]][:,mask].shape[1],
+                                                             self.coef['Cb', key[0]][:,mask].shape[1],
                                                              )), 
-                                          self.coef['Cb', key.split('#')[0]][:,mask],
+                                          self.coef['Cb', key[0]][:,mask],
                                           )
                     
             elif var == 'Cu':
@@ -1264,9 +1272,9 @@ class additive_features_model:
                 for keybm in self.keys['Cbm']:
                     bbb = {}
                     bbb_check = {}
-                    assert '#' in keybm
-                    if keybm.split('#')[0] == key:
-                        bbb[keybm] = (1/n)*(- ((1 - self.coef['A','']) if self.factor_A else 1)*(XtY[keybm][:,mask_Y] if type(XtY[key]) == np.ndarray else XtY[keybm][:,mask_Y].toarray())
+                    assert type(keybm[0]) == tuple
+                    if keybm[0] == key:
+                        bbb[keybm] = (1/n)*(- (XtY[keybm][:,mask_Y] if type(XtY[key]) == np.ndarray else XtY[keybm][:,mask_Y].toarray())
                                             + np.sum([self.custom_sum_einsum(XtX, 
                                                                              self.coef, 
                                                                              var2, 
@@ -1274,13 +1282,13 @@ class additive_features_model:
                                                                              'dyn' if gp_pen else mask, 
                                                                              var_temp = 'Cb',
                                                                              ) 
-                                                       for var2 in self.config_coef], 
+                                                       for var2 in self.formula.index.get_level_values('coefficient').unique()], 
                                                       axis = 0,
                                                      )
                                             )
                         if gp_pen:
                             bbb[keybm] = gp_pen * bbb[keybm] @ MMt[:,mask]
-                            bbb[keybm]+= gp_pen * (1/n) * XtX[keybm+'@'+keybm] @ self.coef['Cbm',keybm][:,mask_out] @ MMt[mask_out][:,mask]
+                            bbb[keybm]+= gp_pen * (1/n) * XtX[keybm,keybm] @ self.coef['Cbm',keybm][:,mask_out] @ MMt[mask_out][:,mask]
 
                         quant[coor_upd] += np.einsum('pqk,qk->pk', 
                                                      bbb[keybm].reshape((-1, 
@@ -1294,12 +1302,13 @@ class additive_features_model:
                         
                         if EXTRA_CHECK:
                             aaa =   Y[:,mask_Y].copy()
-                            for var2 in self.config_coef:
+                            for var2 in self.formula.index.get_level_values('coefficient').unique():
                                 for key2 in self.keys[var2]: 
-                                    if keybm+'@'+key2 in XtX\
-                                    and (   key2.split('#')[0] != key
-                                         or var2 not in ('Cb', 'Cbm')
-                                         ):
+                                    if (    (keybm,key2) in XtX
+                                        and (   key2[0] != key
+                                             or var2 not in ('Cb', 'Cbm')
+                                             )
+                                        ):
                                         ss = self.orig_masks.get((var2,key2,()), slice(None)) if gp_pen else mask
                                         aaa[:,ss if gp_pen else slice(None)] += - X[key2] @ self.coef[var2,key2][:,ss] 
                             bbb_check[keybm] = - (1/n) * X[keybm].T @ aaa
@@ -1468,24 +1477,55 @@ class additive_features_model:
             var,key,ind = coor_upd
             mask =  d_masks.get(coor_upd, slice(None))
             if var in {'Cu', 'Cv'}:
-                assert coef_tmp[coor_upd].shape == self.coef[coor_upd[:2]][:,:,mask].shape, (coef_tmp[coor_upd].shape, self.coef[coor_upd[:2]][:,:,mask].shape)
+                assert coef_tmp[coor_upd].shape == self.coef[coor_upd[:2]][:,:,mask].shape, (coef_tmp[coor_upd].shape,
+                                                                                             self.coef[coor_upd[:2]][:,:,mask].shape,
+                                                                                             )
                 if type(grad[coor_upd]) == np.matrix:
-                    f +=   (grad[coor_upd] + grad_gp.get(coor_upd,0) + ridge_grad[coor_upd]).reshape(-1)\
-                          .dot((coef_tmp[coor_upd] - self.coef[coor_upd[:2]][:,mask]).reshape(-1).T).sum()\
-                          + (1/(2*eta))*np.linalg.norm(coef_tmp[coor_upd] - self.coef[coor_upd[:2]][:,:,mask])**2 
+                    f += (  (grad[coor_upd]
+                             + grad_gp.get(coor_upd,0)
+                             + ridge_grad[coor_upd]
+                             ).reshape(-1).dot((  coef_tmp[coor_upd] 
+                                                - self.coef[coor_upd[:2]][:,mask]
+                                                ).reshape(-1).T).sum()
+                          + (1/(2*eta))*np.linalg.norm(  coef_tmp[coor_upd]
+                                                       - self.coef[coor_upd[:2]][:,:,mask]
+                                                       )**2
+                          )
                 else:
-                    f +=   (grad[coor_upd] + grad_gp.get(coor_upd,0) + ridge_grad[coor_upd]).reshape(-1).T\
-                          @(coef_tmp[coor_upd] - self.coef[coor_upd[:2]][:,:,mask]).reshape(-1)\
-                          + (1/(2*eta))*np.linalg.norm(coef_tmp[coor_upd] - self.coef[coor_upd[:2]][:,:,mask])**2 
+                    f += ( (grad[coor_upd] 
+                            + grad_gp.get(coor_upd,0)
+                            + ridge_grad[coor_upd]
+                            ).reshape(-1).T@(coef_tmp[coor_upd] 
+                                             - self.coef[coor_upd[:2]][:,:,mask]
+                                             ).reshape(-1)
+                          + (1/(2*eta))*np.linalg.norm(  coef_tmp[coor_upd]
+                                                       - self.coef[coor_upd[:2]][:,:,mask]
+                                                       )**2
+                          )
             else:
                 if type(grad[coor_upd]) == np.matrix:
-                    f +=   (grad[coor_upd] + grad_gp.get(coor_upd,0) + ridge_grad[coor_upd]).reshape(-1)\
-                          .dot((coef_tmp[coor_upd] - self.coef[coor_upd[:2]][:,mask]).reshape(-1).T).sum()\
-                          + (1/(2*eta))*np.linalg.norm(coef_tmp[coor_upd] - self.coef[coor_upd[:2]][:,mask])**2 
+                    f += ( (  grad[coor_upd] 
+                            + grad_gp.get(coor_upd,0) 
+                            + ridge_grad[coor_upd]
+                            ).reshape(-1).dot((  coef_tmp[coor_upd] 
+                                               - self.coef[coor_upd[:2]][:,mask]
+                                               ).reshape(-1).T
+                                               ).sum()
+                          + (1/(2*eta))*np.linalg.norm(  coef_tmp[coor_upd] 
+                                                       - self.coef[coor_upd[:2]][:,mask]
+                                                       )**2
+                          )
                 else:
-                    f +=   (grad[coor_upd] + grad_gp.get(coor_upd,0) + ridge_grad[coor_upd]).reshape(-1).T\
-                          @(coef_tmp[coor_upd] - self.coef[coor_upd[:2]][:,mask]).reshape(-1)\
-                          + (1/(2*eta))*np.linalg.norm(coef_tmp[coor_upd] - self.coef[coor_upd[:2]][:,mask])**2 
+                    f += ( (  grad[coor_upd] 
+                            + grad_gp.get(coor_upd,0)
+                            + ridge_grad[coor_upd]
+                            ).reshape(-1).T@(  coef_tmp[coor_upd]
+                                             - self.coef[coor_upd[:2]][:,mask]
+                                             ).reshape(-1)
+                          + (1/(2*eta))*np.linalg.norm(  coef_tmp[coor_upd] 
+                                                       - self.coef[coor_upd[:2]][:,mask]
+                                                       )**2
+                          )
             assert coef_tmp[coor_upd].shape == grad[coor_upd].shape,               ('pb_1', coef_tmp[coor_upd].shape, grad[coor_upd].shape)
             assert coef_tmp[coor_upd].shape == ridge_grad[coor_upd].shape,         ('pb_2', coef_tmp[coor_upd].shape, ridge_grad[coor_upd].shape)
             if var in {'Cu', 'Cv'}:
@@ -1505,45 +1545,47 @@ class additive_features_model:
     def custom_sum_einsum(self, XtX, coef, var2, key, mask, var_temp = None):
         var_upd    = (var_temp == var2)
         cbcbm_upd  = (var_temp == 'Cb' and var2 == 'Cbm')
-        cbmcb_upd  = (var_temp == 'Cb' and var2 == 'Cb'  and '#' in key)
-        cbmcbm_upd = (var_temp == 'Cb' and var2 == 'Cbm' and '#' in key)
+        cbmcb_upd  = (var_temp == 'Cb' and var2 == 'Cb'  and type(key[0]) == tuple)
+        cbmcbm_upd = (var_temp == 'Cb' and var2 == 'Cbm' and type(key[0]) == tuple)
         if EXTRA_CHECK:
             for key2 in self.keys[var2]:
                 if self.active_gp:
                     if (var_temp,key) in coef and (var2,key2) in coef:
-                        assert key+'@'+key2 in XtX # Probably need this check only when gp_pen > 0
-                if key+'@'+key2 in XtX\
-                and not(   (var_upd    and key2 == key)
-                        or (cbcbm_upd  and key2.split('#')[0] == key)
-                        or (cbmcb_upd  and key.split('#')[0]  == key2)
-                        or (cbmcbm_upd and key.split('#')[0]  == key2.split('#')[0])
-                        ):                 
+                        assert key,key2 in XtX # Probably need this check only when gp_pen > 0
+                if (    (key,key2) in XtX
+                    and not(   (var_upd    and key2 == key)
+                            or (cbcbm_upd  and key2[0] == key)
+                            or (cbmcb_upd  and key[0]  == key2)
+                            or (cbmcbm_upd and key[0]  == key2[0])
+                            )
+                    ):                 
                     ss = self.orig_masks.get((var2,key2,()), slice(None))
                     if not (mask == 'dyn' or cbmcb_upd or cbmcbm_upd):
-                        assert (XtX[key+'@'+key2] @ (coef[var2,key2][:,mask])).shape == (XtX[key+'@'+key] @ (coef[var_temp,key][:,mask])).shape
+                        assert (XtX[key,key2] @ (coef[var2,key2][:,mask])).shape == (XtX[key,key] @ (coef[var_temp,key][:,mask])).shape
         if mask == 'dyn':
             assert self.gp_pen
             ans = np.zeros((self.size[key], self.k))
             for key2 in self.keys[var2]:
-                if key+'@'+key2 in XtX\
-                and not(   (var_upd    and key2 == key)
-                        or (cbcbm_upd  and key2.split('#')[0] == key)
-                        or (cbmcb_upd  and key.split('#')[0]  == key2)
-                        or (cbmcbm_upd and key.split('#')[0]  == key2.split('#')[0])
-                        ):
+                if (    (key,key2) in XtX
+                    and not(   (var_upd    and key2 == key)
+                            or (cbcbm_upd  and key2[0] == key)
+                            or (cbmcb_upd  and key[0]  == key2)
+                            or (cbmcbm_upd and key[0]  == key2[0])
+                            )
+                    ):
                     ss = self.orig_masks.get((var2,key2,()), slice(None))
-                    ans[:,ss] += XtX[key+'@'+key2] @ coef[var2,key2][:,ss]
+                    ans[:,ss] += XtX[key,key2] @ coef[var2,key2][:,ss]
         else:
             ans = np.zeros((self.X_training[key].shape[1], coef[var2,next(iter(self.keys[var2]))][:,mask].shape[1]))
             for key2 in self.keys[var2]:
-                if (key+'@'+key2 in XtX
+                if (key,key2 in XtX
                     and not(   (var_upd    and key2 == key)
-                            or (cbcbm_upd  and key2.split('#')[0] == key)
-                            or (cbmcb_upd  and key.split('#')[0]  == key2)
-                            or (cbmcbm_upd and key.split('#')[0]  == key2.split('#')[0])
+                            or (cbcbm_upd  and key2[0] == key)
+                            or (cbmcb_upd  and key[0]  == key2)
+                            or (cbmcbm_upd and key[0]  == key2[0])
                             )
                     ):
-                    ans += XtX[key+'@'+key2] @ (coef[var2,key2][:,mask])
+                    ans += XtX[key,key2] @ (coef[var2,key2][:,mask])
         return ans
                  
 
@@ -1610,9 +1652,9 @@ class additive_features_model:
         n   = self.n_training if dataset == 'training' else self.n_validation
         Y   = self.Y_training if dataset == 'training' else self.Y_validation
         if not w_gp:
-            mse =        (0.5/n)*np.linalg.norm((Y*((1 - coef['A','']) if self.factor_A else 1) - self.predict(coef = coef, dataset = dataset)))**2
+            mse =        (0.5/n)*np.linalg.norm((Y - self.predict(coef = coef, dataset = dataset)))**2
         else:
-            mse = gp_pen*(0.5/n)*np.linalg.norm((Y*((1 - coef['A','']) if self.factor_A else 1) - self.predict(coef = coef, dataset = dataset)) @ gp_matrix)**2
+            mse = gp_pen*(0.5/n)*np.linalg.norm((Y - self.predict(coef = coef, dataset = dataset)) @ gp_matrix)**2
         return mse
 
 
@@ -1623,7 +1665,7 @@ class additive_features_model:
         Y       = self.Y_training    if dataset == 'training' else self.Y_validation
         if self.iteration > self.flag_check_pred:
             self.flag_check_pred += self.epoch_check_pred
-        ind_mse = (0.5/n)*np.linalg.norm((Y*((1 - coef['A','']) if self.factor_A else 1) - self.predict(coef = coef, dataset = dataset)), axis = 0)**2
+        ind_mse = (0.5/n)*np.linalg.norm((Y - self.predict(coef = coef, dataset = dataset)), axis = 0)**2
         return ind_mse
 
 
@@ -1686,8 +1728,8 @@ class additive_features_model:
                 if cond:
                     print('\revaluate_ind_reg', i, '/', len(coef), end = '')
                 var, key, ind = coor
-                pen, alpha = self.get_pen_alpha(var, key)
-                res        = self.penalization(M, pen, alpha, key) # Compute regularization of one column
+                pen, alpha    = self.get_pen_alpha(var, key)
+                res           = self.penalization(M, pen, alpha, key) # Compute regularization of one column
                 if pen == 'n2cvxclasso':
                     reg[coor], slope[coor] ,offset[coor] = res
                 else:
@@ -1704,10 +1746,15 @@ class additive_features_model:
         for coor, M in coef.items():
             if coor[0] in {'Blr', 'bv', 'Cuv', 'Cbm'}:
                 continue
-            var, key, ind = coor
+            var, key, ind  = coor
             inpt, location = key
-            pen, alpha = self.get_pen_alpha(var, key)
-            if pen == 'ridge':
+            pen, alpha     = self.get_pen_alpha(var, key)
+            reshape_tensor = (    type(inpt[0]) == tuple
+                              and var not in {'Cu', 'Cv', 'Cb', 'Cm'}
+                              )
+            if pen == '':
+                pass
+            elif pen == 'ridge':
                 if type(M) in {np.ndarray, np.matrix}:
                     ridge[var,key,ind] = (alpha/2)*np.linalg.norm(M)**2 
                 else:
@@ -1716,66 +1763,11 @@ class additive_features_model:
                 if type(M) not in {np.ndarray, np.matrix}:
                     raise NotImplementedError
                 else:
-                    reshape_tensor = (    type(inpt[0]) == tuple
-                                      and var not in {'Cu', 'Cv', 'Cb', 'Cm'}
-                                      )
                     if not reshape_tensor:
                         cc = M
                         if cc.shape[0] > 2:
                             ker  = np.array([[1],[-2],[1]])
-                            if self.hprm['inputs.cyclic'][inpt]:
-                                conv = spim.filters.convolve(cc,
-                                                             ker,
-                                                             mode = 'wrap',
-                                                             )
-                            else:
-                                conv = sig.convolve(cc, 
-                                                    ker, 
-                                                    mode = 'valid',
-                                                    )
-                            ridge[var,key,ind] = 0.5 * alpha * np.linalg.norm(conv)**2
-                    else:
-                        cc = M.reshape(*self.size_tensor_bivariate[key], -1)  
-                        cat1, cat2 = inpt
-                        if cc.shape[0] > 2:
-                            ker1  = np.array([[[1]],[[-2]],[[1]]]) 
-                            if self.hprm['inputs.cyclic'][cat1]:
-                                conv1 = spim.filters.convolve(cc,
-                                                              ker1,
-                                                              mode = 'wrap',
-                                                              )
-                            else:
-                                conv1 = sig.convolve(cc, 
-                                                     ker1, 
-                                                     mode = 'valid',
-                                                     )
-                            ridge[var,key,ind] = 0.5 * alpha * np.linalg.norm(conv1)**2
-                        if var in {'Cbm', 'Cb', 'Cm', 'Blr', 'bv'}:
-                            raise ValueError
-                        if cc.shape[1] > 2:
-                            ker2  = np.array([[[1 ],[ -2 ],[ 1]]])
-                            if self.hprm['inputs.cyclic'][cat2]:
-                                conv2 = spim.filters.convolve(cc,
-                                                              ker2,
-                                                              mode = 'wrap',
-                                                              )
-                            else:
-                                conv2 = sig.convolve(cc, 
-                                                     ker2, 
-                                                     mode = 'valid',
-                                                     )
-                            ridge[var,key,ind] = 0.5 * alpha * np.linalg.norm(conv2)**2 
-                            
-            elif pen == 'factor_smoothing_reg':
-                if type(M) not in {np.ndarray, np.matrix}:
-                    raise NotImplementedError
-                else:
-                    reshape_tensor = (type(inpt[0]) == tuple)
-                    if not reshape_tensor:
-                        cc = M
-                        if cc.shape[0] > 2:
-                            ker  = np.array([[1],[-2],[1]])
-                            if self.hprm['inputs.cyclic'][inpt]:
+                            if self.hprm['inputs.cyclic'].get(inpt):
                                 conv = spim.filters.convolve(cc,
                                                              ker,
                                                              mode = 'wrap',
@@ -1791,7 +1783,7 @@ class additive_features_model:
                         inpt1, inpt2 = inpt
                         if cc.shape[0] > 2:
                             ker1  = np.array([[[1]],[[-2]],[[1]]]) 
-                            if self.hprm['inputs.cyclic'][inpt1]:
+                            if self.hprm['inputs.cyclic'].get(inpt1):
                                 conv1 = spim.filters.convolve(cc,
                                                               ker1,
                                                               mode = 'wrap',
@@ -1802,6 +1794,59 @@ class additive_features_model:
                                                      mode = 'valid',
                                                      )
                             ridge[var,key,ind] = 0.5 * alpha * np.linalg.norm(conv1)**2
+                        if var in {'Cbm', 'Cb', 'Cm', 'Blr', 'bv'}:
+                            raise ValueError
+                        if cc.shape[1] > 2:
+                            ker2  = np.array([[[1 ],[ -2 ],[ 1]]])
+                            if self.hprm['inputs.cyclic'].get(inpt2):
+                                conv2 = spim.filters.convolve(cc,
+                                                              ker2,
+                                                              mode = 'wrap',
+                                                              )
+                            else:
+                                conv2 = sig.convolve(cc, 
+                                                     ker2, 
+                                                     mode = 'valid',
+                                                     )
+                            ridge[var,key,ind] = 0.5 * alpha * np.linalg.norm(conv2)**2 
+                            
+            elif pen == 'factor_smoothing_reg':
+                if type(M) not in {np.ndarray, np.matrix}:
+                    raise NotImplementedError
+                else:
+                    if not reshape_tensor:
+                        cc = M
+                        if cc.shape[0] > 2:
+                            ker  = np.array([[1],[-2],[1]])
+                            if self.hprm['inputs.cyclic'].get(inpt):
+                                conv = spim.filters.convolve(cc,
+                                                             ker,
+                                                             mode = 'wrap',
+                                                             )
+                            else:
+                                conv = sig.convolve(cc, 
+                                                    ker, 
+                                                    mode = 'valid',
+                                                    )
+                            ridge[var,key,ind] = 0.5 * alpha * np.linalg.norm(conv)**2
+                    else:
+                        cc = M.reshape(*self.size_tensor_bivariate[key], -1)  
+                        inpt1, inpt2 = inpt
+                        if cc.shape[0] > 2:
+                            ker1  = np.array([[[1]],[[-2]],[[1]]]) 
+                            if self.hprm['inputs.cyclic'].get(inpt1):
+                                conv1 = spim.filters.convolve(cc,
+                                                              ker1,
+                                                              mode = 'wrap',
+                                                              )
+                            else:
+                                conv1 = sig.convolve(cc, 
+                                                     ker1, 
+                                                     mode = 'valid',
+                                                     )
+                            ridge[var,key,ind] = 0.5 * alpha * np.linalg.norm(conv1)**2
+            else:
+                raise NotImplementedError('Incorrect panalization : {0}'.format(pen))
         return ridge
     
     
@@ -1861,8 +1906,8 @@ class additive_features_model:
     
     #profile
     def initialize_coef(self, ):
-        coef = cp.deepcopy(self.given_coef)
-        keys_upd = []
+        coef                = cp.deepcopy(self.given_coef)
+        keys_upd            = []
         self.punished_coor  = set()
         self.prison_coor    = {}
         self.life_sentences = set()
@@ -1870,119 +1915,104 @@ class additive_features_model:
         method_init_UV = self.hprm.get('tf_method_init_UV')
         print('method_init_UV : ', method_init_UV)
         fac = 1e-4
-        self.keys = {
-                     key : []
+        self.keys = {key : []
                      for key in self.formula.index.get_level_values('coefficient')
                      }
-        if self.factor_A:
-            keys_upd     += ['A','',()]
-            coef['A',''] = np.zeros(self.k)
         if 'Blr' in self.keys.keys():   
-            for key in list(filter(lambda x :                  x not in self.mask, self.X_training.keys())):
-                if key in self.mask: 
+            for inpt, location in list(filter(lambda x : x not in self.mask, self.X_training.keys())):
+                if (inpt, location) in self.mask: 
                     print(colored('\n\nNo Mask when low-rank\n\n', 'red'))
                     raise ValueError
-                    del self.mask[key]
-                    print(colored('\n\nmask of {0} removed to include it in Blr\n\n'.format(key), 'red', 'on_cyan'))
-                if self.hprm['data_cat'][key] in self.config_coef['Blr']:
-                    self.keys['Blr'].append(key)
+                    del self.mask[inpt,location]
+                    print(colored('\n\nmask of {0} removed to include it in Blr\n\n'.format((inpt,location)), 'red', 'on_cyan'))
+                if inpt in self.formula.loc['Blr']:
+                    self.keys['Blr'].append((inpt,location))
                     if not (hasattr(self, 'freeze_Blr') and self.freeze_Blr):
-                        if self.pen['bu'].get(self.hprm['data_cat'][key]) != 'rlasso' and self.hprm['afm.algorithm.first_order.column_update'].get(self.hprm['data_cat'][key]):
+                        if self.pen['bu'].get(inpt) != 'rlasso' and self.hprm['afm.algorithm.first_order.column_update'].get(inpt):
                             raise ValueError('we do not want column update for Blr')
-                            keys_upd += [('bu',key,(int(r),)) for r in self.mask.get(key, range(self.k))]
+                            keys_upd += [('bu',(inpt,location),(int(r),)) for r in self.mask.get((inpt,location), range(self.k))]
                         else:
-                            keys_upd += [('bu',key,())]
-                    if ('bu', key) not in coef:
+                            keys_upd += [('bu',(inpt,location),())]
+                    if ('bu', (inpt,location)) not in coef:
                         mm   = slice(None)
                         lenV = self.k
-                        coef[('bu',key)]    = np.random.randn(self.size[key], min(self.r_B[key], self.k))*fac
+                        coef[('bu',(inpt,location))]    = np.random.randn(self.size[(inpt,location)], min(self.r_B[inpt], self.k))*fac
                         if lenV > 0:
-                            coef[('bv',key)]    = np.zeros((self.k, min(self.r_B[key], self.k)))
-                            coef[('bv',key)][mm], _ = np.linalg.qr(np.random.randn(self.k, min(self.r_B[key], self.k)))
-                            coef[('Blr',key)]   = coef[('bu',key)] @ coef[('bv',key)].T
+                            coef['bv',(inpt,location)]        = np.zeros((self.k, min(self.r_B[inpt], self.k)))
+                            coef['bv',(inpt,location)][mm], _ = np.linalg.qr(np.random.randn(self.k, min(self.r_B[inpt], self.k)))
+                            coef['Blr',(inpt,location)]       = coef[('bu',(inpt,location))] @ coef[('bv',(inpt,location))].T
         if 'B' in self.keys.keys():
-            for key in self.X_training.keys():
-                if type(key[0]) != tuple : 
-                    generic_key = key[:-1]
-                elif type(key[0]) == tuple:
-                    generic_key = tuple([v[:-1] for v in key])
-                if generic_key in self.formula.loc['B'].index:
-                    if not (key in self.mask and type(self.mask[key])==np.ndarray and self.mask[key].shape[0] == 0):
-                        self.keys['B'].append(key)
+            for inpt,location in self.X_training.keys():
+                if inpt in self.formula.loc['B'].index:
+                    if not ((inpt,location) in self.mask and type(self.mask[(inpt,location)])==np.ndarray and self.mask[(inpt,location)].shape[0] == 0):
+                        self.keys['B'].append((inpt,location))
                     if 'B' not in self.frozen_variables:
-                        if self.pen['B'].get(generic_key) != 'rlasso' and self.hprm['afm.algorithm.first_order.column_update'].get(('B', generic_key)):
-                            keys_upd += [('B',key,(int(r),)) for r in self.mask.get(key, range(self.k))]
+                        if self.pen['B'].get(inpt) != 'rlasso' and self.hprm['afm.algorithm.first_order.column_update'].get(('B', inpt)):
+                            keys_upd += [('B',(inpt,location),(int(r),)) for r in self.mask.get((inpt,location), range(self.k))]
                         else:
-                            keys_upd += [('B',key,())]
-                    if ('B', key) not in coef:
-                        # if   (    self.hprm['afm.algorithm.first_order.sparse_coef']
-                        #       and (   key in self.mask 
-                        #            or 'classo' in self.pen.get('B',{}).get(self.hprm['data_cat'][key])
-                        #            )
-                        #       ):
-                        #     coef['B',key] = sp.sparse.csc_matrix(np.zeros((self.size[key], self.k)))
-                        # else:
-                        coef['B',key] = np.zeros((self.size[key], self.k))
+                            keys_upd += [('B',(inpt,location),())]
+                    if ('B', (inpt,location)) not in coef:
+                        coef['B',(inpt,location)] = np.zeros((self.size[(inpt,location)], self.k))
         if 'Cuv' in self.keys.keys():
-            for key in list(filter(lambda x : '#' in x, self.X_training.keys())):
-                if self.hprm['data_cat'][key] in self.config_coef['Cuv']:
-                    if key.split('#') != sorted(key.split('#')):
+            for (inpt,location) in list(filter(lambda x : type(x[0]) == tuple, self.X_training.keys())):
+                if inpt in self.formula.loc['Cuv']:
+                    if str(inpt[1]) < str(inpt[0]):
                        continue
-                    if not (key in self.mask and self.mask[key].shape[0] == 0):
-                        self.keys['Cuv'].append(key)
+                    if not ((inpt,location) in self.mask and self.mask[inpt,location].shape[0] == 0):
+                        self.keys['Cuv'].append((inpt,location))
                     if not (hasattr(self, 'freeze_Cuv') and self.freeze_Cuv):
-                        if self.pen['Cu'].get(self.hprm['data_cat'][key]) != 'rlasso' and self.hprm['afm.algorithm.first_order.column_update'].get(self.hprm['data_cat'][key]):
-                            keys_upd +=   [('Cu',key,(int(r),),) for r in self.mask.get(key, range(self.k))] 
+                        if self.pen['Cu'].get(inpt) != 'rlasso' and self.hprm['afm.algorithm.first_order.column_update'].get(inpt):
+                            keys_upd +=   [('Cu',(inpt,location),(int(r),),) for r in self.mask.get((inpt,location), range(self.k))] 
                         else:
-                            keys_upd +=   [('Cu',key,())]
-                        if self.pen['Cv'].get(self.hprm['data_cat'][key]) != 'rlasso' and self.hprm['afm.algorithm.first_order.column_update'].get(self.hprm['data_cat'][key]):
-                            keys_upd +=   [('Cv',key,(int(r),),) for r in self.mask.get(key, range(self.k))]
+                            keys_upd +=   [('Cu',(inpt,location),())]
+                        if self.pen['Cv'].get(inpt) != 'rlasso' and self.hprm['afm.algorithm.first_order.column_update'].get(inpt):
+                            keys_upd +=   [('Cv',(inpt,location),(int(r),),) for r in self.mask.get((inpt,location), range(self.k))]
                         else:
-                            keys_upd +=   [('Cv',key,())]
-                    if ('Cu', key) not in coef or ('Cv', key) not in coef:
+                            keys_upd +=   [('Cv',(inpt,location),())]
+                    if ('Cu', (inpt,location)) not in coef or ('Cv', (inpt,location)) not in coef:
                         # if   self.hprm['afm.algorithm.first_order.sparse_coef'] and False\
-                        # and (key in self.mask or 'classo' in self.pen.get('Cuv',{}).get(self.hprm['data_cat'][key])):
+                        # and (key in self.mask or 'classo' in self.pen.get('Cuv',{}).get(inpt)):
                         #     assert 0, 'no sparse and einsum'
                         # else:
-                        rk = min(self.r_UV, self.size_tensor_bivariate[key][0], self.size_tensor_bivariate[key][1])
-                        coef['Cu',key ]  = np.zeros((self.size_tensor_bivariate[key][0], rk, self.k))
-                        coef['Cu',key ][:,:,self.mask.get(key,None)] = np.random.randn(*coef['Cu',key][:,:,self.mask.get(key,None)].shape) 
-                        coef['Cv',key ]  = np.zeros((self.size_tensor_bivariate[key][1], rk, self.k))
-                        coef['Cv',key ][:,:,self.mask.get(key,None)] = np.random.randn(*coef['Cv',key][:,:,self.mask.get(key,None)].shape)
-                        coef['Cuv',key] = np.einsum('prk,qrk->pqk',
-                                                    coef['Cu',key], 
-                                                    coef['Cv',key], 
+                        rk = min(self.r_UV, self.size_tensor_bivariate[inpt,location][0], self.size_tensor_bivariate[inpt,location][1])
+                        coef['Cu',(inpt,location) ]  = np.zeros((self.size_tensor_bivariate[inpt,location][0], rk, self.k))
+                        coef['Cu',(inpt,location) ][:,:,self.mask.get((inpt,location),None)] = np.random.randn(*coef['Cu',(inpt,location)][:,:,self.mask.get((inpt,location),None)].shape) 
+                        coef['Cv',(inpt,location) ]  = np.zeros((self.size_tensor_bivariate[inpt,location][1], rk, self.k))
+                        coef['Cv',(inpt,location) ][:,:,self.mask.get((inpt,location),None)] = np.random.randn(*coef['Cv',(inpt,location)][:,:,self.mask.get((inpt,location),None)].shape)
+                        coef['Cuv',(inpt,location)] = np.einsum('prk,qrk->pqk',
+                                                    coef['Cu',(inpt,location)], 
+                                                    coef['Cv',(inpt,location)], 
                                                     ).reshape((-1, self.k))
         if 'Cbm' in self.keys.keys():
-            for key_b in (  list(filter(lambda x : '#' not in x, self.X_training.keys()))
-                          + list(map(lambda x : x.split('#')[0], list(filter(lambda x : '#' in x, self.X_training.keys()))))
-                          ):
-                if self.hprm['data_cat'][key_b] in self.config_coef['Cb']:
-                    if not (key_b in self.mask and self.mask[key_b].shape[0] == 0) and not (key_b in self.keys['Cb']):
-                        self.keys['Cb' ].append(key_b)
+            for (inpt_b,location_b) in (  list(filter(lambda x : '#' not in x, self.X_training.keys()))
+                                        + list(map(lambda x : x[0], list(filter(lambda x : '#' in x, self.X_training.keys()))))
+                                        ):
+                if inpt_b in self.formula.loc['Cb']:
+                    if not ((inpt_b,location_b) in self.mask and self.mask[inpt_b,location_b].shape[0] == 0) and not ((inpt_b,location_b) in self.keys['Cb']):
+                        self.keys['Cb' ].append((inpt_b,location_b))
                     if not (hasattr(self, 'freeze_Cb') and self.freeze_Cb):
-                        if self.pen['Cb'].get(self.hprm['data_cat'][key_b]) != 'rlasso' and self.hprm['afm.algorithm.first_order.column_update'].get(self.hprm['data_cat'][key_b]):
-                            for r in self.mask.get(key_b, range(self.k)):
-                                if ('Cb',key_b,(int(r),),) not in keys_upd:
-                                    keys_upd += [('Cb',key_b,(int(r),),) ]
+                        if self.pen['Cb'].get(inpt_b) != 'rlasso' and self.hprm['afm.algorithm.first_order.column_update'].get(inpt_b):
+                            for r in self.mask.get((inpt_b,location_b), range(self.k)):
+                                if ('Cb',(inpt_b,location_b),(int(r),),) not in keys_upd:
+                                    keys_upd += [('Cb',(inpt_b,location_b),(int(r),),) ]
                         else:
-                            if ('Cb',key_b,()) not in keys_upd:
-                                keys_upd += [('Cb',key_b,())]
+                            if ('Cb',(inpt_b,location_b),()) not in keys_upd:
+                                keys_upd += [('Cb',(inpt_b,location_b),())]
     
-                    if ('Cb', key_b) not in coef:
+                    if ('Cb', (inpt_b,location_b)) not in coef:
                         # if  (self.hprm['afm.algorithm.first_order.sparse_coef'] and False\
-                        #      and (key_b in self.mask or 'classo' in self.pen.get('Cb',{}).get(self.hprm['data_cat'][key_b]))
+                        #      and (key_b in self.mask or 'classo' in self.pen.get('Cb',{}).get(inpt_b))
                         #      ):
                         #     assert 0, 'no sparse and einsum'
                         # else:
-                        coef['Cb',key_b] = np.zeros((self.size[key_b], self.k))
+                        coef['Cb',(inpt_b,location_b)] = np.zeros((self.size[inpt_b,location_b], self.k))
             for key in list(filter(lambda x : '#' in x, self.X_training.keys())):
-                key_b = key.split('#')[0]
-                if self.hprm['data_cat'][key] in self.config_coef['Cbm']+tuple(['#'.join(e.split('#')[::-1]) for e in self.config_coef['Cbm']]):
-                    if not (key in self.mask and self.mask[key].shape[0] == 0) and not (key in self.keys['Cbm']):
+                key_b = key[0]
+                if inpt in self.formula.loc['Cbm']+tuple(['#'.join(e[::-1]) for e in self.formula.loc['Cbm']]):
+                    if not (key in self.mask and self.mask[inpt,location].shape[0] == 0) and not (key in self.keys['Cbm']):
                         self.keys['Cbm'].append(key)
                     if not (hasattr(self, 'freeze_Cm') and self.freeze_Cm):
-                        if self.pen['Cm'].get(self.hprm['data_cat'][key]) != 'rlasso' and self.hprm['afm.algorithm.first_order.column_update'].get(self.hprm['data_cat'][key]):
+                        if self.pen['Cm'].get(inpt) != 'rlasso' and self.hprm['afm.algorithm.first_order.column_update'].get(inpt):
                             for r in self.mask.get(key, range(self.k)):
                                 if ('Cm',key,(int(r),),) not in keys_upd:
                                     keys_upd += [('Cm',key,(int(r),),) ]
@@ -1991,12 +2021,12 @@ class additive_features_model:
                                 keys_upd += [('Cm',key,())]  
                     if ('Cm', key) not in coef:
                         # if  (self.hprm['afm.algorithm.first_order.sparse_coef'] and False\
-                        #      and (key in self.mask or 'classo' in self.pen.get('Cm',{}).get(self.hprm['data_cat'][key]))
+                        #      and (key in self.mask or 'classo' in self.pen.get('Cm',{}).get(inpt))
                         #      ):
                         #     assert 0, 'no sparse and einsum'
                         # else:
-                        assert self.size_tensor_bivariate[key][0] == self.size[key_b], 'key : {0} - key_b : {1}'.format(key, key_b)
-                        coef['Cm',key]   = np.zeros((self.size_tensor_bivariate[key][1], self.k))
+                        assert self.size_tensor_bivariate[inpt,location][0] == self.size[key_b], 'key : {0} - key_b : {1}'.format(key, key_b)
+                        coef['Cm',key]   = np.zeros((self.size_tensor_bivariate[inpt,location][1], self.k))
                         coef['Cbm',key]  = np.einsum('pk,qk->pqk',
                                                     coef['Cb',key_b], 
                                                     coef['Cm',key], 
@@ -2065,7 +2095,7 @@ class additive_features_model:
                 if key in self.mask:
                     d_masks[coor_upd] = self.mask[key]
                 elif key[::-1] in self.mask:
-                    d_masks[coor_upd] = self.mask['#'.join(key.split('#')[::-1])]
+                    d_masks[coor_upd] = self.mask['#'.join(key[::-1])]
                 else:
                     d_masks[coor_upd] = slice(None)
             else:
@@ -2184,38 +2214,53 @@ class additive_features_model:
                 assert len(self.prison_coor.keys())   == len(set(self.prison_coor.keys()))
                 if bool(set(self.prison_coor.keys()) & set(self.punished_coor)):
                     assert 0
-                self.nb_sentences.update({(var,key,post):self.nb_sentences.get((var,key,post),0)+1 for (var,key,post) in self.punished_coor}) 
+                self.nb_sentences.update({(var,key,post) : self.nb_sentences.get((var,key,post),0)+1
+                                          for (var,key,post) in self.punished_coor
+                                          }) 
                 # Send the punished ones from police station to county prison 
-                self.prison_coor.update( {(var,key,post):min(2**self.nb_sentences[var,key,post], 1e4)     for (var,key,post) in self.punished_coor})
+                self.prison_coor.update( {(var,key,post) : min(2**self.nb_sentences[var,key,post], 1e4)
+                                          for (var,key,post) in self.punished_coor
+                                          })
                 # Check 
                 if EXTRA_CHECK and 0:
-                    for (var,key,post) in self.punished_coor:
-                        if not self.col_upd.get(self.hprm['data_cat'][key]):
-                            if not np.linalg.norm(self.coef[var,key][:,post]) == 0: # Pas besoin d'être nuls pour être en prison
+                    for (var,(inpt,location),post) in self.punished_coor:
+                        if not self.col_upd.get(inpt):
+                            if not np.linalg.norm(self.coef[var,(inpt,location)][:,post]) == 0: # Pas besoin d'être nuls pour être en prison
                                 assert 0
                 # Clear police station
                 self.punished_coor = set()
                 ### Prison 
-                self.prison_coor = {(var,key,post):v-1 for (var,key,post),v in self.prison_coor.items() if v-1 >0}
+                self.prison_coor = {(var,(inpt,location),post) : v-1
+                                    for (var,(inpt,location),post), v
+                                    in self.prison_coor.items()
+                                    if v-1 > 0
+                                    }
                 if EXTRA_CHECK and 0:
                     assert len(self.prison_coor) <= len(self.keys_upd)*self.k
-                    for (var,key,post) in self.prison_coor:
-                        if not self.hprm['afm.algorithm.first_order.column_update'].get(self.hprm['data_cat'][key]):
-                            if not np.linalg.norm(self.coef[var,key][:,post]) == 0:
+                    for (var,(inpt,location),post) in self.prison_coor:
+                        if not self.hprm['afm.algorithm.first_order.column_update'].get(inpt):
+                            if not np.linalg.norm(self.coef[var,(inpt,location)][:,post]) == 0:
                                 assert 0 # A column can already be in prison but have moved during recent iterations because of a too small mask
-                self.dikt_masks = {coor:v for coor,v in {key:self.prison_masks(key,self.prison_coor) 
-                                                         for key in self.keys_upd
-                                                         }.items() 
-                                                    if type(v) != type(slice(None))
-                                                    or v       !=      slice(None)
-                                                    }
-                self.list_coor = [coor for coor in self.keys_upd if (coor not in self.prison_coor) 
-                                                                 and not (       type(self.dikt_masks.get(coor)) == np.ndarray 
-                                                                          and     self.dikt_masks.get(coor).ndim == 1 
-                                                                          and self.dikt_masks.get(coor).shape[0] == 0
-                                                                          ) 
-                                                               ]
-                self.fully_out = [coor for coor in self.keys_upd if coor not in self.list_coor]
+                self.dikt_masks = {coor:v 
+                                   for coor,v in {(var,(inpt,location),post) : self.prison_masks((var,(inpt,location),post),self.prison_coor) 
+                                                  for (var,(inpt,location),post) in self.keys_upd
+                                                  }.items() 
+                                   if type(v) != type(slice(None))
+                                   or v       !=      slice(None)
+                                   }
+                self.list_coor = [coor 
+                                  for coor in self.keys_upd
+                                  if (    (coor not in self.prison_coor) 
+                                      and not (    type(self.dikt_masks.get(coor)) == np.ndarray 
+                                               and self.dikt_masks.get(coor).ndim == 1 
+                                               and self.dikt_masks.get(coor).shape[0] == 0
+                                               )
+                                      )
+                                  ]
+                self.fully_out = [coor
+                                  for coor in self.keys_upd
+                                  if coor not in self.list_coor
+                                  ]
                 np.random.shuffle(self.list_coor)
             else:
                 self.list_coor  = self.keys_upd.copy()
@@ -2251,19 +2296,19 @@ class additive_features_model:
             return orig_mask
         
     #profile
-    def precomputationsY(self, X, dataset = 'training'):
+    def precomputationsY(self, X, Y, dataset = None):
         assert dataset in {'training', 'validation'}
         assert not self.active_gp
-        X1 = {key:value for key, value in (self.X_training if dataset == 'training' else self.X_validation).items() if '#' not in key}
-        X1tX1 = X.get('X1tX1_'+dataset, {})
-        X2 = {key:value for key, value in (self.X_training if dataset == 'training' else self.X_validation).items() if '#' in key} 
-        X1tX2 = X.get('X1tX2_'+dataset, {})
-        X2tX1 = X.get('X2tX1_'+dataset, {})
-        X2tX2 = X.get('X2tX2_'+dataset, {})
-        for key, value in {**X1tX2, **X2tX1, **X2tX2}.items():
-            assert type(value) in {np.ndarray, sp.sparse.csr_matrix}
-            assert (key in X1tX2) + (key in X2tX1) + (key in X2tX2) == 1
-        Y = self.Y_training if dataset == 'training' else self.Y_validation
+        # X1    = {key:value for key, value in (self.X_training if dataset == 'training' else self.X_validation).items() if '#' not in key}
+        # X1tX1 = X.get('X1tX1_'+dataset, {})
+        # X2    = {key:value for key, value in (self.X_training if dataset == 'training' else self.X_validation).items() if type(key[0]) == tuple} 
+        # X1tX2 = X.get('X1tX2_'+dataset, {})
+        # X2tX1 = X.get('X2tX1_'+dataset, {})
+        # X2tX2 = X.get('X2tX2_'+dataset, {})
+        # for key, value in {**X1tX2, **X2tX1, **X2tX2}.items():
+        #     assert type(value) in {np.ndarray, sp.sparse.csr_matrix}
+        #     assert (key in X1tX2) + (key in X2tX1) + (key in X2tX2) == 1
+        #Y = self.Y_training if dataset == 'training' else self.Y_validation
              
         # Compute everything with Y
         print(colored('compute YtY', 'red'))
@@ -2274,108 +2319,108 @@ class additive_features_model:
         self.print_gso(L)
         print(colored('compute X1tY', 'red'))        
         try:
-            X1tY = tools.batch_load(path_data, 
+            XtY = tools.batch_load(path_data, 
                                     prefix    = self.dikt['features.{0}.univariate'.format(dataset)], 
-                                    data_name = 'X1tY_'+dataset,
+                                    data_name = 'XtY_'+dataset,
                                     data_type = 'dict_sp',
                                     )
-            for key in X1: 
-                assert key in X1tY
+            for key in X: 
+                assert key in XtY
         except Exception: 
-            print(colored('compute X1tY', 'red'))
-            X1tY  = {}
-            for key in X1.keys():
+            print(colored('compute XtY', 'red'))
+            XtY  = {}
+            for key in X.keys():
                 mask = self.mask.get(key, slice(None))
-                X1tY[key] = sp.sparse.csc_matrix(np.zeros((X1[key].shape[1], Y.shape[1])))
-                X1tY[key][:,mask] = X1[key].T.dot(Y[:,mask]) 
-            if len(X1tY) < 1e3:
+                XtY[key] = sp.sparse.csc_matrix(np.zeros((X[key].shape[1], Y.shape[1])))
+                XtY[key][:,mask] = X[key].T.dot(Y[:,mask]) 
+            if len(XtY) < 1e3:
                 try:
                     tools.batch_save(path_data,
-                                     data      = X1tY,
+                                     data      = XtY,
                                      prefix    = self.dikt['features.{0}.univariate'.format(dataset)],
-                                     data_name = 'X1tY_'+dataset,
+                                     data_name = 'XtY_'+dataset,
                                      data_type = 'dict_sp',
                                      )
                 except tools.saving_errors:
                     pass
                 except Exception as e:
                     raise e
-        L = X1tY
+        L = XtY
         self.print_gso(L)
             
             
                     
-        if bool(X2):
-            print(colored('compute X2tY', 'red'))        
-            try:
-                X2tY = tools.batch_load(path_data,
-                                        prefix    = self.dikt['features.{0}.bivariate'.format(dataset)],
-                                        data_name = 'X2tY_'+dataset,
-                                        data_type = 'dict_sp' if bool(X2) else 'dict_np',
-                                        )
-            except Exception: 
-                print(colored('compute X2tY', 'red'))
-                X2tY = {}
-                for key in X2.keys():
-                    mask = self.mask.get(key, slice(None))
-                    X2tY[key] = sp.sparse.csr_matrix(np.zeros((X2[key].shape[1], Y.shape[1])))
-                    X2tY[key][:,mask] = X2[key].T.dot(Y[:,mask]) 
-                if len(X2tY) < 1e3:
-                    try:
-                        tools.batch_save(path_data,
-                                         data      = X2tY,
-                                         prefix    = self.dikt['features.{0}.bivariate'.format(dataset)],
-                                         data_name = 'X2tY_' + dataset,
-                                         data_type = ('dict_sp'
-                                                      if bool(X2)
-                                                      else
-                                                      'dict_np'
-                                                      ),
-                                         )
-                    except tools.loading_errors:
-                        pass
-                    except Exception as e:
-                        raise e
-            ### Check
-            if EXTRA_CHECK:
-                if len(X2tY) > 0:
-                    key     = next(iter(X2tY.keys()))
-                    mask    = self.mask.get(key, slice(None))
-                    control = np.zeros((X2[key].shape[1], Y.shape[1]))
-                    control[:,mask] = X2[key].T.dot(Y[:,mask]) 
-                    if type(X2tY[key]) == sp.sparse.csr_matrix:
-                        control = sp.sparse.csr_matrix(control)
-                        assert np.linalg.norm(X2tY[key].data - control.data)  < 1e-8
-                    else:
-                        assert np.allclose(X2tY[key], control).all()           
-            L = X2tY
-            self.print_gso(L)
+        # if bool(X2):
+        #     print(colored('compute X2tY', 'red'))        
+        #     try:
+        #         X2tY = tools.batch_load(path_data,
+        #                                 prefix    = self.dikt['features.{0}.bivariate'.format(dataset)],
+        #                                 data_name = 'X2tY_'+dataset,
+        #                                 data_type = 'dict_sp' if bool(X2) else 'dict_np',
+        #                                 )
+        #     except Exception: 
+        #         print(colored('compute X2tY', 'red'))
+        #         X2tY = {}
+        #         for key in X2.keys():
+        #             mask = self.mask.get(key, slice(None))
+        #             X2tY[key] = sp.sparse.csr_matrix(np.zeros((X2[key].shape[1], Y.shape[1])))
+        #             X2tY[key][:,mask] = X2[key].T.dot(Y[:,mask]) 
+        #         if len(X2tY) < 1e3:
+        #             try:
+        #                 tools.batch_save(path_data,
+        #                                  data      = X2tY,
+        #                                  prefix    = self.dikt['features.{0}.bivariate'.format(dataset)],
+        #                                  data_name = 'X2tY_' + dataset,
+        #                                  data_type = ('dict_sp'
+        #                                               if bool(X2)
+        #                                               else
+        #                                               'dict_np'
+        #                                               ),
+        #                                  )
+        #             except tools.loading_errors:
+        #                 pass
+        #             except Exception as e:
+        #                 raise e
+            # ### Check
+            # if EXTRA_CHECK:
+            #     if len(X2tY) > 0:
+            #         key     = next(iter(X2tY.keys()))
+            #         mask    = self.mask.get(key, slice(None))
+            #         control = np.zeros((X2[key].shape[1], Y.shape[1]))
+            #         control[:,mask] = X2[key].T.dot(Y[:,mask]) 
+            #         if type(X2tY[key]) == sp.sparse.csr_matrix:
+            #             control = sp.sparse.csr_matrix(control)
+            #             assert np.linalg.norm(X2tY[key].data - control.data)  < 1e-8
+            #         else:
+            #             assert np.allclose(X2tY[key], control).all()           
+            # L = X2tY
+            # self.print_gso(L)
+        return Y_sqfrob, YtY, XtY
+        # if dataset == 'training':
+        #     #self.Y_training        = Y
+        #     self.YtY_training      = YtY
+        #     #self.XtX_training      = {}
+        #     self.XtY_training      = {}
+        #     self.Y_sqfrob_training = Y_sqfrob
+        #     # if bool(X1tX1):
+        #     #     self.XtX_training.update({**X1tX1})
+        #     #     self.XtY_training.update({**X1tY})
+        #     # if bool(X2tX2):
+        #     #     self.XtX_training.update({**X1tX2, **X2tX1, **X2tX2})
+        #     #     self.XtY_training.update({**X2tY})
 
-        if dataset == 'training':
-            self.Y_training        = Y
-            self.YtY_training      = YtY
-            self.XtX_training      = {}
-            self.XtY_training      = {}
-            self.Y_sqfrob_training = Y_sqfrob
-            if bool(X1tX1):
-                self.XtX_training.update({**X1tX1})
-                self.XtY_training.update({**X1tY})
-            if bool(X2tX2):
-                self.XtX_training.update({**X1tX2, **X2tX1, **X2tX2})
-                self.XtY_training.update({**X2tY})
-
-        elif dataset == 'validation':
-            self.Y_validation        = Y
-            self.YtY_validation      = YtY
-            self.XtX_validation      = {}
-            self.XtY_validation      = {}
-            self.Y_sqfrob_validation = Y_sqfrob
-            if bool(X1tX1):
-                self.XtX_validation.update({**X1tX1})
-                self.XtY_validation.update({**X1tY})
-            if bool(X2tX2):
-                self.XtX_validation.update({**X1tX2, **X2tX1, **X2tX2})
-                self.XtY_validation.update({**X2tY})
+        # elif dataset == 'validation':
+        #     self.Y_validation        = Y
+        #     self.YtY_validation      = YtY
+        #     self.XtX_validation      = {}
+        #     self.XtY_validation      = {}
+        #     self.Y_sqfrob_validation = Y_sqfrob
+        #     if bool(X1tX1):
+        #         self.XtX_validation.update({**X1tX1})
+        #         self.XtY_validation.update({**X1tY})
+        #     if bool(X2tX2):
+        #         self.XtX_validation.update({**X1tX2, **X2tX1, **X2tX2})
+        #         self.XtY_validation.update({**X2tY})
     
     #profile
     def predict(self, coef = None, dataset = None, drop = {}, adjust_A = False, X_new = None, n_new = None, verbose = False):
@@ -2404,8 +2449,8 @@ class additive_features_model:
                 var, key, ind = coor
                 cc            = coef[coor]
                 if coor[0] == 'Cbm':
-                    if   ('Cb',coor[1].split('#')[0],coor[2]) in coef:
-                        mask = self.dikt_masks.get(('Cb',coor[1].split('#')[0],coor[2]), slice(None))
+                    if   ('Cb',coor[1][0],coor[2]) in coef:
+                        mask = self.dikt_masks.get(('Cb',coor[1][0],coor[2]), slice(None))
                     elif ('Cm',)+coor[1:] in coef:
                         mask = self.dikt_masks.get(('Cm',)+coor[1:], slice(None))
                     else:
@@ -2463,7 +2508,7 @@ class additive_features_model:
               '& obj = ', '{:<6.6}'.format(tools.format_nb.round_nb(self.cur_obj_training)), 
               end = '\n'
               )
-        cat_of_prisoners = sorted(set([self.hprm['data_cat'][coor[1]] for coor in self.prison_coor]))
+        cat_of_prisoners = sorted(set([coor[1][0] for coor in self.prison_coor]))
         print('{0} prisoners'.format(len(self.prison_coor)), ' : ', cat_of_prisoners)
         self.end_epoch   = time.time()
         print('time for epoch : {0} seconds'.format(round(self.end_epoch - self.begin_epoch, 2)))
@@ -2523,11 +2568,8 @@ class additive_features_model:
                 
     def size_coef(self, ):
         self.memory_size_coef = {}
-        for cat in list(self.hprm['data_cat'].values()):
-            self.memory_size_coef[cat] = 0
-            for (var,key), v in self.coef.items():
-                if self.hprm['data_cat'][key] == cat:
-                    self.memory_size_coef[cat] += sys.getsizeof(v)/1e6
+        for (var,(inpt,location)), v in self.coef.items():
+            self.memory_size_coef[inpt] = self.memory_size_coef.get(inpt,0) + sys.getsizeof(v)/1e6
         return self.memory_size_coef 
     
            
@@ -2597,7 +2639,7 @@ class additive_features_model:
                 grad = self.compute_grad(self.coef)
                 pred = self.predict()
                 assert pred.shape == self.Y_training.shape
-                if 'B' in self.config_coef:
+                if 'B' in self.formula.index.get_level_values('coefficient').unique():
                     self.gap_B.append(self.duality_gap(pred, grad, 'B'))
        
         if early_stop      : print('\nEARLY STOPPING : ' , 'old mean', old_mean_ft, ' - recent mean', new_mean_ft)
@@ -2612,8 +2654,8 @@ class additive_features_model:
                 coef_tmp[coor_upd] = np.asarray(coef_tmp[coor_upd])
             assert type(coef_tmp[coor_upd]) == np.ndarray
             if coor_upd[0] == 'Cbm':
-                if   ('Cb',coor_upd[1].split('#')[0],coor_upd[2]) in coef_tmp:
-                    mask = d_masks.get(('Cb',coor_upd[1].split('#')[0],coor_upd[2]), slice(None))
+                if   ('Cb',coor_upd[1][0],coor_upd[2]) in coef_tmp:
+                    mask = d_masks.get(('Cb',coor_upd[1][0],coor_upd[2]), slice(None))
                 elif ('Cm',)+coor_upd[1:] in coef_tmp:
                     mask = d_masks.get(('Cm',)+coor_upd[1:], slice(None))
                 else:
@@ -2635,58 +2677,73 @@ class additive_features_model:
                                                                           )])
                 self.slope_ind [coor_upd][inner_mask] = new_ind_slope [coor_upd]
                 self.offset_ind[coor_upd][inner_mask] = new_ind_offset[coor_upd]
-            var,key = coor_upd[:2]
+            var,(inpt,location) = coor_upd[:2]
             assert var in {'A', 'B', 'Blr', 'bu', 'bv', 'Csp', 'Cuv', 'Cu', 'Cv', 'Cb', 'Cm', 'Cbm'}
-            if self.active_set and not self.hprm['afm.algorithm.first_order.column_update'].get(self.hprm['data_cat'][key]):
+            if self.active_set and not self.hprm['afm.algorithm.first_order.column_update'].get(inpt):
                 orig_mask = self.orig_masks.get(coor_upd, slice(None))
                 ind_posts = mask if type(mask) == np.ndarray else (orig_mask if type(orig_mask) == np.ndarray else np.arange(self.k))
                 if EXTRA_CHECK and 0: # with prop active set, some coor can be both in prisons and active
                     for jj in ind_posts:
-                        if (var,key,jj) in self.prison_coor:
+                        if (var,(inpt,location),jj) in self.prison_coor:
                             assert 0
-                norm_diff    = np.linalg.norm(coef_tmp[coor_upd] - (self.coef[var,key][:,:,mask] if var in {'Cu','Cv'} else self.coef[var,key][:,mask]), axis = tuple(k for k in range(coef_tmp[coor_upd].ndim - 1)))
+                norm_diff    = (  np.linalg.norm((coef_tmp[coor_upd]
+                                                  - (self.coef[var,(inpt,location)][:,:,mask] 
+                                                     if var in {'Cu','Cv'}
+                                                     else
+                                                     self.coef[var,(inpt,location)][:,mask]
+                                                     )
+                                                  ),
+                                                 axis = tuple(k
+                                                              for k in range(coef_tmp[coor_upd].ndim - 1)
+                                                              )
+                                                 )
+                                )
                 # One could evaluate fit_validation for each post and jail accordingly but too expansive : rather do col_upd
                 convicts     = ind_posts[norm_diff == 0]
                 convicts_tmp = np.arange(ind_posts.shape[0])[norm_diff == 0]
                 for i, r in enumerate(convicts):
-                    if not np.linalg.norm(self.coef[var,key][:,:,r] if var in {'Cu','Cv'} else self.coef[var,key][:,r]) < np.finfo(float).eps:
+                    if not np.linalg.norm(self.coef[var,(inpt,location)][:,:,r]
+                                          if var in {'Cu','Cv'}
+                                          else
+                                          self.coef[var,(inpt,location)][:,r]
+                                          ) < np.finfo(float).eps:
                         if np.linalg.norm(coef_tmp[coor_upd][:,:,convicts_tmp[i]] if var in {'Cu','Cv'} else coef_tmp[coor_upd][:,convicts_tmp[i]]) == 0:
                             assert 0
                     if (*coor_upd[:2], r) not in self.prison_coor:
                         self.punished_coor.add((*coor_upd[:2], r))
             if EXTRA_CHECK:
                 if var == 'bv':
-                    assert self.coef[var,key][mask].shape     == coef_tmp[coor_upd].shape
+                    assert self.coef[var,(inpt,location)][mask].shape     == coef_tmp[coor_upd].shape
                 elif var in {'Cu','Cv'}:
-                    assert self.coef[var,key][:,:,mask].shape == coef_tmp[coor_upd].shape
+                    assert self.coef[var,(inpt,location)][:,:,mask].shape == coef_tmp[coor_upd].shape
                 else:
-                    assert self.coef[var,key][:,mask].shape   == coef_tmp[coor_upd].shape
-                self.coef_prec[var,key] = self.coef[var,key].copy()
-            shape_before = self.coef[var, key].shape
+                    assert self.coef[var,(inpt,location)][:,mask].shape   == coef_tmp[coor_upd].shape
+                self.coef_prec[var,(inpt,location)] = self.coef[var,(inpt,location)].copy()
+            shape_before = self.coef[var, (inpt,location)].shape
             if var == 'bv':
-                self.coef[var,key][mask]      = coef_tmp[coor_upd]
+                self.coef[var,(inpt,location)][mask]      = coef_tmp[coor_upd]
             if var in {'Cu','Cv'}:
-                self.coef[var, key][:,:,mask] = coef_tmp[coor_upd]
+                self.coef[var, (inpt,location)][:,:,mask] = coef_tmp[coor_upd]
             else:
-                self.coef[var, key][:,mask]   = coef_tmp[coor_upd]
-            assert shape_before == self.coef[var, key].shape
+                self.coef[var, (inpt,location)][:,mask]   = coef_tmp[coor_upd]
+            assert shape_before == self.coef[var, (inpt,location)].shape
             if EXTRA_CHECK:
                 if   var == 'bu':
-                    assert self.coef[var,key].shape == coef_tmp[coor_upd].shape
-                    assert np.allclose(self.coef[var,key], coef_tmp[coor_upd])
+                    assert self.coef[var,(inpt,location)].shape == coef_tmp[coor_upd].shape
+                    assert np.allclose(self.coef[var,(inpt,location)], coef_tmp[coor_upd])
                 elif var == 'bv':
-                    assert self.coef[var,key][mask].shape == coef_tmp[coor_upd].shape
-                    assert np.allclose(self.coef[var,key][mask], coef_tmp[coor_upd])
+                    assert self.coef[var,(inpt,location)][mask].shape == coef_tmp[coor_upd].shape
+                    assert np.allclose(self.coef[var,(inpt,location)][mask], coef_tmp[coor_upd])
                 elif var in {'Cu','Cv'}:
-                    assert self.coef[var,key][:,:,mask].shape == coef_tmp[coor_upd].shape
-                    assert np.allclose(self.coef[var,key][:,:,mask], coef_tmp[coor_upd])
+                    assert self.coef[var,(inpt,location)][:,:,mask].shape == coef_tmp[coor_upd].shape
+                    assert np.allclose(self.coef[var,(inpt,location)][:,:,mask], coef_tmp[coor_upd])
                 else:
-                    assert self.coef[var,key][:,mask].shape == coef_tmp[coor_upd].shape
-                    assert np.allclose(self.coef[var,key][:,mask], coef_tmp[coor_upd])
-                if self.active_set and not self.hprm['afm.algorithm.first_order.column_update'].get(self.hprm['data_cat'][key]):
+                    assert self.coef[var,(inpt,location)][:,mask].shape == coef_tmp[coor_upd].shape
+                    assert np.allclose(self.coef[var,(inpt,location)][:,mask], coef_tmp[coor_upd])
+                if self.active_set and not self.hprm['afm.algorithm.first_order.column_update'].get(inpt):
                     for i, rr in enumerate(convicts):
-                        if not np.allclose(self.coef     [var,key][:,:,rr] if var in {'Cu','Cv'} else self.coef[var,key][:,rr], 
-                                           self.coef_prec[var,key][:,:,rr] if var in {'Cu','Cv'} else self.coef[var,key][:,rr],
+                        if not np.allclose(self.coef     [var,(inpt,location)][:,:,rr] if var in {'Cu','Cv'} else self.coef[var,(inpt,location)][:,rr], 
+                                           self.coef_prec[var,(inpt,location)][:,:,rr] if var in {'Cu','Cv'} else self.coef[var,(inpt,location)][:,rr],
                                            ):
                             print('mask', mask)
                             print('ind_post', ind_posts)
@@ -2703,7 +2760,7 @@ class additive_features_model:
                 mm = self.dikt_masks.get((var, key, ind), slice(None))
                 if var == 'Cb':
                     for var2, key2 in self.coef:
-                        if var2 == 'Cbm' and key2.split('#')[0] == key:
+                        if var2 == 'Cbm' and key2[0] == key:
                             if ('Cbm', key2) in self.coef:
                                 coef['Cbm', key2, ind] = np.einsum('pk,qk->pqk',
                                                                    coef[var, key, ind],
@@ -2714,7 +2771,7 @@ class additive_features_model:
                     assert ('Cbm',key) in self.coef
                     if ('Cbm',key) in self.coef:
                         coef['Cbm', key, ind] = np.einsum('pk,qk->pqk',
-                                                          self.coef['Cb', key.split('#')[0]][:,mm],
+                                                          self.coef['Cb', key[0]][:,mm],
                                                           coef[var, key, ind],
                                                           ).reshape((-1, coef[var, key, ind].shape[1]))
                         assert coef['Cbm', key, ind].shape == self.coef['Cbm', key][:,mm].shape
@@ -2828,17 +2885,17 @@ class additive_features_model:
         
     def xtra_part_bu(self, n, XtX, coef, coor_upd, mask, gp_pen, MMt):
         key = coor_upd[1]
-        xxx = (1/n)*XtX[key+'@'+key] @ (coef[('Blr',*coor_upd[1:])] if ('Blr',*coor_upd[1:]) in coef else coef['Blr',coor_upd[1]][:,mask])# VtV = I
+        xxx = (1/n)*XtX[key,key] @ (coef[('Blr',*coor_upd[1:])] if ('Blr',*coor_upd[1:]) in coef else coef['Blr',coor_upd[1]][:,mask])# VtV = I
         if gp_pen:
                 xxx = gp_pen * xxx @ MMt[mask][:,mask]
         return xxx
     
     
     def xtra_part_cb(self, n, XtX, coef, coor_upd, mask, gp_pen, MMt):
-        cbb =   (1/n)*XtX[coor_upd[1]+'@'+coor_upd[1]] @ (coef[coor_upd] if coor_upd in coef else coef[coor_upd[:2]][:,mask])
-        cbm = 2*(1/n)*np.sum([XtX[coor_upd[1]+'@'+keybm] @ (coef['Cbm', keybm, coor_upd[-1]] if ('Cbm', keybm, coor_upd[-1]) in coef else coef['Cbm', keybm][:,mask])
-                              for keybm in self.keys['Cbm'] if keybm.split('#')[0] == coor_upd[1]
-                              if coor_upd[1]+'@'+keybm in XtX
+        cbb =   (1/n)*XtX[coor_upd[1],coor_upd[1]] @ (coef[coor_upd] if coor_upd in coef else coef[coor_upd[:2]][:,mask])
+        cbm = 2*(1/n)*np.sum([XtX[coor_upd[1],keybm] @ (coef['Cbm', keybm, coor_upd[-1]] if ('Cbm', keybm, coor_upd[-1]) in coef else coef['Cbm', keybm][:,mask])
+                              for keybm in self.keys['Cbm'] if keybm[0] == coor_upd[1]
+                              if (coor_upd[1],keybm) in XtX
                               ], 
                               axis = 0,
                               )
@@ -2846,12 +2903,12 @@ class additive_features_model:
             cc = (coef[coor_upd] if coor_upd in coef else coef[coor_upd[:2]][:,mask])
             cmm = np.zeros(cc.shape)
             for keybm2 in self.keys['Cbm']:
-                if keybm2.split('#')[0] == coor_upd[1]:
+                if keybm2[0] == coor_upd[1]:
                     for keybm1 in self.keys['Cbm']:
-                        if keybm1.split('#')[0] == coor_upd[1]:
-                            if keybm1+'@'+keybm2 in XtX:
+                        if keybm1[0] == coor_upd[1]:
+                            if (keybm1,keybm2) in XtX:
                                 cmm += (1/n)*np.einsum('pqk,qk->pk', 
-                                                       (XtX[keybm1+'@'+keybm2] @ (coef['Cbm', keybm2, coor_upd[-1]]
+                                                       (XtX[keybm1,keybm2] @ (coef['Cbm', keybm2, coor_upd[-1]]
                                                         if ('Cbm', keybm2, coor_upd[-1]) in coef 
                                                         else 
                                                         coef['Cbm', keybm2][:,mask])).reshape((-1,
@@ -2867,15 +2924,15 @@ class additive_features_model:
             else:
                 assert cbm == 0
             cmm =   (1/n)*np.sum([np.einsum('pqk,qk->pk', 
-                                            (XtX[keybm1+'@'+keybm2] @ (coef['Cbm', keybm2, coor_upd[-1]] if ('Cbm', keybm2, coor_upd[-1]) in coef else coef['Cbm', keybm2][:,mask])@ MMt[mask][:,mask]).reshape((-1, 
+                                            (XtX[keybm1,keybm2] @ (coef['Cbm', keybm2, coor_upd[-1]] if ('Cbm', keybm2, coor_upd[-1]) in coef else coef['Cbm', keybm2][:,mask])@ MMt[mask][:,mask]).reshape((-1, 
                                                                                                                                                                                                                  coef.get(('Cm', keybm1), self.coef['Cm', keybm1])[:,mask].shape[0], 
                                                                                                                                                                                                                  coef.get(('Cm', keybm1), self.coef['Cm', keybm1])[:,mask].shape[1],
                                                                                                                                                                                                                  )),
                                             coef.get(('Cm', keybm1), self.coef['Cm', keybm1])[:,mask],
                                             )
-                                  for keybm2 in self.keys['Cbm'] if keybm2.split('#')[0] == coor_upd[1]
-                                  for keybm1 in self.keys['Cbm'] if keybm1.split('#')[0] == coor_upd[1]
-                                  if keybm1+'@'+keybm2 in XtX
+                                  for keybm2 in self.keys['Cbm'] if keybm2[0] == coor_upd[1]
+                                  for keybm1 in self.keys['Cbm'] if keybm1[0] == coor_upd[1]
+                                  if (keybm1,keybm2) in XtX
                                   ],
                                  axis = 0, 
                                 )
@@ -2884,21 +2941,21 @@ class additive_features_model:
     
     
     def xtra_part_cm(self, n, XtX, coef, coor_upd, mask, gp_pen, MMt):
-        ccc = (1/n)*XtX[coor_upd[1]+'@'+coor_upd[1]] @ (coef[('Cbm',*coor_upd[1:])] if ('Cbm',*coor_upd[1:]) in coef else coef['Cbm',coor_upd[1]][:,mask])#[:,mask_right]
+        ccc = (1/n)*XtX[coor_upd[1],coor_upd[1]] @ (coef[('Cbm',*coor_upd[1:])] if ('Cbm',*coor_upd[1:]) in coef else coef['Cbm',coor_upd[1]][:,mask])#[:,mask_right]
         if gp_pen:
                 ccc = gp_pen * ccc @ MMt[mask][:,mask]
         xxx = np.einsum('pqk,pk->qk',
-                        ccc.reshape((coef.get(('Cb', coor_upd[1].split('#')[0]), self.coef['Cb', coor_upd[1].split('#')[0]])[:,mask].shape[0],
+                        ccc.reshape((coef.get(('Cb', coor_upd[1][0]), self.coef['Cb', coor_upd[1][0]])[:,mask].shape[0],
                                      -1,
-                                     coef.get(('Cb', coor_upd[1].split('#')[0]), self.coef['Cb', coor_upd[1].split('#')[0]])[:,mask].shape[1],
+                                     coef.get(('Cb', coor_upd[1][0]), self.coef['Cb', coor_upd[1][0]])[:,mask].shape[1],
                                      )),
-                        coef.get(('Cb', coor_upd[1].split('#')[0]), self.coef['Cb', coor_upd[1].split('#')[0]])[:,mask],
+                        coef.get(('Cb', coor_upd[1][0]), self.coef['Cb', coor_upd[1][0]])[:,mask],
                         )
         return xxx
  
     
     def xtra_part_cl(self, n, XtX, coef, coor_upd, mask, gp_pen, MMt):
-        xxx = (1/n)*XtX[coor_upd[1]+'@'+coor_upd[1]] @ (coef[coor_upd] if coor_upd in coef else coef[coor_upd[:2]][:,mask])
+        xxx = (1/n)*XtX[coor_upd[1],coor_upd[1]] @ (coef[coor_upd] if coor_upd in coef else coef[coor_upd[:2]][:,mask])
         if gp_pen: 
             xxx = gp_pen * xxx @ MMt[mask][:,mask]
         assert xxx.shape == (coef[coor_upd] if coor_upd in coef else coef[coor_upd[:2]][:,mask]).shape, (xxx.shape, (coef[coor_upd] if coor_upd in coef else coef[coor_upd[:2]][:,mask]).shape, coor_upd, mask)
@@ -2906,7 +2963,7 @@ class additive_features_model:
     
     
     def xtra_part_cu(self, n, XtX, coef, coor_upd, mask, gp_pen, MMt):
-        ccc = (1/n)*XtX[coor_upd[1]+'@'+coor_upd[1]] @ (coef[('Cuv',*coor_upd[1:])] if ('Cuv',*coor_upd[1:]) in coef else coef['Cuv',coor_upd[1]][:,mask])#[:,mask_right]
+        ccc = (1/n)*XtX[coor_upd[1],coor_upd[1]] @ (coef[('Cuv',*coor_upd[1:])] if ('Cuv',*coor_upd[1:]) in coef else coef['Cuv',coor_upd[1]][:,mask])#[:,mask_right]
         if gp_pen:
                 ccc = gp_pen * ccc @ MMt[mask][:,mask]
         xxx = np.einsum('pqk,qrk->prk',
@@ -2920,7 +2977,7 @@ class additive_features_model:
     
     
     def xtra_part_cv(self, n, XtX, coef, coor_upd, mask, gp_pen, MMt):
-        ccc = (1/n)*XtX[coor_upd[1]+'@'+coor_upd[1]] @ (coef[('Cuv',*coor_upd[1:])] if ('Cuv',*coor_upd[1:]) in coef else coef['Cuv',coor_upd[1]][:,mask])
+        ccc = (1/n)*XtX[coor_upd[1],coor_upd[1]] @ (coef[('Cuv',*coor_upd[1:])] if ('Cuv',*coor_upd[1:]) in coef else coef['Cuv',coor_upd[1]][:,mask])
         if gp_pen:
                 ccc = gp_pen * ccc @ MMt[mask][:,mask]
         xxx = np.einsum('pqk,prk->qrk',

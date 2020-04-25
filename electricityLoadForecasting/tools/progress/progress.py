@@ -16,8 +16,7 @@ def compute_progress(liçt):
     assert s <= 1
     return s
     
-def show(liçt, *args):
+def show(liçt, *info):
     a = compute_progress(liçt)
     assert 0 <= a <= 1
-    print('\r' + "{:6.6}%" .format(np.round(a*100, 2))+' ', ' - '.join(args), end = '')
-    import ipdb; ipdb.set_trace() # See if the other arguments are printed too in the command just above
+    print('\r' + "{:6.6}%" .format(np.round(a*100, 2))+' ', ' - '.join(info), end = '')

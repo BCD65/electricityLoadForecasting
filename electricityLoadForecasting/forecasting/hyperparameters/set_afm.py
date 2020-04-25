@@ -58,8 +58,8 @@ def set_afm(hprm):
                   'afm.algorithm'                           : 'FirstOrder',
                   #'afm.algorithm.sparse_coef'               : False, # Memory size of coef does not seem to be a problem, at least when there is no interactions
                   'afm.algorithm.sparse_coef_after_optim'   : True,  # After the optimization, store the coefficients in a sparse format
-                  'afm.algorithm.frozen_variables'          : {},
                   # First-order descent algorithm
+                  'afm.algorithm.first_order.frozen_variables'          : {},
                   'afm.algorithm.first_order.early_stop_validation'     : False, # Use performance on validation set as a stopping criteria 
                   'afm.algorithm.first_order.early_stop_ind_validation' : False, # Use performance on validation set as a stopping criteria 
                   'afm.algorithm.first_order.max_iter'                  : 1e6,  # Is compared with the decrease of the objective
