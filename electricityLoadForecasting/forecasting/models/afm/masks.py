@@ -6,7 +6,6 @@ from electricityLoadForecasting import paths, tools
 
 
 path_data = os.path.join(paths.outputs,
-                         'Saved',
                          'Data',
                          )
 

@@ -133,7 +133,6 @@ def make_dikt_files(hprm, nb_sites = None, nb_weather = None, dt_training = None
         #############
         # Algorithm #
         #############
-        no_warmstart   = 'nws'  *(1-hprm['afm.algorithm.try_warmstart'])
         gp_reg         = (('gp', str(hprm.get('gp_matrix')), str(hprm.get('gp_pen')))
                           if (hprm.get('gp_pen', 0)!=0 and hprm.get('gp_matrix','') != '')
                           else
@@ -148,15 +147,18 @@ def make_dikt_files(hprm, nb_sites = None, nb_weather = None, dt_training = None
                              '{:.0e}'.format(hprm['afm.algorithm.lbfgs.maxfun']).replace('s+', ''),
                              '{:.0e}'.format(hprm['afm.algorithm.lbfgs.maxiter']).replace('+', ''),
                              ])
+        elif hprm['afm.algorithm'] == 'FirstOrder':
+            stop = '_'.join(['nws'  *(1-hprm['afm.algorithm.first_order.try_warmstart']),
+                             'stop', 
+                             '{:.0e}'.format(hprm['afm.algorithm.first_order.max_iter']).replace('+', ''),
+                             'noes' *(1-hprm['afm.algorithm.first_order.early_stop_validation']),
+                             'noesi'*(1-hprm['afm.algorithm.first_order.early_stop_ind_validation']),
+                             str(hprm['afm.algorithm.first_order.tol']), 
+                             ]) 
         else:
-            stop = '_'.join(['stop', 
-                             '{:.0e}'.format(hprm['afm.algorithm.max_iter']).replace('+', ''),
-                             'noes' *(1-hprm['afm.algorithm.early_stop_test']),
-                             'noesi'*(1-hprm['afm.algorithm.early_stop_ind_test']),
-                             str(hprm['afm.algorithm.tol']), 
-                             ])                   
+            raise ValueError('Incorrect algorithm : {0}'.format(hprm['afm.algorithm']))                  
             
-        dikt['experience.whole'] = dikt['experience.model'] + [(no_warmstart, stop), gp_reg]
+        dikt['experience.whole'] = dikt['experience.model'] + [stop, gp_reg]
         
 
     for k in dikt: 

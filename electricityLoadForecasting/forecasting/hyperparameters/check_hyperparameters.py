@@ -14,6 +14,7 @@ def check_hyperparameters(hprm):
 
 
     if hprm['learning.model'] in {'afm'}:
+        assert hprm['afm.algorithm'] in ['L-BFGS', 'FirstOrder']
         hprm['afm.formula'].sort_index(inplace = True)
         set_diff =  {e
                      for inpts in hprm['afm.formula'].index.get_level_values('input').unique()

@@ -9,7 +9,7 @@ from numbers   import Number
 #
 from electricityLoadForecasting import tools, paths
 
-path_betas = os.path.join(paths.outputs, 'Saved', 'Betas')
+path_betas = os.path.join(paths.outputs, 'Betas')
 
 def cat_bound(col_cat_matching):
     # Location of the different categories of variables in the design matrix
@@ -379,28 +379,4 @@ def optimize_coef(model,
             print(e)
     return ans_lbfgs
         
-        
-def sort_keys(keys, masks):
-    cat_owned = {}
-    # Sort the categories of covariates
-    keys_shared = []
-    keys_owned  = []
-    for inpt, location in keys: 
-        cond = (    (inpt,location) in masks
-                and not (type(masks[inpt,location]) == type(slice(None)) and masks[inpt,location] == slice(None))
-                )
-        if cond:
-            keys_owned.append((inpt, location))
-            cat_owned[inpt] = True
-        else:
-            keys_shared.append((inpt, location))
-            if inpt not in cat_owned:
-                cat_owned[inpt] = False
-    keys_shared = sorted(keys_shared, key = lambda x : str(x))
-    keys_owned  = sorted(keys_owned,  key = lambda x : str(x))
-    print('    {0} cats shared - {1} cats owned'.format(len(keys_shared), len(keys_owned)))
-    # The shared variables are in the top rows of the design matrix
-    # The individual covariates come after
-    return keys_shared + keys_owned, cat_owned
-
-  
+ 

@@ -1,9 +1,4 @@
 
-try:
-    from termcolor import colored
-except ModuleNotFoundError:
-    colored = lambda s, t : s
-    
 import time
 import os
 import sys
@@ -13,29 +8,30 @@ import scipy as sp
 import scipy.signal  as sig
 import scipy.ndimage as spim
 import numbers
+from termcolor import colored
 #
 from electricityLoadForecasting import tools, paths
 from . import lbfgs
 
 ###############################################################################
 
-path_betas = os.path.join(paths.outputs, 'Saved', 'Betas')
-path_data  = os.path.join(paths.outputs, 'Saved', 'Data')
+path_betas = os.path.join(paths.outputs, 'Betas')
+path_data  = os.path.join(paths.outputs, 'Data')
 
 EXTRA_CHECK = 0
 
+dikt_var_temp = {
+                 'bu' : 'Blr', 
+                 'Cu' : 'Cuv',
+                 'Cv' : 'Cuv',
+                 'Cb' : 'Cb',
+                 'Cm' : 'Cbm',
+                 }
+
 class additive_features_model:
-    """
-    Defines a model that stores all the covariates and the XtX, XtY
-    with the methods for optimization (proximal-gradient descent or lbfgs), prediction and loss computation
-    """
-    dikt_var_temp = {
-                     'bu' : 'Blr', 
-                     'Cu' : 'Cuv',
-                     'Cv' : 'Cuv',
-                     'Cb' : 'Cb',
-                     'Cm' : 'Cbm',
-                     }
+    # Defines a model that stores all the covariates and the XtX, XtY
+    # with the methods for optimization (proximal-gradient descent or lbfgs), 
+    # prediction and loss computation
 
     def __init__(self, 
                  hprm,             
@@ -44,31 +40,31 @@ class additive_features_model:
         # Sets all the parameters as attributes of the class
         self.hprm        = hprm
         self.dikt        = dikt_file_names
+        self.max_iter    = int(self.hprm['afm.algorithm.first_order.max_iter'])
         self.formula     = self.hprm['afm.formula']
-        self.max_iter    = int(self.hprm['afm.algorithm.max_iter'])
         assert not self.formula.empty
-        self.alpha       = {var : {key : self.formula.xs((var,key))['regularization_coef']
+        self.alpha       = {var : {key : self.formula.xs((var,key))['regularization_coef'].item()
                                    for key in self.formula.loc[var].index
-                                   if (   var in self.formula.index.get_level_values('coefficient').unique()
-                                       or (    var in {'Cb','Cm'} 
-                                           and 'Cbm' in self.formula.index.get_level_values('coefficient').unique()
-                                           )
-                                       )
+                                   # if (   var in self.formula.index.get_level_values('coefficient').unique()
+                                   #     or (    var in {'Cb','Cm'} 
+                                   #         and 'Cbm' in self.formula.index.get_level_values('coefficient').unique()
+                                   #         )
+                                   #     )
                                    }
                             for var in self.formula.index.get_level_values('coefficient').unique()
                             }
-        self.pen         = {var : {key : self.formula.xs((var,key))['regularization_func']
+        self.pen         = {var : {key : self.formula.xs((var,key))['regularization_func'].item()
                                    for key in self.formula.loc[var].index
-                                   if (   var in self.formula.index.get_level_values('coefficient').unique()
-                                       or (    var in {'Cb','Cm'} 
-                                           and 'Cbm' in self.formula.index.get_level_values('coefficient').unique()
-                                           )
-                                       )
+                                   # if (   var in self.formula.index.get_level_values('coefficient').unique()
+                                   #     or (    var in {'Cb','Cm'} 
+                                   #         and 'Cbm' in self.formula.index.get_level_values('coefficient').unique()
+                                   #         )
+                                   #     )
                                    }
                             for var in self.formula.index.get_level_values('coefficient').unique()
                             }
-        self.lbfgs       = self.hprm['afm.algorithm'] == 'L-BFGS'
-        self.share_enet  = self.hprm['afm.regularization.share_enet'] # elastic net parameter
+        self.lbfgs       = (self.hprm['afm.algorithm'] == 'L-BFGS')
+        self.share_enet  =  self.hprm['afm.regularization.share_enet'] # elastic net parameter
         if 'Blr' in self.alpha and 'Blr' in self.pen: 
             # Low-rank (along the substations) coefficient matrix 
             self.alpha['bu'] = self.alpha['Blr']
@@ -84,43 +80,34 @@ class additive_features_model:
         self.gp_pen      = self.hprm['afm.sum_consistent.gp_pen'] # matrix for the sum-consistent model
         
         # Freeze the univariate or the bivariate coefficient matrices (rarely used)        
-        self.frozen_variables = self.hprm.get('afm.algorithm.frozen_variables')
+        self.frozen_variables = self.hprm['afm.algorithm.first_order.frozen_variables']
         
         # Stopping criteria
         self.dual_gap          = False
-        self.tol               = self.hprm.get('afm.algorithm.tol')
-        self.norm_grad_min     = self.hprm.get('afm.algorithm.norm_grad_min')
-        self.dist_min          = self.hprm.get('afm.algorithm.dist_min')
+        self.tol               = self.hprm['afm.algorithm.first_order.tol']
+        self.norm_grad_min     = self.hprm['afm.algorithm.first_order.norm_grad_min']
+        self.dist_min          = self.hprm['afm.algorithm.first_order.dist_min']
         del hprm, dikt_file_names
         
+        # Descent method
+        self.bcd             = self.hprm['afm.algorithm.first_order.bcd']
+        self.batch_cd        = not self.bcd
+        self.active_set      = self.hprm['afm.algorithm.first_order.active_set']
+        self.prop_active_set = self.hprm['afm.algorithm.first_order.prop_active_set']
+        self.col_upd         = self.hprm['afm.algorithm.first_order.column_update'] if self.bcd else {}
+        
         # Line-Search parameters  
-        self.eta                = 1
+        self.eta                = {} if self.bcd else 1
         self.etaA               = 1
         self.eta1               = 1
         self.eta2               = 1
         self.theta              = 0.5
         self.proba_ls           = 0.2
-        self.nb_steps = 0
-        
-        # Problem Form
-        self.A_max    = self.hprm.get('tf_A_max')
-        self.orth_J   = 0
-        self.r_B      = self.hprm.get('tf_rk_B', {})
-        self.r_UV     = self.hprm.get('tf_rk_UV')
-        
-        # VR parameters
-        self.epoch = 0
-        
-        # Descent method
-        self.bcd             = self.hprm['afm.algorithm.bcd']
-        self.batch_cd        = not self.bcd
-        self.active_set      = self.hprm['afm.algorithm.active_set']
-        self.prop_active_set = self.hprm['afm.algorithm.prop_active_set']
-        self.col_upd         = self.hprm['afm.algorithm.column_update'] if self.bcd else {}
+        self.nb_steps           = 0
 
         print('Formula      :', str(self.formula), '\n')      
         print('batch' if self.batch_cd else 'bcd per col for ' + repr([k for k, v in self.col_upd.items() if v]))
-        print('sparse_coef' if self.hprm['afm.algorithm.sparse_coef'] else 'not sparse coef')
+        #print('sparse_coef' if self.hprm['afm.algorithm.first_order.sparse_coef'] else 'not sparse coef')
         assert self.batch_cd + self.bcd == 1    
 
     def fit(self, 
@@ -136,7 +123,7 @@ class additive_features_model:
         self.Y_training = Y_training
         self.n_training = self.Y_training.shape[0]
         self.k          = self.Y_training.shape[1]
-        self.factor_A   = bool(set(self.formula.index.get_level_values('coefficient').unique()) & {'A'})
+        #self.factor_A   = bool(set(self.formula.index.get_level_values('coefficient').unique()) & {'A'})
         self.mask       = specs['mask_univariate']
         self.size       = specs['size_univariate']
         self.mask.update(specs.get('mask_bivariate', {}))
@@ -156,7 +143,7 @@ class additive_features_model:
                                               for tt in self.partition_posts_to_tuples.values()
                                               }
                 
-        if (self.hprm['plot.afm'] or self.hprm['afm.algorithm.early_stop_ind_validation']):
+        if (self.hprm['plot.afm'] or self.hprm['afm.algorithm.first_order.early_stop_ind_validation']):
             self.M_mean    = np.ones((self.k, self.k))/self.k
             
         # Warm-start
@@ -174,13 +161,12 @@ class additive_features_model:
         del X_training, Y_training
 
         # validation dataset
-        self.compute_validation    = (type(X_validation) != int) 
-        self.precompute_validation = not self.lbfgs and (type(X_validation) != int) and self.hprm.get('afm.algorithm.precompute_validation', True)
+        self.compute_validation    = bool(X_validation)
+        self.precompute_validation = self.compute_validation and (not self.lbfgs)
         if self.compute_validation:
             self.X_validation  = X_validation
             self.Y_validation  = Y_validation
             self.n_validation  = self.Y_validation.shape[0]
-            #self.X_validation.update({**X_validation.get('X2_validation', {})})
             self.print_fit_with_mean(dataset = 'validation', mean = 'training')
             self.print_fit_with_mean(dataset = 'validation', mean = 'validation')
             if self.precompute_validation:
@@ -188,21 +174,19 @@ class additive_features_model:
                 self.precomputationsY(X_validation, dataset = 'validation')
                 print('Precomputations validation done')
         del X_validation, Y_validation
-        self.iteration     = 0
+        self.iteration = 0
 
-
-        """
-        Initialize coefficients
-        """
         print('Initialize Coefficients')
         self.coef, self.keys_upd = self.initialize_coef()
-        print('    ', len(self.coef), 'coef')
+        print('    ', len(self.coef),     'coef')
         print('    ', len(self.keys_upd), 'keys_upd')
         self.orig_masks = self.make_orig_masks()
-        self.dikt_masks = {k:v for k, v in self.orig_masks.items() 
-                               if type(v) != type(slice(None))
+        self.dikt_masks = {k:v
+                           for k, v in self.orig_masks.items() 
+                           if (   type(v) != type(slice(None))
                                or v!= slice(None)
-                               }
+                               )
+                           }
         for (var, key), v in self.coef.items():
             if key in self.dikt_masks:
                 self.coef[var,key] = sp.sparse.csc_matrix(v)
@@ -225,22 +209,20 @@ class additive_features_model:
             # Epochs
             self.epoch_compute_validation     = 1
             self.epoch_compute_ind_validation = self.epoch_stopping_criteria
-            self.epoch_print_info       = 1 if EXTRA_CHECK else int(    self.epoch_stopping_criteria) 
-            self.flag_stopping_criteria = int(2 * self.epoch_stopping_criteria) # Needs two periods cause two means are taken
-            self.flag_print_info        = 0
-            self.flag_check_fit         = 1e5
+            self.epoch_print_info             = 1 if EXTRA_CHECK else int(    self.epoch_stopping_criteria) 
+            self.flag_stopping_criteria       = int(2 * self.epoch_stopping_criteria) # Needs two periods cause two means are taken
+            self.flag_print_info              = 0
+            self.flag_check_fit               = 1e5
             # Flags
-            self.flag_print_progress    = 0
-            self.flag_show_prison       = 0
+            self.flag_print_progress         = 0
+            self.flag_show_prison            = 0
             self.flag_compute_validation     = -1 #self.flag_print_progress - 1
             self.flag_compute_ind_validation = int(5 * self.epoch_stopping_criteria)
-            self.flag_check_pred        = -1
+            self.flag_check_pred             = -1
             # 
             self.print_len_epochs()
             self.begin_epoch            = time.time()
-        
-        if self.hprm.get('stop_before_coef'):
-            assert 0
+
         try:
             """
             Try to load final model
@@ -257,15 +239,15 @@ class additive_features_model:
                                           data_type = 'dict_np',
                                           )
             if self.lbfgs:
-                aaa = sorted([e 
-                              for e in self.X_training.keys() 
-                              if e not in self.mask
-                              ])
-                bbb = sorted([e 
-                              for e in self.X_training.keys() 
-                              if e in self.mask
-                              ])
-                self.sorted_keys = aaa + bbb
+                shared_keys = sorted([e 
+                                      for e in self.X_training.keys() 
+                                      if e not in self.mask
+                                      ])
+                owned_keys  = sorted([e 
+                                      for e in self.X_training.keys() 
+                                      if e in self.mask
+                                      ])
+                self.sorted_keys = shared_keys + owned_keys
                 for var, key in self.coef:
                     if var in self.keys:
                         self.keys[var].append(key)
@@ -274,20 +256,17 @@ class additive_features_model:
             print(colored('Coef loaded', 'blue'))
             self.change_sparse_structure()
         except tools.loading_errors as e:
-            """
-            Begin algorithm then
-            """
+            ### Begin algorithm then
             print(colored(str(e), 'red'))
             print(colored('coef not loaded', 'red'))
-            self.sorted_keys, self.cats_owned = lbfgs.sort_keys(
-                                                                self.X_training.keys(), 
-                                                                self.mask, 
-                                                                )
+            self.sorted_keys, self.cats_owned = self.sort_keys(self.X_training.keys(), 
+                                                               self.mask, 
+                                                               )
             self.compute_normalization()
             # Normalize data
             for key in self.sorted_keys:
                 inpt, location = key
-                self.X_training[key]    = self.X_training[key]    / self.normalization[inpt]
+                self.X_training   [key] = self.X_training   [key] / self.normalization[inpt]
                 self.X_validation [key] = self.X_validation [key] / self.normalization[inpt]
             if hasattr(self, 'XtX_training'):
                 for keys in self.XtX_training.keys():
@@ -303,16 +282,14 @@ class additive_features_model:
                     if self.precompute_validation:
                         self.XtY_validation [key] /= self.normalization[inpt]
             if self.lbfgs:
-                self.use_lbfgs_old = False
                 lbfgs.start_lbfgs(self) # Launch the lbfgs algorithm
-                # Reorganize
+                # Reorganize the coefficients
                 for ii, key in enumerate(self.X_training.keys()):
-                    var = 'lbfgs_coef'
-                    self.coef[var,key] = cp.deepcopy(self.bfgs_long_coef[slice(self.key_col_large_matching[key][0], 
+                    self.coef['B',key] = cp.deepcopy(self.bfgs_long_coef[slice(self.key_col_large_matching[key][0], 
                                                                                self.key_col_large_matching[key][1],
                                                                                )
                                                                          ])
-                    if ~self.hprm['afm.algorithm.sparse_coef'] and type(self.coef[var,key]) in {sp.sparse.csc_matrix, sp.sparse.csr_matrix}:
+                    if type(self.coef[var,key]) in {sp.sparse.csc_matrix, sp.sparse.csr_matrix}:# and ~self.hprm['afm.algorithm.first_order.sparse_coef'] and :
                         self.coef[var,key] = self.coef[var,key].toarray()                       
                 # Change data type for sparsity rules
                 self.change_sparse_structure()
@@ -321,69 +298,78 @@ class additive_features_model:
                 # Initialize arrays
                 self.change_sparse_structure()
                 self.fit_training     = np.zeros(self.max_iter)
-                if self.hprm['plot.afm'] or self.hprm['tf_early_stop_ind_validation']:
-                    self.fit_ind_training = np.zeros((self.max_iter, self.k))
+                if self.hprm['plot.afm'] or self.hprm['afm.algorithm.first_order.early_stop_ind_validation']:
+                    self.fit_ind_training  = np.zeros((self.max_iter, self.k))
                     self.fit_mean_training = np.zeros(self.max_iter)
-                self.fit_gp_training  = np.zeros(self.max_iter)
-                self.reg       = np.zeros(self.max_iter)
-                self.ridge     = np.zeros(self.max_iter)
-                self.obj_training = np.zeros(self.max_iter)
-                self.etas      = np.zeros(self.max_iter)
-                self.etaAs     = np.zeros(self.max_iter)
-                self.eta1s     = np.zeros(self.max_iter)
-                self.eta2s     = np.zeros(self.max_iter)
+                self.fit_gp_training = np.zeros(self.max_iter)
+                self.reg             = np.zeros(self.max_iter)
+                self.ridge           = np.zeros(self.max_iter)
+                self.obj_training    = np.zeros(self.max_iter)
+                self.etas            = np.zeros(self.max_iter)
+                self.etaAs           = np.zeros(self.max_iter)
+                self.eta1s           = np.zeros(self.max_iter)
+                self.eta2s           = np.zeros(self.max_iter)
                 self.gap_B, self.gap_U, self.gap_V, self.gap_D, self.gap_W, self.gap_Z = [[] for k in range(6)] 
                 if self.compute_validation:
                     self.fit_validation     = np.zeros(self.max_iter)
-                    if self.hprm['plot.afm'] or self.hprm['tf_early_stop_ind_validation']:
-                        self.fit_ind_validation = np.zeros((self.max_iter, self.k))                
+                    if self.hprm['plot.afm'] or self.hprm['afm.algorithm.first_order.early_stop_ind_validation']:
+                        self.fit_ind_validation  = np.zeros((self.max_iter, self.k))                
                         self.fit_mean_validation = np.zeros(self.max_iter)                
                     self.fit_gp_validation  = np.zeros(self.max_iter)
-                    self.reg          = np.zeros(self.max_iter)
                     self.obj_validation     = np.zeros(self.max_iter)
                 self.warm_start()
                 
-                """
-                First values
-                """
+                ### First values
                 print('Compute fit training')
                 self.cur_fit_training    = self.evaluate_fit(self.coef, dataset = 'training')
                 self.cur_fit_gp_training = self.evaluate_fit(self.coef, dataset = 'training', 
-                                                          gp_matrix = self.gp_matrix, 
-                                                          gp_pen = self.gp_pen,
-                                                          ) if self.active_gp else 0
+                                                             gp_matrix = self.gp_matrix, 
+                                                             gp_pen = self.gp_pen,
+                                                             ) if self.active_gp else 0
                 print('Compute reg')
                 self.slope_ind  = {}
                 self.offset_ind = {}
-                self.cur_ind_reg, self.slope_ind, self.offset_ind = self.evaluate_ind_reg({coor:(self.coef[coor[:2]][:,:,self.dikt_masks.get(coor, slice(None))] if coor[0] in {'Cu','Cv'} else self.coef[coor[:2]][:,self.dikt_masks.get(coor, slice(None))]) for coor in self.keys_upd})
+                self.cur_ind_reg, self.slope_ind, self.offset_ind = self.evaluate_ind_reg({coor:(self.coef[coor[:2]][:,:,self.dikt_masks.get(coor, slice(None))] 
+                                                                                                 if coor[0] in {'Cu','Cv'}
+                                                                                                 else
+                                                                                                 self.coef[coor[:2]][:,self.dikt_masks.get(coor, slice(None))]
+                                                                                                 )
+                                                                                           for coor in self.keys_upd
+                                                                                           })
                 self.cur_reg       = np.sum([v for k, v in self.cur_ind_reg.items()])
                 print('Compute ridge')
-                self.cur_ind_ridge = self.evaluate_ind_ridge({coor:(self.coef[coor[:2]][:,:,self.dikt_masks.get(coor, slice(None))] if coor[0] in {'Cu','Cv'} else self.coef[coor[:2]][:,self.dikt_masks.get(coor, slice(None))]) for coor in self.keys_upd})
+                self.cur_ind_ridge = self.evaluate_ind_ridge({coor:(self.coef[coor[:2]][:,:,self.dikt_masks.get(coor, slice(None))]
+                                                                    if coor[0] in {'Cu','Cv'}
+                                                                    else
+                                                                    self.coef[coor[:2]][:,self.dikt_masks.get(coor, slice(None))]
+                                                                    )
+                                                              for coor in self.keys_upd
+                                                              })
                 self.cur_ridge     = np.sum([v for k, v in self.cur_ind_ridge.items()])
                 print('Compute obj')
-                self.cur_obj_training =   self.cur_fit_training\
-                                     + self.cur_fit_gp_training\
-                                     + self.cur_reg\
-                                     + self.cur_ridge    
-                assert np.abs(self.cur_fit_training + self.cur_fit_gp_training + self.cur_reg + self.cur_ridge - self.cur_obj_training ) <= 1e-12
+                self.cur_obj_training = (  self.cur_fit_training
+                                         + self.cur_fit_gp_training
+                                         + self.cur_reg
+                                         + self.cur_ridge
+                                         )
                 print('Update arrays')
-                self.fit_training[self.iteration]     = self.cur_fit_training
+                self.fit_training[self.iteration] = self.cur_fit_training
                 if (   self.hprm['plot.afm'] 
-                    or self.hprm['tf_early_stop_ind_validation']
+                    or self.hprm['afm.algorithm.first_order.early_stop_ind_validation']
                     ):
                     self.fit_ind_training[self.iteration]  = self.evaluate_ind_fit(self.coef, dataset = 'training')
                     self.fit_mean_training[self.iteration] = self.evaluate_fit(self.coef, dataset = 'training', gp_matrix = self.M_mean, gp_pen = 1)
                 if self.active_gp:
                     self.fit_gp_training[self.iteration] = self.cur_fit_gp_training
-                self.reg      [self.iteration] = self.cur_reg      
-                self.ridge    [self.iteration] = self.cur_ridge      
+                self.reg         [self.iteration] = self.cur_reg      
+                self.ridge       [self.iteration] = self.cur_ridge      
                 self.obj_training[self.iteration] = self.cur_obj_training
                 self.decr_obj_0    = 10**(np.ceil(np.log(self.cur_obj_training)/np.log(10)))
                 self.decr_obj      = self.decr_obj_0
                 if self.compute_validation : 
                     print('Compute fit validation')
                     self.cur_fit_validation = self.evaluate_fit(self.coef, dataset = 'validation')
-                    if self.hprm['plot.afm'] or self.hprm['tf_early_stop_ind_validation']:
+                    if self.hprm['plot.afm'] or self.hprm['afm.algorithm.first_order.early_stop_ind_validation']:
                         self.fit_ind_validation[self.iteration]  = self.evaluate_ind_fit(self.coef, dataset = 'validation')
                         self.fit_mean_validation[self.iteration] = self.evaluate_fit(self.coef, dataset = 'validation', gp_matrix = self.M_mean, gp_pen = 1)
                     self.cur_fit_gp_validation = self.evaluate_fit(self.coef, dataset = 'validation', gp_matrix = self.gp_matrix, gp_pen = self.gp_pen) if self.active_gp else 0
@@ -391,16 +377,15 @@ class additive_features_model:
                     self.fit_validation[self.iteration] = self.cur_fit_validation
                     if self.active_gp:
                         self.fit_gp_validation[self.iteration] = self.cur_fit_gp_validation
-                    self.cur_obj_validation =   self.fit_validation[self.iteration] \
-                                       +  self.cur_fit_gp_validation\
-                                       +  self.cur_reg \
-                                       +  self.cur_ridge 
-                    self.obj_validation[self.iteration]    = self.cur_obj_validation
+                    self.cur_obj_validation = (  self.fit_validation[self.iteration]
+                                               +  self.cur_fit_gp_validation
+                                               +  self.cur_reg
+                                               +  self.cur_ridge
+                                               )
+                    self.obj_validation[self.iteration] = self.cur_obj_validation
                 self.iteration += 1 
         
-                """
-                Start Descent
-                """
+                print('Start Descent')
                 if EXTRA_CHECK:
                     self.Y_training0 = self.Y_training.copy()
                     self.X_training0 = cp.deepcopy(self.X_training)
@@ -417,8 +402,8 @@ class additive_features_model:
             # Algorithm terminated, denormalize data
             for key in self.sorted_keys:
                 inpt, location = key
-                self.X_training[key] *= self.normalization[inpt]
-                self.X_validation [key] *= self.normalization[inpt]
+                self.X_training  [key] *= self.normalization[inpt]
+                self.X_validation[key] *= self.normalization[inpt]
             if hasattr(self, 'XtX_training'):
                 for keys in self.XtX_training.keys():
                     key1, key2 = keys
@@ -454,35 +439,17 @@ class additive_features_model:
             del self.fit_gp_training
         if hasattr(self, 'fit_gp_validation' ) and not self.active_gp:
             del self.fit_gp_validation
-        if self.hprm.get('trunc_svd', 0) > 0:
-            # Use a low-rank approximation of the coefficient matrix
-            assert 0
-            print(colored('Truncate coefficient matrix', 'green'))
-            keys_coef = [(b, v) for (b,v) in self.coef.keys() if v in self.keys1sh]
-            B         = np.concatenate([self.coef[k] for k in keys_coef])
-            len_ind   = [0]
-            for k in keys_coef:
-                len_ind.append(len_ind[-1] + self.coef[k].shape[0])
-            u, s, vt  = np.linalg.svd(B)
-            B_trunc   = u[:,:self.hprm['trunc_svd']] @ np.diag(s[:self.hprm['trunc_svd']]) @ vt[:self.hprm['trunc_svd']]
-            for i, k in enumerate(keys_coef):
-                self.coef[k] = B_trunc[len_ind[i]:len_ind[i+1]]
 
     #profile
     def start_descent(self):
         if hasattr(self, 'X_validation'):
             assert len(self.X_training) == len(self.X_validation), (len(self.X_training), len(self.X_validation))
-        assert not self.hprm['afm.algorithm.sparse_coef'], 'slower'
+        #assert not self.hprm['afm.algorithm.first_order.sparse_coef'], 'slower'
         print('Start Descent')
         self.converged = 0
         self.list_coor = []
-        if self.bcd:
-            self.eta = {}
         np.random.seed(0)
         import gc; gc.collect()
-        """
-        While loop used for the descent
-        """
         while not self.converged:
             if EXTRA_CHECK:
                 print('\n'+colored('New Iteration', 'green'))
@@ -554,7 +521,7 @@ class additive_features_model:
                     if self.precompute_validation and self.iteration >= self.flag_compute_validation :
                         q_gp_validation            = {}
                         old_part_fit_gp_validation = 0
-                if self.hprm['plot.afm'] or self.hprm['tf_early_stop_ind_validation']:
+                if self.hprm['plot.afm'] or self.hprm['afm.algorithm.first_order.early_stop_ind_validation']:
                     old_part_fit_ind_training  = self.part_fit(coef_old_masked, coor_upd, q_training,    extra_part_training,    dataset = 'training', indi = True)
                 if self.hprm['plot.afm']:
                     q_mean_training, extra_part_mean_training, _ = self.compute_part_grad(coor_upd, mask_upd, dataset = 'training',  MMt = self.M_mean, gp_pen = 1)
@@ -628,7 +595,7 @@ class additive_features_model:
             if self.bcd:
                 (s,key,ind) = coor_upd
                 if self.cur_obj_training - tmp_obj_training <= 1e-14:
-                    if self.active_set and self.hprm['afm.algorithm.column_update'].get(key): 
+                    if self.active_set and self.hprm['afm.algorithm.first_order.column_update'].get(key): 
                         self.punished_coor.add(coor_upd)   
                 else: # eta won't be created/updated if decrease too small
                     if s in {'A'}:
@@ -649,7 +616,7 @@ class additive_features_model:
             self.eta1s       [slice_inner_iter] = self.eta1s       [self.iteration - 1]
             self.eta2s       [slice_inner_iter] = self.eta2s       [self.iteration - 1]
             self.fit_training   [slice_inner_iter] = self.fit_training   [self.iteration - 1]
-            if self.hprm['plot.afm'] or self.hprm['tf_early_stop_ind_validation']:
+            if self.hprm['plot.afm'] or self.hprm['afm.algorithm.first_order.early_stop_ind_validation']:
                 self.fit_ind_training[slice_inner_iter] = self.fit_ind_training[self.iteration - 1]
                 self.fit_mean_training[slice_inner_iter] = self.fit_mean_training[self.iteration - 1]
             if self.active_gp:
@@ -659,7 +626,7 @@ class additive_features_model:
             self.obj_training[slice_inner_iter] = self.obj_training[self.iteration - 1]
             if self.compute_validation:# and False: 
                 self.fit_validation   [slice_inner_iter] = self.fit_validation[self.iteration - 1]
-                if self.hprm['plot.afm'] or self.hprm['tf_early_stop_ind_validation']:
+                if self.hprm['plot.afm'] or self.hprm['afm.algorithm.first_order.early_stop_ind_validation']:
                     self.fit_ind_validation[slice_inner_iter]  = self.fit_ind_validation[self.iteration - 1]
                     self.fit_mean_validation[slice_inner_iter] = self.fit_mean_validation[self.iteration - 1]
                 if self.active_gp:
@@ -725,7 +692,7 @@ class additive_features_model:
                 self.reg         [self.iteration] = self.cur_reg      
                 self.ridge       [self.iteration] = self.cur_ridge    
                 self.obj_training   [self.iteration] = self.cur_obj_training
-                if self.hprm['plot.afm'] or self.hprm['tf_early_stop_ind_validation']:
+                if self.hprm['plot.afm'] or self.hprm['afm.algorithm.first_order.early_stop_ind_validation']:
                     if self.batch_cd:# or self.vr:
                         assert 0, 'not implemented'
                     else:
@@ -757,7 +724,7 @@ class additive_features_model:
                                     new_part_fit_gp_validation             = self.evaluate_fit_bcd(coor_upd, coef_tmp, q_gp_validation, dataset = 'validation', mask = mask_upd, MMt = self.MMt, gp_pen = self.gp_pen)
                                     self.cur_fit_gp_validation             = self.fit_gp_validation[self.iteration-1] - old_part_fit_gp_validation + new_part_fit_gp_validation
                                     self.fit_gp_validation[self.iteration] = self.cur_fit_gp_validation    
-                                if self.hprm['plot.afm'] or self.hprm['tf_early_stop_ind_validation']:
+                                if self.hprm['plot.afm'] or self.hprm['afm.algorithm.first_order.early_stop_ind_validation']:
                                     new_part_fit_ind_validation = self.evaluate_fit_bcd(coor_upd, coef_tmp, q_validation, dataset = 'validation', mask = mask_upd, indi = True)
                                     self.fit_ind_validation[self.iteration]  = self.fit_ind_validation[self.iteration-1]
                                     self.fit_ind_validation[self.iteration][mask_upd] = self.fit_ind_validation[self.iteration][mask_upd] - old_part_fit_ind_validation + new_part_fit_ind_validation
@@ -768,7 +735,7 @@ class additive_features_model:
                                 self.fit_validation[self.iteration] = self.fit_validation[self.iteration-1]
                                 if self.active_gp:
                                     self.fit_gp_validation[self.iteration] = self.fit_gp_validation[self.iteration-1]  
-                                if self.hprm['plot.afm'] or self.hprm['tf_early_stop_ind_validation']:
+                                if self.hprm['plot.afm'] or self.hprm['afm.algorithm.first_order.early_stop_ind_validation']:
                                     self.fit_ind_validation [self.iteration] = self.fit_ind_validation[self.iteration-1]
                                     self.fit_mean_validation[self.iteration] = self.fit_mean_validation[self.iteration-1]
                     self.obj_validation[self.iteration] = self.fit_validation[self.iteration] + self.fit_gp_validation[self.iteration] + self.reg[self.iteration] + self.ridge[self.iteration]
@@ -782,13 +749,13 @@ class additive_features_model:
                         print('\nCheck fit gp')
                         assert np.abs(self.evaluate_fit(self.coef, dataset = 'training', gp_matrix = self.gp_matrix, gp_pen = self.gp_pen) - self.cur_fit_gp_training) <= 1e-12, ('pb_ch3', self.evaluate_fit(self.coef, dataset = 'training', gp_matrix = self.gp_matrix, gp_pen = self.gp_pen), self.cur_fit_gp_training)
                         assert np.abs(self.evaluate_fit(self.coef, dataset = 'validation',  gp_matrix = self.gp_matrix, gp_pen = self.gp_pen) - self.cur_fit_gp_validation ) <= 1e-12, ('pb_ch4', self.evaluate_fit(self.coef, dataset = 'validation',  gp_matrix = self.gp_matrix, gp_pen = self.gp_pen), self.cur_fit_gp_validation)
-                    if self.iteration >= self.flag_check_fit and (self.hprm['plot.afm'] or self.hprm['tf_early_stop_ind_validation']):  
+                    if self.iteration >= self.flag_check_fit and (self.hprm['plot.afm'] or self.hprm['afm.algorithm.first_order.early_stop_ind_validation']):  
                         print('\nCheck fit ind')
                         assert np.allclose(self.evaluate_ind_fit(self.coef, dataset = 'training'),   self.fit_ind_training[self.iteration]), ('pb_ch32', self.evaluate_ind_fit(self.coef, dataset = 'training'), self.fit_ind_training[self.iteration])
                         assert np.allclose(self.evaluate_ind_fit(self.coef, dataset = 'training').sum(), self.fit_training[self.iteration]),'incoherence between ind_fit and fit training'
                         assert np.allclose(self.evaluate_ind_fit(self.coef, dataset = 'validation' ),   self.fit_ind_validation [self.iteration]), ('pb_ch42', self.evaluate_ind_fit(self.coef, dataset = 'validation'),  self.fit_ind_validation [self.iteration]) 
                         assert np.allclose(self.evaluate_ind_fit(self.coef, dataset = 'validation' ).sum(), self.fit_validation [self.iteration]),'incoherence between ind_fit and fit validation'
-                    if self.iteration >= self.flag_check_fit and (self.hprm['plot.afm'] or self.hprm['tf_early_stop_ind_validation']):  
+                    if self.iteration >= self.flag_check_fit and (self.hprm['plot.afm'] or self.hprm['afm.algorithm.first_order.early_stop_ind_validation']):  
                         print('\nCheck fit mean')
                         assert np.abs(self.evaluate_fit(self.coef, dataset = 'training', gp_matrix = self.M_mean, gp_pen = 1) - self.fit_mean_training[self.iteration]) <= 1e-12, ('pb_ch32', self.evaluate_fit(self.coef, dataset = 'training', gp_matrix = self.M_mean, gp_pen = 1), self.fit_mean_training[self.iteration])
                         assert np.abs(self.evaluate_fit(self.coef, dataset = 'validation',  gp_matrix = self.M_mean, gp_pen = 1) - self.fit_mean_validation [self.iteration]) <= 1e-12, ('pb_ch42', self.evaluate_fit(self.coef, dataset = 'validation',  gp_matrix = self.M_mean, gp_pen = 1), self.fit_mean_validation [self.iteration])  
@@ -1920,7 +1887,7 @@ class additive_features_model:
                 if self.hprm['data_cat'][key] in self.config_coef['Blr']:
                     self.keys['Blr'].append(key)
                     if not (hasattr(self, 'freeze_Blr') and self.freeze_Blr):
-                        if self.pen['bu'].get(self.hprm['data_cat'][key]) != 'rlasso' and self.hprm['afm.algorithm.column_update'].get(self.hprm['data_cat'][key]):
+                        if self.pen['bu'].get(self.hprm['data_cat'][key]) != 'rlasso' and self.hprm['afm.algorithm.first_order.column_update'].get(self.hprm['data_cat'][key]):
                             raise ValueError('we do not want column update for Blr')
                             keys_upd += [('bu',key,(int(r),)) for r in self.mask.get(key, range(self.k))]
                         else:
@@ -1943,19 +1910,19 @@ class additive_features_model:
                     if not (key in self.mask and type(self.mask[key])==np.ndarray and self.mask[key].shape[0] == 0):
                         self.keys['B'].append(key)
                     if 'B' not in self.frozen_variables:
-                        if self.pen['B'].get(generic_key) != 'rlasso' and self.hprm['afm.algorithm.column_update'].get(('B', generic_key)):
+                        if self.pen['B'].get(generic_key) != 'rlasso' and self.hprm['afm.algorithm.first_order.column_update'].get(('B', generic_key)):
                             keys_upd += [('B',key,(int(r),)) for r in self.mask.get(key, range(self.k))]
                         else:
                             keys_upd += [('B',key,())]
                     if ('B', key) not in coef:
-                        if   (    self.hprm['afm.algorithm.sparse_coef']
-                              and (   key in self.mask 
-                                   or 'classo' in self.pen.get('B',{}).get(self.hprm['data_cat'][key])
-                                   )
-                              ):
-                            coef['B',key] = sp.sparse.csc_matrix(np.zeros((self.size[key], self.k)))
-                        else:
-                            coef['B',key] = np.zeros((self.size[key], self.k))
+                        # if   (    self.hprm['afm.algorithm.first_order.sparse_coef']
+                        #       and (   key in self.mask 
+                        #            or 'classo' in self.pen.get('B',{}).get(self.hprm['data_cat'][key])
+                        #            )
+                        #       ):
+                        #     coef['B',key] = sp.sparse.csc_matrix(np.zeros((self.size[key], self.k)))
+                        # else:
+                        coef['B',key] = np.zeros((self.size[key], self.k))
         if 'Cuv' in self.keys.keys():
             for key in list(filter(lambda x : '#' in x, self.X_training.keys())):
                 if self.hprm['data_cat'][key] in self.config_coef['Cuv']:
@@ -1964,28 +1931,28 @@ class additive_features_model:
                     if not (key in self.mask and self.mask[key].shape[0] == 0):
                         self.keys['Cuv'].append(key)
                     if not (hasattr(self, 'freeze_Cuv') and self.freeze_Cuv):
-                        if self.pen['Cu'].get(self.hprm['data_cat'][key]) != 'rlasso' and self.hprm['afm.algorithm.column_update'].get(self.hprm['data_cat'][key]):
+                        if self.pen['Cu'].get(self.hprm['data_cat'][key]) != 'rlasso' and self.hprm['afm.algorithm.first_order.column_update'].get(self.hprm['data_cat'][key]):
                             keys_upd +=   [('Cu',key,(int(r),),) for r in self.mask.get(key, range(self.k))] 
                         else:
                             keys_upd +=   [('Cu',key,())]
-                        if self.pen['Cv'].get(self.hprm['data_cat'][key]) != 'rlasso' and self.hprm['afm.algorithm.column_update'].get(self.hprm['data_cat'][key]):
+                        if self.pen['Cv'].get(self.hprm['data_cat'][key]) != 'rlasso' and self.hprm['afm.algorithm.first_order.column_update'].get(self.hprm['data_cat'][key]):
                             keys_upd +=   [('Cv',key,(int(r),),) for r in self.mask.get(key, range(self.k))]
                         else:
                             keys_upd +=   [('Cv',key,())]
                     if ('Cu', key) not in coef or ('Cv', key) not in coef:
-                        if   self.hprm['afm.algorithm.sparse_coef'] and False\
-                        and (key in self.mask or 'classo' in self.pen.get('Cuv',{}).get(self.hprm['data_cat'][key])):
-                            assert 0, 'no sparse and einsum'
-                        else:
-                            rk = min(self.r_UV, self.size_tensor_bivariate[key][0], self.size_tensor_bivariate[key][1])
-                            coef['Cu',key ]  = np.zeros((self.size_tensor_bivariate[key][0], rk, self.k))
-                            coef['Cu',key ][:,:,self.mask.get(key,None)] = np.random.randn(*coef['Cu',key][:,:,self.mask.get(key,None)].shape) 
-                            coef['Cv',key ]  = np.zeros((self.size_tensor_bivariate[key][1], rk, self.k))
-                            coef['Cv',key ][:,:,self.mask.get(key,None)] = np.random.randn(*coef['Cv',key][:,:,self.mask.get(key,None)].shape)
-                            coef['Cuv',key] = np.einsum('prk,qrk->pqk',
-                                                        coef['Cu',key], 
-                                                        coef['Cv',key], 
-                                                        ).reshape((-1, self.k))
+                        # if   self.hprm['afm.algorithm.first_order.sparse_coef'] and False\
+                        # and (key in self.mask or 'classo' in self.pen.get('Cuv',{}).get(self.hprm['data_cat'][key])):
+                        #     assert 0, 'no sparse and einsum'
+                        # else:
+                        rk = min(self.r_UV, self.size_tensor_bivariate[key][0], self.size_tensor_bivariate[key][1])
+                        coef['Cu',key ]  = np.zeros((self.size_tensor_bivariate[key][0], rk, self.k))
+                        coef['Cu',key ][:,:,self.mask.get(key,None)] = np.random.randn(*coef['Cu',key][:,:,self.mask.get(key,None)].shape) 
+                        coef['Cv',key ]  = np.zeros((self.size_tensor_bivariate[key][1], rk, self.k))
+                        coef['Cv',key ][:,:,self.mask.get(key,None)] = np.random.randn(*coef['Cv',key][:,:,self.mask.get(key,None)].shape)
+                        coef['Cuv',key] = np.einsum('prk,qrk->pqk',
+                                                    coef['Cu',key], 
+                                                    coef['Cv',key], 
+                                                    ).reshape((-1, self.k))
         if 'Cbm' in self.keys.keys():
             for key_b in (  list(filter(lambda x : '#' not in x, self.X_training.keys()))
                           + list(map(lambda x : x.split('#')[0], list(filter(lambda x : '#' in x, self.X_training.keys()))))
@@ -1994,7 +1961,7 @@ class additive_features_model:
                     if not (key_b in self.mask and self.mask[key_b].shape[0] == 0) and not (key_b in self.keys['Cb']):
                         self.keys['Cb' ].append(key_b)
                     if not (hasattr(self, 'freeze_Cb') and self.freeze_Cb):
-                        if self.pen['Cb'].get(self.hprm['data_cat'][key_b]) != 'rlasso' and self.hprm['afm.algorithm.column_update'].get(self.hprm['data_cat'][key_b]):
+                        if self.pen['Cb'].get(self.hprm['data_cat'][key_b]) != 'rlasso' and self.hprm['afm.algorithm.first_order.column_update'].get(self.hprm['data_cat'][key_b]):
                             for r in self.mask.get(key_b, range(self.k)):
                                 if ('Cb',key_b,(int(r),),) not in keys_upd:
                                     keys_upd += [('Cb',key_b,(int(r),),) ]
@@ -2003,19 +1970,19 @@ class additive_features_model:
                                 keys_upd += [('Cb',key_b,())]
     
                     if ('Cb', key_b) not in coef:
-                        if  (self.hprm['afm.algorithm.sparse_coef'] and False\
-                             and (key_b in self.mask or 'classo' in self.pen.get('Cb',{}).get(self.hprm['data_cat'][key_b]))
-                             ):
-                            assert 0, 'no sparse and einsum'
-                        else:
-                            coef['Cb',key_b] = np.zeros((self.size[key_b], self.k))
+                        # if  (self.hprm['afm.algorithm.first_order.sparse_coef'] and False\
+                        #      and (key_b in self.mask or 'classo' in self.pen.get('Cb',{}).get(self.hprm['data_cat'][key_b]))
+                        #      ):
+                        #     assert 0, 'no sparse and einsum'
+                        # else:
+                        coef['Cb',key_b] = np.zeros((self.size[key_b], self.k))
             for key in list(filter(lambda x : '#' in x, self.X_training.keys())):
                 key_b = key.split('#')[0]
                 if self.hprm['data_cat'][key] in self.config_coef['Cbm']+tuple(['#'.join(e.split('#')[::-1]) for e in self.config_coef['Cbm']]):
                     if not (key in self.mask and self.mask[key].shape[0] == 0) and not (key in self.keys['Cbm']):
                         self.keys['Cbm'].append(key)
                     if not (hasattr(self, 'freeze_Cm') and self.freeze_Cm):
-                        if self.pen['Cm'].get(self.hprm['data_cat'][key]) != 'rlasso' and self.hprm['afm.algorithm.column_update'].get(self.hprm['data_cat'][key]):
+                        if self.pen['Cm'].get(self.hprm['data_cat'][key]) != 'rlasso' and self.hprm['afm.algorithm.first_order.column_update'].get(self.hprm['data_cat'][key]):
                             for r in self.mask.get(key, range(self.k)):
                                 if ('Cm',key,(int(r),),) not in keys_upd:
                                     keys_upd += [('Cm',key,(int(r),),) ]
@@ -2023,17 +1990,17 @@ class additive_features_model:
                             if ('Cm',key,()) not in keys_upd:
                                 keys_upd += [('Cm',key,())]  
                     if ('Cm', key) not in coef:
-                        if  (self.hprm['afm.algorithm.sparse_coef'] and False\
-                             and (key in self.mask or 'classo' in self.pen.get('Cm',{}).get(self.hprm['data_cat'][key]))
-                             ):
-                            assert 0, 'no sparse and einsum'
-                        else:
-                            assert self.size_tensor_bivariate[key][0] == self.size[key_b], 'key : {0} - key_b : {1}'.format(key, key_b)
-                            coef['Cm',key]   = np.zeros((self.size_tensor_bivariate[key][1], self.k))
-                            coef['Cbm',key]  = np.einsum('pk,qk->pqk',
-                                                        coef['Cb',key_b], 
-                                                        coef['Cm',key], 
-                                                        ).reshape((-1, self.k))                  
+                        # if  (self.hprm['afm.algorithm.first_order.sparse_coef'] and False\
+                        #      and (key in self.mask or 'classo' in self.pen.get('Cm',{}).get(self.hprm['data_cat'][key]))
+                        #      ):
+                        #     assert 0, 'no sparse and einsum'
+                        # else:
+                        assert self.size_tensor_bivariate[key][0] == self.size[key_b], 'key : {0} - key_b : {1}'.format(key, key_b)
+                        coef['Cm',key]   = np.zeros((self.size_tensor_bivariate[key][1], self.k))
+                        coef['Cbm',key]  = np.einsum('pk,qk->pqk',
+                                                    coef['Cb',key_b], 
+                                                    coef['Cm',key], 
+                                                    ).reshape((-1, self.k))                  
         assert len(keys_upd) == len(set(keys_upd)), (len(keys_upd), len(set(keys_upd)))
         print('Finished initialization')
         return coef, keys_upd
@@ -2233,7 +2200,7 @@ class additive_features_model:
                 if EXTRA_CHECK and 0:
                     assert len(self.prison_coor) <= len(self.keys_upd)*self.k
                     for (var,key,post) in self.prison_coor:
-                        if not self.hprm['afm.algorithm.column_update'].get(self.hprm['data_cat'][key]):
+                        if not self.hprm['afm.algorithm.first_order.column_update'].get(self.hprm['data_cat'][key]):
                             if not np.linalg.norm(self.coef[var,key][:,post]) == 0:
                                 assert 0 # A column can already be in prison but have moved during recent iterations because of a too small mask
                 self.dikt_masks = {coor:v for coor,v in {key:self.prison_masks(key,self.prison_coor) 
@@ -2563,7 +2530,31 @@ class additive_features_model:
                     self.memory_size_coef[cat] += sys.getsizeof(v)/1e6
         return self.memory_size_coef 
     
+           
+    def sort_keys(self, keys, masks):
+        cat_owned = {}
+        # Sort the categories of covariates
+        keys_shared = []
+        keys_owned  = []
+        for inpt, location in keys: 
+            cond = (    (inpt,location) in masks
+                    and not (type(masks[inpt,location]) == type(slice(None)) and masks[inpt,location] == slice(None))
+                    )
+            if cond:
+                keys_owned.append((inpt, location))
+                cat_owned[inpt] = True
+            else:
+                keys_shared.append((inpt, location))
+                if inpt not in cat_owned:
+                    cat_owned[inpt] = False
+        keys_shared = sorted(keys_shared, key = lambda x : str(x))
+        keys_owned  = sorted(keys_owned,  key = lambda x : str(x))
+        print('    {0} cats shared - {1} cats owned'.format(len(keys_shared), len(keys_owned)))
+        # The shared variables are in the top rows of the design matrix
+        # The individual covariates come after
+        return keys_shared + keys_owned, cat_owned
     
+
     def stopping_criteria(self, dikt_fit_grad):
         # Computant the quantities relevant for the stopping criteria
         small_decrease, early_stop, norm_grad_small, max_iter_reached, all_dead = [0]*5
@@ -2581,7 +2572,7 @@ class additive_features_model:
                 early_stop       = (old_mean_ft + old_mean_gp_ft < new_mean_ft + new_mean_gp_ft) and self.hprm['tf_early_stop_validation']#and not (self.vr) 
             # Same thing individually
             if self.compute_validation and self.iteration >= self.flag_compute_ind_validation:
-                if self.hprm.get('tf_early_stop_ind_validation'):
+                if self.hprm['afm.algorithm.first_order.early_stop_ind_validation']:
                     self.flag_compute_ind_validation += self.epoch_compute_ind_validation
                     old_ind_ft      = self.fit_ind_validation[self.iteration - 2*self.epoch_compute_ind_validation:self.iteration  - self.epoch_compute_ind_validation].mean(axis = 0)
                     new_ind_ft      = self.fit_ind_validation[self.iteration -   self.epoch_compute_ind_validation:self.iteration].mean(axis = 0)
@@ -2596,10 +2587,10 @@ class additive_features_model:
                 old_mean       = self.obj_training[self.iteration - 2*self.epoch_stopping_criteria:self.iteration  - self.epoch_stopping_criteria].mean()
                 new_mean       = self.obj_training[self.iteration - self.epoch_stopping_criteria:self.iteration].mean()
                 self.decr_obj  = old_mean - new_mean 
-                small_decrease = (self.decr_obj < self.tol) and self.hprm['tf_early_small_decrease']
+                small_decrease = (self.decr_obj < self.tol) and self.hprm['afm.algorithm.first_order.early_small_decrease']
             # Small grad
             norm_grad        = self.compute_grad_norm(dikt_fit_grad)
-            norm_grad_small  = (norm_grad < self.norm_grad_min) and not (self.bcd ) and self.hprm['tf_early_stop_small_grad']#or self.vr)
+            norm_grad_small  = (norm_grad < self.norm_grad_min) and not (self.bcd ) and self.hprm['afm.algorithm.first_order.early_stop_small_grad']#or self.vr)
             # Duality gap
             if self.dual_gap:
                 assert 0
@@ -2646,7 +2637,7 @@ class additive_features_model:
                 self.offset_ind[coor_upd][inner_mask] = new_ind_offset[coor_upd]
             var,key = coor_upd[:2]
             assert var in {'A', 'B', 'Blr', 'bu', 'bv', 'Csp', 'Cuv', 'Cu', 'Cv', 'Cb', 'Cm', 'Cbm'}
-            if self.active_set and not self.hprm['afm.algorithm.column_update'].get(self.hprm['data_cat'][key]):
+            if self.active_set and not self.hprm['afm.algorithm.first_order.column_update'].get(self.hprm['data_cat'][key]):
                 orig_mask = self.orig_masks.get(coor_upd, slice(None))
                 ind_posts = mask if type(mask) == np.ndarray else (orig_mask if type(orig_mask) == np.ndarray else np.arange(self.k))
                 if EXTRA_CHECK and 0: # with prop active set, some coor can be both in prisons and active
@@ -2692,7 +2683,7 @@ class additive_features_model:
                 else:
                     assert self.coef[var,key][:,mask].shape == coef_tmp[coor_upd].shape
                     assert np.allclose(self.coef[var,key][:,mask], coef_tmp[coor_upd])
-                if self.active_set and not self.hprm['afm.algorithm.column_update'].get(self.hprm['data_cat'][key]):
+                if self.active_set and not self.hprm['afm.algorithm.first_order.column_update'].get(self.hprm['data_cat'][key]):
                     for i, rr in enumerate(convicts):
                         if not np.allclose(self.coef     [var,key][:,:,rr] if var in {'Cu','Cv'} else self.coef[var,key][:,rr], 
                                            self.coef_prec[var,key][:,:,rr] if var in {'Cu','Cv'} else self.coef[var,key][:,rr],
@@ -2771,7 +2762,7 @@ class additive_features_model:
 
     
     def warm_start(self, ):
-        if (not self.given_coef) and self.hprm['tf_try_ws'] and (not self.hprm['plot.afm']): # No coef has been directly given 
+        if (not self.given_coef) and self.hprm['afm.algorithm.first_order.try_warmstart'] and (not self.hprm['plot.afm']): # No coef has been directly given 
             wanted      = self.dikt['model_wo_hyperp']
             list_wanted = [e for a in wanted.split('/') for e in a.split('_')]
             try:

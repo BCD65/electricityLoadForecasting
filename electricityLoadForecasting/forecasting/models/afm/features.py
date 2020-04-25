@@ -18,7 +18,6 @@ import electricityLoadForecasting.paths  as paths
 
 
 path_data =  os.path.join(paths.outputs,
-                          'Saved',
                           'Data',
                           ) 
 save_data         = True
