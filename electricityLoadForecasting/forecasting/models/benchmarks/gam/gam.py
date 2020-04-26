@@ -4,7 +4,7 @@ import os
 import re
 import pandas as pd
 import subprocess
-import warnings
+#import warnings
 try: # pip install rpy2==3.3.1
     #warnings.simplefilter(action="ignore", category=FutureWarning)
     from rpy2.robjects import pandas2ri, r
