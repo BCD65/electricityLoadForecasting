@@ -1,5 +1,5 @@
 
 
-from .afm import *
-from .benchmarks import *
+from . import afm
+from . import benchmarks
 from .separated import *

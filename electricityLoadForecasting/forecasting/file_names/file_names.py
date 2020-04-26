@@ -43,19 +43,19 @@ def make_dikt_files(hprm, nb_sites = None, nb_weather = None, dt_training = None
                              dt_validation.min().strftime(format = '%Y%m%d'),
                              dt_validation.max().strftime(format = '%Y%m%d'),
                              )
-
-    #=========================================#
-    ###         Model                       ###
-    #=========================================#
+        
     str_learning = (hprm['learning.model'],
-                    'coupled_models' if not hprm['learning.independent_models'] else '',
-                    'individual_designs' if hprm['learning.individual_designs'] else '',
-                    )    
+                    'independent_learning' if not hprm['learning.model.separation.sites'] else '',
+                    '_'.join(['separation', *hprm['learning.model.separation.input']]) if hprm['learning.model.separation.input'] else '',
+                    )
+
       
     #=========================================#
-    ###         Variables                   ###
-    #=========================================#
+    ###             Model                   ###
+    #=========================================#  
+    
     if hprm['learning.model'] not in {'afm'}:
+    
         str_inputs = {}
         for variable in hprm['inputs.selection']:
             list_attr = []

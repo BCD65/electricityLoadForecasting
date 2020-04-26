@@ -16,65 +16,65 @@ except ModuleNotFoundError:
 
 
 
-def fit_and_predict(inputs_training, Y_training, inputs_validation, hprm, assignments = {}):
-    assert type(hprm['learning.independent_models']) == bool
-    assert type(hprm['learning.individual_designs']) == bool
-    if not hprm['learning.independent_models']:
-        Y_hat_training, Y_hat_validation, model = call_fitter(inputs_training, 
-                                                              Y_training, 
-                                                              inputs_validation, 
-                                                              hprm,
-                                                              )
-        
-        Y_hat_training   = pd.DataFrame(Y_hat_training, 
-                                        index   = Y_training.index, 
-                                        columns = Y_training.columns,
-                                        )
-        Y_hat_validation = pd.DataFrame(Y_hat_validation, 
-                                        index   = inputs_validation.index, 
-                                        columns = Y_training.columns,
-                                        )
-    else:
-        Y_hat_training   = pd.DataFrame(0, 
-                                        index   = Y_training.index, 
-                                        columns = Y_training.columns,
-                                        )
-        Y_hat_validation = pd.DataFrame(0, 
-                                        index   = inputs_validation.index, 
-                                        columns = Y_training.columns,
-                                        )
-        model = {}
-        if hprm['learning.individual_designs']:
-            for ii, site_name in enumerate(Y_training.columns):
-                print('\r{0}/{1}'.format(ii, Y_training.shape[1]), end = '')
-                columns_to_keep = [
-                                   (name_input, transformation, parameter, location)
-                                   for (name_input, transformation, parameter, location) in inputs_training.columns
-                                   if (   name_input not in assignments
-                                       or location in assignments[name_input]
-                                       )
-                                   ]
-                Y_hat_training[site_name], Y_hat_validation[site_name], model[site_name] = call_fitter(inputs_training[columns_to_keep],
-                                                                                                       Y_training[site_name],
-                                                                                                       inputs_validation[columns_to_keep],
-                                                                                                       hprm,
-                                                                                                       )
-        else :
-            for ii, site_name in enumerate(Y_training.columns):
-                print('\r{0}/{1}'.format(ii, Y_training.shape[1]), end = '')
-                Y_hat_training[site_name], Y_hat_validation[site_name], model[site_name] = call_fitter(inputs_training, 
-                                                                                                       Y_training[site_name],
-                                                                                                       inputs_validation,
-                                                                                                       hprm,
-                                                                                                       )
-    return Y_hat_training, Y_hat_validation, model
+def fit_and_predict(X_training, Y_training, X_validation, hprm, assignments = {}):
+    #assert type(hprm['learning.model.benchmarks.independent_models']) == bool
+    #assert type(hprm['learning.model.benchmarks.individual_inputs'])  == bool
+    # if not hprm['learning.model.benchmarks.independent_models']:
+    # Y_hat_training, Y_hat_validation, model = call_fitter(inputs_training, 
+    #                                                       Y_training, 
+    #                                                       inputs_validation, 
+    #                                                       hprm,
+    #                                                       )
+    
+    # Y_hat_training   = pd.DataFrame(Y_hat_training, 
+    #                                 index   = Y_training.index, 
+    #                                 columns = Y_training.columns,
+    #                                 )
+    # Y_hat_validation = pd.DataFrame(Y_hat_validation, 
+    #                                 index   = inputs_validation.index, 
+    #                                 columns = Y_training.columns,
+    #                                 )
+    # else:
+    #     Y_hat_training   = pd.DataFrame(0, 
+    #                                     index   = Y_training.index, 
+    #                                     columns = Y_training.columns,
+    #                                     )
+    #     Y_hat_validation = pd.DataFrame(0, 
+    #                                     index   = inputs_validation.index, 
+    #                                     columns = Y_training.columns,
+    #                                     )
+    #     model = {}
+    #     if hprm['learning.model.benchmarks.individual_inputs']:
+    #         for ii, site_name in enumerate(Y_training.columns):
+    #             print('\r{0}/{1}'.format(ii, Y_training.shape[1]), end = '')
+    #             columns_to_keep = [
+    #                                 (name_input, transformation, parameter, location)
+    #                                 for (name_input, transformation, parameter, location) in inputs_training.columns
+    #                                 if (   name_input not in assignments
+    #                                     or location in assignments[name_input]
+    #                                     )
+    #                                 ]
+    #             Y_hat_training[site_name], Y_hat_validation[site_name], model[site_name] = call_fitter(inputs_training[columns_to_keep],
+    #                                                                                                     Y_training[site_name],
+    #                                                                                                     inputs_validation[columns_to_keep],
+    #                                                                                                     hprm,
+    #                                                                                                     )
+    #     else :
+    #         for ii, site_name in enumerate(Y_training.columns):
+    #             print('\r{0}/{1}'.format(ii, Y_training.shape[1]), end = '')
+    #             Y_hat_training[site_name], Y_hat_validation[site_name], model[site_name] = call_fitter(inputs_training, 
+    #                                                                                                     Y_training[site_name],
+    #                                                                                                     inputs_validation,
+    #                                                                                                     hprm,
+    #                                                                                                     )
+#     return Y_hat_training, Y_hat_validation, model
 
 
-def call_fitter(X_training,
-                Y_training,
-                X_validation,
-                hprm,
-                ):
+# def call_fitter(X_training,
+#                 Y_training,
+#                 X_validation,
+#                 hprm,
+#                 ):
     
     X_mean = X_training.mean(axis = 0)
     X_std  = X_training.std(axis = 0)

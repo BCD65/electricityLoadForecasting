@@ -9,9 +9,8 @@ import datetime as dt
 import os
 
 #
-from .. import performances, hyperparameters, inputs, models
-import electricityLoadForecasting.paths  as paths
-import electricityLoadForecasting.tools  as tools
+from ..  import file_names, performances, hyperparameters, inputs, models
+from ... import paths, tools
 
 
 
@@ -33,7 +32,7 @@ class Experience(object):
 
 ###############################################################################
   
-    def select_sites(self, ):   
+    def select_sites(self,):   
         self.nb_input_sites = self.data['df_sites'].shape[1]
         
         # Discard sites in TRASH_SITES
@@ -320,5 +319,60 @@ class Experience(object):
         performances.print_performances(self.performances['aggregated']['validation'])
         print('MODEL : ')
         performances.print_performances(self.performances['model']['validation'])
+
+
+###############################################################################
+
+
+def main(hprm = None, data = None):
+    if hprm is None:
+        hprm = hyperparameters.set_hyperparameters()
+    exp = Experience(hprm)
+    print('get_data')
+    if data is None:
+        exp.data = inputs.load_input_data(paths.path_database(hprm['database']))
+    else:
+        exp.data = data
+    exp.select_sites()
+    exp.assign_weather()
+    exp.unfold_data()
+    exp.split_observations()
+    exp.dikt_files = file_names.make_dikt_files(exp.hprm,
+                                                nb_sites      = len(exp.data['df_sites'].columns),
+                                                nb_weather    = len(exp.data['df_weather'].columns.get_level_values(tools.transcoding.user_weather_name)),
+                                                dt_training   = exp.target_training.index,
+                                                dt_validation = exp.target_validation.index,
+                                                )
+    try:
+        print('load_performances')
+        exp.load_performances()
+        print('performances loaded')
+    except tools.exceptions.loading_errors as e:
+        print(repr(e))
+        print('performances not loaded')
+        try:
+            print('load_predictions')
+            exp.load_predictions()
+            print('predictions loaded')
+        except tools.exceptions.loading_errors as e:
+            print(repr(e))
+            print('predictions not loaded')
+            if models.bool_separated(exp.hprm):
+                models.separated(exp)  
+            else:
+                exp.learning_process()
+            try:
+                exp.save_predictions()
+            except tools.exceptions.saving_errors:
+                print('predictions not saved')
+        exp.compute_performances()
+        try:
+            exp.save_performances()
+        except tools.tools.exceptions.saving_errors:
+            print('performances not saved')
+    exp.print_performances()
+    exp.print_finish()
+    return exp
+
 
 

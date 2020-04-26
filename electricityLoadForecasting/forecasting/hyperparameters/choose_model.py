@@ -16,9 +16,18 @@ def choose_model(hprm, model = None):
                                    # 'svr'
                                    # 'xgboost' 
                                    # 'gam'
+
+    # Learn independent models for the different values of an input (e.g. the hour)
+    hprm['learning.model.separation.input'] = ()
+    
+    # Loop over the sites to learn the models independently
+    hprm['learning.model.separation.sites'] = False
                                    
-    hprm['learning.independent_models'] = True
-    hprm['learning.individual_designs'] = False
+    # # Learn the benchmark models for the sites independently (duplicate)
+    # hprm['learning.model.benchmarks.independent_models'] = True
+    
+    # # Customize the inputs for the benchmark models (duplicate)
+    # hprm['learning.model.benchmarks.individual_inputs'] = False
 
     return hprm
 
