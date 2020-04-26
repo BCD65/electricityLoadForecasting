@@ -12,7 +12,7 @@ pip install -e .
 conda install -c conda-forge python-spams xgboost sklearn-contrib-py-earth ipdb openblas
 # [Optional] Also, rpy2 in Python and the mgcv library in R should be available if the GAM are to be tested.
 pip install rpy2==3.3.1
-#conda install -c r r r-mgcv
+# conda install -c r r r-mgcv
 
 ================================================================
 
