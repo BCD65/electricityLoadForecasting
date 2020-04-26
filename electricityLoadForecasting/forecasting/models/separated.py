@@ -4,7 +4,7 @@ import numpy as np
 import copy as cp
 from termcolor import colored
 #
-from electricityLoadForecasting             import paths
+from electricityLoadForecasting             import paths, tools
 from electricityLoadForecasting.forecasting import experience, inputs
 
 
@@ -59,11 +59,13 @@ def learn_sites_independently(hprm,
     """
     Function to compute the models for the different substations sequentially 
     """
-    prediction_train, prediction_validation, model_pred, ans_kw = [[] for _ in range(4)]
+    prediction_training, prediction_validation, model_pred, ans_kw = [[] for _ in range(4)]
     # Reload fresh data once
     fresh_data = inputs.load_input_data(paths.path_database(hprm['database']))
-    # with open(hprm['path_inputs'] + 'dates.npy', 'rb') as f_dates: 
-    #     loaded_dates      = np.load(f_dates, allow_pickle=True)
+    tools.config.download          = False
+    tools.config.upload            = False
+    tools.config.load              = False
+    tools.config.load_performances = False
     for ii, site in enumerate(fresh_data['df_sites'].columns):
         print(colored('{0} {1} / {2}'.format(site,
                                              ii,
@@ -71,17 +73,12 @@ def learn_sites_independently(hprm,
                                              ),
                       'green', 'on_blue'))
         local_hprm = {**cp.deepcopy(hprm),
-                      #'posts_id'                        : [site], 
                       'learning.model.separation.sites' : False,
-                      #'download'        : False, 
-                      #'upload'          : False,
-                      #'load_perf'       : False, 
-                      #'stations_id'     : cp.deepcopy(IMMACULATE_PRM['stations_id']),
                       }
         local_exp = experience.main(hprm = local_hprm, 
                                     data = cp.deepcopy(fresh_data), 
                                     )
-        prediction_training  .append(local_exp.prediction_train)
+        prediction_training  .append(local_exp.prediction_training)
         prediction_validation.append(local_exp.prediction_validation)
     
     prediction_training   = np.concatenate(prediction_training, 
@@ -90,7 +87,7 @@ def learn_sites_independently(hprm,
     prediction_validation = np.concatenate(prediction_validation, 
                                            axis = 1, 
                                            )
-    return prediction_training, prediction_validation#, model_pred, ans_kw
+    return prediction_training, prediction_validation
 
 
 #%%

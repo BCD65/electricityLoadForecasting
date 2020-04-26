@@ -27,6 +27,7 @@ def choose_inputs(hprm):
                                        #('temperature',   'difference', pd.DateOffset(hours = 24)),
                                        ('timestamp',     '',           ''), 
                                        ('week_hour',     '',           ''), 
+                                       ('wind_speed',    '',           ''), 
                                        ('xmas',          '',           ''), 
                                        ('year_day',      '',           ''), 
                                        },

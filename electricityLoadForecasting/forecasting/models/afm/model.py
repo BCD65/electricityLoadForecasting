@@ -21,11 +21,11 @@ path_data  = os.path.join(paths.outputs, 'Data')
 EXTRA_CHECK = 1
 
 dikt_var_temp = {
-                 'bu' : 'Blr', 
-                 'Cu' : 'Cuv',
-                 'Cv' : 'Cuv',
-                 'Cb' : 'Cb',
-                 'Cm' : 'Cbm',
+                 'low-rank-U' : 'low-rank-UVt', 
+                 'tensor-product-L' : 'tensor-product-L.R',
+                 'tensor-product-R' : 'tensor-product-L.R',
+                 'sesquivariate-b' : 'sesquivariate-b',
+                 'sesquivariate-m' : 'sesquivariate-bm',
                  }
 
 class additive_features_model:
@@ -54,26 +54,30 @@ class additive_features_model:
                             for var in self.formula.index.get_level_values('coefficient').unique()
                             }
         self.lbfgs       = (self.hprm['afm.algorithm'] == 'L-BFGS')
-        self.share_enet  =  self.hprm['afm.regularization.share_enet'] # elastic net parameter
-        if 'Blr' in self.alpha and 'Blr' in self.pen: 
+        
+        if (    'low-rank-UVt' in self.alpha
+            and 'low-rank-UVt' in self.pen
+            ): 
             # Low-rank (along the substations) coefficient matrix 
-            self.alpha['bu'] = self.alpha['Blr']
-            self.pen  ['bu'] = self.pen  ['Blr']
-            del self.alpha['Blr'], self.pen['Blr']
-        if 'Cuv' in self.alpha and 'Cuv' in self.pen:
+            self.alpha['low-rank-U'] = self.alpha['low-rank-UVt']
+            self.pen  ['low-rank-U'] = self.pen  ['low-rank-UVt']
+            del self.alpha['low-rank-UVt'], self.pen['low-rank-UVt']
+            
+        if (    'tensor-product-L.R' in self.alpha
+            and 'tensor-product-L.R' in self.pen
+            ):
             # Low-rank interaction (independently for each substation)
-            self.alpha['Cu'] = self.alpha['Cuv']
-            self.pen  ['Cu'] = self.pen  ['Cuv']
-            self.alpha['Cv'] = self.alpha['Cuv']
-            self.pen  ['Cv'] = self.pen  ['Cuv']
-            del self.alpha['Cuv'], self.pen['Cuv']
+            self.alpha['tensor-product-L'] = self.alpha['tensor-product-L.R']
+            self.pen  ['tensor-product-L'] = self.pen  ['tensor-product-L.R']
+            self.alpha['tensor-product-R'] = self.alpha['tensor-product-L.R']
+            self.pen  ['tensor-product-R'] = self.pen  ['tensor-product-L.R']
+            del self.alpha['tensor-product-L.R'], self.pen['tensor-product-L.R']
         self.gp_pen      = self.hprm['afm.sum_consistent.gp_pen'] # matrix for the sum-consistent model
         
         # Freeze the univariate or the bivariate coefficient matrices (rarely used)        
         self.frozen_variables = self.hprm['afm.algorithm.first_order.frozen_variables']
         
         # Stopping criteria
-        self.dual_gap          = False
         self.tol               = self.hprm['afm.algorithm.first_order.tol']
         self.norm_grad_min     = self.hprm['afm.algorithm.first_order.norm_grad_min']
         self.dist_min          = self.hprm['afm.algorithm.first_order.dist_min']
@@ -284,7 +288,7 @@ class additive_features_model:
                 lbfgs.start_lbfgs(self)
                 # Reorganize the coefficients
                 for ii, key in enumerate(self.X_training.keys()):
-                    self.coef['B',key] = cp.deepcopy(self.bfgs_long_coef[slice(self.key_col_large_matching[key][0], 
+                    self.coef['unconstrained',key] = cp.deepcopy(self.bfgs_long_coef[slice(self.key_col_large_matching[key][0], 
                                                                                self.key_col_large_matching[key][1],
                                                                                )
                                                                          ])
@@ -329,7 +333,7 @@ class additive_features_model:
                 self.slope_ind  = {}
                 self.offset_ind = {}
                 self.cur_ind_reg, self.slope_ind, self.offset_ind = self.evaluate_ind_reg({coor:(self.coef[coor[:2]][:,:,self.dikt_masks.get(coor, slice(None))] 
-                                                                                                 if coor[0] in {'Cu','Cv'}
+                                                                                                 if coor[0] in {'tensor-product-L','tensor-product-R'}
                                                                                                  else
                                                                                                  self.coef[coor[:2]][:,self.dikt_masks.get(coor, slice(None))]
                                                                                                  )
@@ -338,7 +342,7 @@ class additive_features_model:
                 self.cur_reg       = np.sum([v for k, v in self.cur_ind_reg.items()])
                 print('Compute ridge')
                 self.cur_ind_ridge = self.evaluate_ind_ridge({coor:(self.coef[coor[:2]][:,:,self.dikt_masks.get(coor, slice(None))]
-                                                                    if coor[0] in {'Cu','Cv'}
+                                                                    if coor[0] in {'tensor-product-L','tensor-product-R'}
                                                                     else
                                                                     self.coef[coor[:2]][:,self.dikt_masks.get(coor, slice(None))]
                                                                     )
@@ -422,7 +426,7 @@ class additive_features_model:
             # Change coef accordingly
             for ii, (var,key) in enumerate(self.coef.keys()):
                 inpt, location = key
-                if var not in {'bv', 'Cv', 'Cm'}:
+                if var not in {'low-rank-V', 'tensor-product-R', 'sesquivariate-m'}:
                     self.coef[var,key] /= self.normalization[inpt] 
             ### Save
             for obj, name, opt in [(self.coef,       'coef',       'dict_np'), 
@@ -498,12 +502,12 @@ class additive_features_model:
                 if EXTRA_CHECK:
                     print(coor_upd)
                 coef_old_masked = {}
-                if coor_upd[0] == 'bu':
+                if coor_upd[0] == 'low-rank-U':
                     coef_old_masked[coor_upd] = self.coef[coor_upd[:2]][:,mask_upd]
-                    coef_old_masked['Blr',coor_upd[1]] = self.coef['Blr',coor_upd[1]][:,mask_upd]
-                elif coor_upd[0] in {'Cu', 'Cv'}:
+                    coef_old_masked['low-rank-UVt',coor_upd[1]] = self.coef['low-rank-UVt',coor_upd[1]][:,mask_upd]
+                elif coor_upd[0] in {'tensor-product-L', 'tensor-product-R'}:
                     coef_old_masked[coor_upd] = self.coef[coor_upd[:2]][:,:,mask_upd]
-                elif coor_upd[0] in {'Cm'}:
+                elif coor_upd[0] in {'sesquivariate-m'}:
                     coef_old_masked[coor_upd] = self.coef[coor_upd[:2]][:,mask_upd]
                 else:
                     coef_old_masked[coor_upd] = self.coef[coor_upd[:2]][:,mask_upd]
@@ -590,7 +594,7 @@ class additive_features_model:
             tmp_obj_training = tmp_fit_training + tmp_fit_gp_training + tmp_ridge + tmp_reg
             if EXTRA_CHECK:
                 assert self.cur_fit_training + self.cur_fit_gp_training + self.cur_ridge + self.cur_reg >= fit_plus_gp_plus_ridge_tilde_tmp + new_part_reg
-                if not( tmp_obj_training <= self.cur_obj_training + 1e-12  or (self.pen == 'tf' and np.abs(tmp_obj_training - self.cur_obj_training) <= 1e-6)):
+                if not( tmp_obj_training <= self.cur_obj_training + 1e-12  or (self.pen == 'trend_filtering' and np.abs(tmp_obj_training - self.cur_obj_training) <= 1e-6)):
                     print('\n\n',
                           self.pen, '\n',
                           np.abs(tmp_obj_training - self.cur_obj_training), '\n',
@@ -611,11 +615,15 @@ class additive_features_model:
                     if self.active_set and self.hprm['afm.algorithm.first_order.column_update'].get(key): 
                         self.punished_coor.add(coor_upd)   
                 else: # eta won't be created/updated if decrease too small
-                    if s in {'A'}:
-                        self.etaA = eta/(self.theta**np.random.binomial(1, self.proba_ls)) 
-                    elif s in {'B', 'bu', 'Cb'}:
+                    if s in {'unconstrained',
+                             'low-rank-U',
+                             'sesquivariate-b',
+                             }:
                         self.eta1 = eta/(self.theta**np.random.binomial(1, self.proba_ls)) 
-                    elif s in {'U', 'V', 'Csp', 'Cu', 'Cv', 'Cm'}:
+                    elif s in {'tensor-product-L',
+                               'tensor-product-R',
+                               'sesquivariate-m',
+                               }:
                         self.eta2 = eta/(self.theta**np.random.binomial(1, self.proba_ls)) 
                     self.eta[coor_upd] = eta/(self.theta**np.random.binomial(1, self.proba_ls))
             else:                
@@ -647,7 +655,7 @@ class additive_features_model:
                 self.obj_validation[slice_inner_iter] = self.obj_validation[self.iteration - 1]
 
             if EXTRA_CHECK:
-                temp__, _, _ = self.evaluate_ind_reg({(var,key,ind):(self.coef[var,key][:,:,mask_upd] if var in {'Cu','Cv'} else self.coef[var,key][:,mask_upd]) for (var,key,ind) in self.keys_upd})
+                temp__, _, _ = self.evaluate_ind_reg({(var,key,ind):(self.coef[var,key][:,:,mask_upd] if var in {'tensor-product-L','tensor-product-R'} else self.coef[var,key][:,mask_upd]) for (var,key,ind) in self.keys_upd})
             # Update current variables
             self.iteration    += nb_inner_iter - 1 
             max_iter_reached   = (self.iteration >= self.max_iter)
@@ -667,10 +675,10 @@ class additive_features_model:
                     assert coor == coor[:2]
                 tmp2_ind_reg, _, _ = self.evaluate_ind_reg({(*coor,()):self.coef[coor[:2]] for coor in self.coef})
                 tmp2_reg           = np.sum([v for k, v in tmp2_ind_reg.items()])
-                mmmm, _, _          = self.evaluate_ind_reg({(var,key,ind):(self.coef[var,key][:,:,mask_upd] if var in {'Cu','Cv'} else self.coef[var,key][:,mask_upd]) for (var,key,ind) in self.keys_upd})
+                mmmm, _, _          = self.evaluate_ind_reg({(var,key,ind):(self.coef[var,key][:,:,mask_upd] if var in {'tensor-product-L','tensor-product-R'} else self.coef[var,key][:,mask_upd]) for (var,key,ind) in self.keys_upd})
                 if not np.abs(self.cur_reg - tmp2_reg) <= 1e-12:
                     out_mask = [k for k in range(self.k) if type(mask_upd)!= type(slice(None)) and k not in mask_upd]
-                    out_coef = self.coef[coor_upd[:2]][:,:,out_mask] if coor_upd[0] in {'Cu','Cv '} else self.coef[coor_upd[:2]][:,out_mask]
+                    out_coef = self.coef[coor_upd[:2]][:,:,out_mask] if coor_upd[0] in {'tensor-product-L','Cv '} else self.coef[coor_upd[:2]][:,out_mask]
                     assert np.linalg.norm(out_coef) == 0, 'outside of masks, coef must be zero'
                     A = [(k,v) for k,v in tmp2_ind_reg.items()     if v > 0]
                     B = [(k,v) for k,v in self.cur_ind_reg.items() if v > 0]
@@ -683,18 +691,24 @@ class additive_features_model:
             
             # Update arrays
             if not max_iter_reached:
-                assert self.cur_obj_training <= self.obj_training[self.iteration - 1] + 1e-12  or (self.pen == 'tf' and np.abs(tmp_obj_training - self.cur_obj_training) <= 1e-8), (coor_upd, self.cur_obj_training, self.obj_training[self.iteration - 1])
+                assert (    self.cur_obj_training <= self.obj_training[self.iteration - 1] + 1e-12 
+                        or (    self.pen == 'trend_filtering'
+                            and np.abs(tmp_obj_training - self.cur_obj_training) <= 1e-8
+                            )
+                        ), (coor_upd, self.cur_obj_training, self.obj_training[self.iteration - 1])
                 if self.bcd:
                     (s,key,ind) = coor_upd
-                    if s in {'A'}:
-                        self.etaAs[self.iteration] = self.etaA
-                        self.eta1s[self.iteration] = self.eta1s[self.iteration - 1]
-                        self.eta2s[self.iteration] = self.eta2s[self.iteration - 1]
-                    elif s in {'B', 'bu', 'Cb'}:
+                    if s in {'unconstrained',
+                             'low-rank-U',
+                             'sesquivariate-b',
+                             }:
                         self.etaAs[self.iteration] = self.etaAs[self.iteration - 1]
                         self.eta1s[self.iteration] = self.eta1
                         self.eta2s[self.iteration] = self.eta2s[self.iteration - 1]
-                    elif s in {'U', 'V', 'Csp', 'Cu', 'Cv', 'Cm'}:
+                    elif s in {'tensor-product-L',
+                               'tensor-product-R',
+                               'sesquivariate-m',
+                               }:
                         self.etaAs[self.iteration] = self.etaAs[self.iteration - 1]
                         self.eta1s[self.iteration] = self.eta1s[self.iteration - 1]
                         self.eta2s[self.iteration] = self.eta2
@@ -813,9 +827,15 @@ class additive_features_model:
         if self.bcd:
             coor_upd = next(iter(grad.keys()))
             (s,key,ind) = coor_upd
-            if s in {'B', 'bu', 'Cb'}:
+            if s in {'unconstrained',
+                     'low-rank-U',
+                     'sesquivariate-b',
+                     }:
                 eta = self.eta1
-            elif s in {'U', 'V', 'Csp', 'Cu', 'Cv', 'Cm'}:
+            elif s in {'tensor-product-L',
+                       'tensor-product-R',
+                       'sesquivariate-m',
+                       }:
                 eta = self.eta2
             assert eta
             eta = self.eta[coor_upd] if coor_upd in self.eta else 1
@@ -830,7 +850,12 @@ class additive_features_model:
                 else:
                     print(colored(' \n    eta too small for {0} - > end BLS   \n'.format(coor_upd if len(grad) == 1 else 'unknown'), 'red', 'on_cyan'))
                     return self.cur_fit_training, self.cur_fit_gp_training, {}, self.cur_fit_training + self.cur_ridge, {}, nb_inner_iter, eta/self.theta, False
-            coef_tmp = self.foba_step(grad, grad_gp, ridge_grad, eta, self.dikt_masks)
+            coef_tmp = self.foba_step(grad,
+                                      grad_gp,
+                                      ridge_grad,
+                                      eta,
+                                      self.dikt_masks,
+                                      )
             if EXTRA_CHECK:
                 for coor_upd in grad.keys():
                     assert coef_tmp[coor_upd].shape == grad[coor_upd].shape
@@ -850,7 +875,7 @@ class additive_features_model:
                                                                           grad_gp, 
                                                                           ridge_grad, 
                                                                           {(var,key,ind):(self.coef[var,key][:,:,mask_upd]
-                                                                                          if var in {'Cu','Cv'}
+                                                                                          if var in {'tensor-product-L','tensor-product-R'}
                                                                                           else self.coef[var,key][:,mask_upd]
                                                                                           )
                                                                            for (var,key,ind) in coef_tmp
@@ -864,7 +889,7 @@ class additive_features_model:
                 for coor_upd in grad.keys():
                     var, key, ind      = coor_upd
                     coef_old[coor_upd] = (self.coef[var,key][:,:,mask_upd]
-                                          if var in {'Cu','Cv'}
+                                          if var in {'tensor-product-L','tensor-product-R'}
                                           else
                                           self.coef[var,key][:,mask_upd]
                                           )
@@ -895,18 +920,18 @@ class additive_features_model:
                     raise ValueError('Objective has increased')
             
             # # Update low-rank
-            if 'Blr' in self.formula.index.get_level_values('coefficient').unique() and 'bu' in [e[0] for e in grad.keys()] :
+            if 'low-rank-UVt' in self.formula.index.get_level_values('coefficient').unique() and 'low-rank-U' in [e[0] for e in grad.keys()] :
                 coef_tmp  = self.update_VB(coef_tmp)
-            if 'Cuv' in self.formula.index.get_level_values('coefficient').unique():
+            if 'tensor-product-L.R' in self.formula.index.get_level_values('coefficient').unique():
                 coef_tmp  = self.update_Cuv(coef_tmp)
-            if 'Cbm' in self.formula.index.get_level_values('coefficient').unique():
+            if 'sesquivariate-bm' in self.formula.index.get_level_values('coefficient').unique():
                 coef_tmp  = self.update_Cbm(coef_tmp)
             if self.batch_cd:
                 fit_tmp   = self.evaluate_fit(coef_tmp)
                 assert 0, 'MUST ADD fit_gp_tmp'
                 ridge_tmp = self.evaluate_ridge(coef_tmp) 
             elif self.bcd:
-                assert len(coef_tmp) <= 3 or coor_upd[0] == 'Cb'
+                assert len(coef_tmp) <= 3 or coor_upd[0] == 'sesquivariate-b'
                 new_part_fit_training = self.evaluate_fit_bcd(coor_upd,
                                                               coef_tmp,
                                                               quant_training,
@@ -925,7 +950,7 @@ class additive_features_model:
                 if EXTRA_CHECK:
                     check_old_part_fit_training = self.evaluate_fit_bcd(coor_upd,
                                                                         {(var,key,ind):(self.coef[var,key][:,:,mask_upd]
-                                                                                        if var in {'Cu','Cv'}
+                                                                                        if var in {'tensor-product-L','tensor-product-R'}
                                                                                         else
                                                                                         self.coef[var,key][:,mask_upd]
                                                                                         )
@@ -940,7 +965,7 @@ class additive_features_model:
                     if self.active_gp:
                         check_old_part_fit_gp_training = self.evaluate_fit_bcd(coor_upd,
                                                                                {(var,key,ind):(self.coef[var,key][:,:,mask_upd]
-                                                                                               if var in {'Cu','Cv'}
+                                                                                               if var in {'tensor-product-L','tensor-product-R'}
                                                                                                else self.coef[var,key][:,mask_upd]
                                                                                                )
                                                                                 for (var,key,ind) in coef_tmp
@@ -969,7 +994,7 @@ class additive_features_model:
                 if EXTRA_CHECK:
                     new_coef = cp.deepcopy(self.coef)
                     for coor in coef_tmp:
-                        if coor[0] in {'Cu','Cv'}:
+                        if coor[0] in {'tensor-product-L','tensor-product-R'}:
                             new_coef[coor[:2]][:,:,mask_upd] = coef_tmp[coor]
                         else:
                             new_coef[coor[:2]][:,  mask_upd] = coef_tmp[coor]
@@ -1072,7 +1097,7 @@ class additive_features_model:
                        ], 
                       axis = 0,
                       )
-             )[:,mask].T @ coef.get(('bu', key, ()), coef.get(('bu',key), 'error'))
+             )[:,mask].T @ coef.get(('low-rank-U', key, ()), coef.get(('low-rank-U',key), 'error'))
         A, sig, Bt = np.linalg.svd(M, full_matrices=0)
         v = A @ Bt
         return v
@@ -1102,16 +1127,16 @@ class additive_features_model:
             pen, alpha     = self.get_pen_alpha(var, key)
             mask = d_masks.get(coor_upd, slice(None))
             if pen == 'ridge':
-                if coor_upd[0] in {'Cu', 'Cv'}:
+                if coor_upd[0] in {'tensor-product-L', 'tensor-product-R'}:
                     dikt_ridge_grad[coor_upd] = alpha*self.coef[var,key][:,:,mask] if (pen == 'ridge') else np.zeros(self.coef[var,key][:,:,mask].shape)
                 else:
                     dikt_ridge_grad[coor_upd] = alpha*self.coef[var,key][:,  mask] if (pen == 'ridge') else np.zeros(self.coef[var,key][:,mask].shape)
             elif pen == 'smoothing_reg':
-                if coor_upd[0] in {'Cu', 'Cv'}:
+                if coor_upd[0] in {'tensor-product-L', 'tensor-product-R'}:
                     raise NotImplementedError # coef has then 3 dimensions
                 M   = self.coef[var,key][:,mask]
                 reshape_tensor = (    type(inpt[0]) == tuple
-                                  and var not in {'Cu', 'Cv', 'Cb', 'Cm'}
+                                  and var not in {'tensor-product-L', 'tensor-product-R', 'sesquivariate-b', 'sesquivariate-m'}
                                   )
                 if not reshape_tensor:
                     cc = M
@@ -1155,11 +1180,11 @@ class additive_features_model:
                             dikt_ridge_grad[coor_upd][:,2:  ] += alpha * conv2
                     dikt_ridge_grad[coor_upd] = dikt_ridge_grad[coor_upd].reshape(M.shape)
             elif pen == 'factor_smoothing_reg':
-                if coor_upd[0] in {'Cu', 'Cv'}:
+                if coor_upd[0] in {'tensor-product-L', 'tensor-product-R'}:
                     raise NotImplementedError # coef has then 3 dimensions
                 M   = self.coef[var,key][:,mask]
                 reshape_tensor = (    type(inpt[0]) == tuple 
-                                  and var not in {'Cu', 'Cv', 'Cb', 'Cm'}
+                                  and var not in {'tensor-product-L', 'tensor-product-R', 'sesquivariate-b', 'sesquivariate-m'}
                                   )
                 if not reshape_tensor:
                     cc = M
@@ -1193,7 +1218,7 @@ class additive_features_model:
                     dikt_ridge_grad[coor_upd] = dikt_ridge_grad[coor_upd].reshape(M.shape)
             else:
                 assert pen not in {'ridge', 'smoothing_reg'}
-                if coor_upd[0] in {'Cu', 'Cv'}:
+                if coor_upd[0] in {'tensor-product-L', 'tensor-product-R'}:
                     dikt_ridge_grad[coor_upd] = np.zeros(self.coef[var,key][:,:,mask].shape)
                 else:
                     dikt_ridge_grad[coor_upd] = np.zeros(self.coef[var,key][:,mask].shape)
@@ -1216,7 +1241,7 @@ class additive_features_model:
             mask_Y = mask
         assert len(coor_upd) == 3
         var, key, ind = coor_upd
-        if var == 'Blr':
+        if var == 'low-rank-UVt':
             assert 0 # For now
             assert not ind
         extra_part = {}
@@ -1237,7 +1262,13 @@ class additive_features_model:
             XtX = self.XtX_validation
             XtY = self.XtY_validation
         
-        if var in {'B','Csp','bu','Cb', 'Cm', 'Cu', 'Cv'}:
+        if var in {'unconstrained',
+                   'low-rank-U',
+                   'sesquivariate-b',
+                   'sesquivariate-m',
+                   'tensor-product-L',
+                   'tensor-product-R',
+                   }:
             #Compute the normal part of quant[coor_upd]
             mmm = (1/n)*(- (XtY[key][:,mask_Y]
                             if type(XtY[key]) == np.ndarray
@@ -1267,8 +1298,8 @@ class additive_features_model:
                 for var2 in self.formula.index.get_level_values('coefficient').unique():   
                     for key2 in self.keys[var2]: 
                         if (    (key,key2) in XtX
-                            and (   (var != 'Cb' and (key2 != key or var2 != dikt_var_temp.get(var, var)))
-                                 or (var == 'Cb' and (key2[0] != key or var2 not in ('Cb', 'Cbm') ))
+                            and (   (var != 'sesquivariate-b' and (key2 != key or var2 != dikt_var_temp.get(var, var)))
+                                 or (var == 'sesquivariate-b' and (key2[0] != key or var2 not in ('sesquivariate-b', 'sesquivariate-bm') ))
                                  )
                             ):
                             ss         = self.orig_masks.get((var2,key2,()), slice(None)) if gp_pen else mask
@@ -1281,66 +1312,66 @@ class additive_features_model:
                 assert mmm.shape == mmm_check.shape
                 assert np.allclose(mmm, mmm_check)
             # Multiply accordingly when the updated variable intervenes as a product in the prediction BM, UV
-            if var == 'bu':
+            if var == 'low-rank-U':
                 quant[coor_upd] = mmm # not multiplied by V since it will also be updated
-            elif var == 'Cb':
+            elif var == 'sesquivariate-b':
                 quant[coor_upd] = mmm # Computation of quant[coor_upd] for Cb is not over
-            elif var == 'Cm':
+            elif var == 'sesquivariate-m':
                 quant[coor_upd] = np.einsum('pqk,pk->qk', 
                                             mmm.reshape(( 
-                                                         self.coef['Cb', key[0]][:,mask].shape[0], 
+                                                         self.coef['sesquivariate-b', key[0]][:,mask].shape[0], 
                                                          -1,
-                                                         self.coef['Cb', key[0]][:,mask].shape[1],
+                                                         self.coef['sesquivariate-b', key[0]][:,mask].shape[1],
                                                          )), 
-                                            self.coef['Cb', key[0]][:,mask],
+                                            self.coef['sesquivariate-b', key[0]][:,mask],
                                             )
                 if EXTRA_CHECK:
                     mmm_check = np.einsum('pqk,pk->qk', 
                                           mmm_check.reshape((
-                                                             self.coef['Cb', key[0]][:,mask].shape[0],
+                                                             self.coef['sesquivariate-b', key[0]][:,mask].shape[0],
                                                              -1,
-                                                             self.coef['Cb', key[0]][:,mask].shape[1],
+                                                             self.coef['sesquivariate-b', key[0]][:,mask].shape[1],
                                                              )), 
-                                          self.coef['Cb', key[0]][:,mask],
+                                          self.coef['sesquivariate-b', key[0]][:,mask],
                                           )
-            elif var == 'Cu':
+            elif var == 'tensor-product-L':
                 quant[coor_upd] = np.einsum('pqk,qrk->prk', 
                                             mmm.reshape((-1,
-                                                         self.coef['Cv', key][:,:,mask].shape[0],
-                                                         self.coef['Cv', key][:,:,mask].shape[2],
+                                                         self.coef['tensor-product-R', key][:,:,mask].shape[0],
+                                                         self.coef['tensor-product-R', key][:,:,mask].shape[2],
                                                          )),
-                                            self.coef['Cv', key][:,:,mask],
+                                            self.coef['tensor-product-R', key][:,:,mask],
                                             )
                 if EXTRA_CHECK:
                     mmm_check = np.einsum('pqk,qrk->prk', 
                                           mmm_check.reshape((-1, 
-                                                             self.coef['Cv', key][:,:,mask].shape[0], 
-                                                             self.coef['Cv', key][:,:,mask].shape[2],
+                                                             self.coef['tensor-product-R', key][:,:,mask].shape[0], 
+                                                             self.coef['tensor-product-R', key][:,:,mask].shape[2],
                                                              )), 
-                                          self.coef['Cv', key][:,:,mask],
+                                          self.coef['tensor-product-R', key][:,:,mask],
                                           )
-            elif var == 'Cv':
+            elif var == 'tensor-product-R':
                 quant[coor_upd] = np.einsum('pqk,prk->qrk', 
-                                            mmm.reshape((self.coef['Cu', key][:,:,mask].shape[0],
+                                            mmm.reshape((self.coef['tensor-product-L', key][:,:,mask].shape[0],
                                                          -1,
-                                                         self.coef['Cu', key][:,:,mask].shape[2],
+                                                         self.coef['tensor-product-L', key][:,:,mask].shape[2],
                                                          )),
-                                            self.coef['Cu', key][:,:,mask],
+                                            self.coef['tensor-product-L', key][:,:,mask],
                                             )
                 if EXTRA_CHECK:
                     mmm_check = np.einsum('pqk,prk->qrk', 
-                                          mmm_check.reshape((self.coef['Cu', key][:,:,mask].shape[0], 
+                                          mmm_check.reshape((self.coef['tensor-product-L', key][:,:,mask].shape[0], 
                                                              -1, 
-                                                             self.coef['Cu', key][:,:,mask].shape[2],
+                                                             self.coef['tensor-product-L', key][:,:,mask].shape[2],
                                                              )), 
-                                          self.coef['Cu', key][:,:,mask],
+                                          self.coef['tensor-product-L', key][:,:,mask],
                                           )
             else:
-                assert var in ['B', 'Csp', ]
+                assert var == 'unconstrained'
                 quant[coor_upd] = mmm
             # Add the part specific to Cb where Cb intervenes in Cbm
-            if var == 'Cb': 
-                for keybm in self.keys['Cbm']:
+            if var == 'sesquivariate-b': 
+                for keybm in self.keys['sesquivariate-bm']:
                     bbb = {}
                     bbb_check = {}
                     assert type(keybm[0]) == tuple
@@ -1351,7 +1382,7 @@ class additive_features_model:
                                                                              var2, 
                                                                              keybm, 
                                                                              'dyn' if gp_pen else mask, 
-                                                                             var_temp = 'Cb',
+                                                                             var_temp = 'sesquivariate-b',
                                                                              ) 
                                                        for var2 in self.formula.index.get_level_values('coefficient').unique()], 
                                                       axis = 0,
@@ -1359,14 +1390,14 @@ class additive_features_model:
                                             )
                         if gp_pen:
                             bbb[keybm] = gp_pen * bbb[keybm] @ MMt[:,mask]
-                            bbb[keybm]+= gp_pen * (1/n) * XtX[keybm,keybm] @ self.coef['Cbm',keybm][:,mask_out] @ MMt[mask_out][:,mask]
+                            bbb[keybm]+= gp_pen * (1/n) * XtX[keybm,keybm] @ self.coef['sesquivariate-bm',keybm][:,mask_out] @ MMt[mask_out][:,mask]
 
                         quant[coor_upd] += np.einsum('pqk,qk->pk', 
                                                      bbb[keybm].reshape((-1, 
-                                                                         self.coef['Cm', keybm][:,mask].shape[0], 
-                                                                         self.coef['Cm', keybm][:,mask].shape[1],
+                                                                         self.coef['sesquivariate-m', keybm][:,mask].shape[0], 
+                                                                         self.coef['sesquivariate-m', keybm][:,mask].shape[1],
                                                                          )), 
-                                                     self.coef['Cm', keybm][:,mask],
+                                                     self.coef['sesquivariate-m', keybm][:,mask],
                                                      )
                         # Check this part of quant[coor_upd] that is specific to Cb
                         if EXTRA_CHECK:
@@ -1375,7 +1406,7 @@ class additive_features_model:
                                 for key2 in self.keys[var2]: 
                                     if (    (keybm,key2) in XtX
                                         and (   key2[0] != key
-                                             or var2 not in ('Cb', 'Cbm')
+                                             or var2 not in ('sesquivariate-b', 'sesquivariate-bm')
                                              )
                                         ):
                                         ss = self.orig_masks.get((var2,key2,()), slice(None)) if gp_pen else mask
@@ -1384,15 +1415,15 @@ class additive_features_model:
                             if gp_pen:
                                 bbb_check[keybm] = gp_pen * bbb_check[keybm] @ MMt[:,mask]
                                 if len(mask_out):
-                                    bbb_check[keybm]+= gp_pen * (1/n) * XtX[keybm, keybm] @ self.coef['Cbm',keybm][:,mask_out] @ MMt[mask_out][:,mask]
+                                    bbb_check[keybm]+= gp_pen * (1/n) * XtX[keybm, keybm] @ self.coef['sesquivariate-bm',keybm][:,mask_out] @ MMt[mask_out][:,mask]
                             assert bbb[keybm].shape ==  bbb_check[keybm].shape
                             assert np.allclose(bbb[keybm], bbb_check[keybm])                           
                             mmm_check += np.einsum('pqk,qk->pk', 
                                                    bbb_check[keybm].reshape((-1, 
-                                                                             self.coef['Cm', keybm][:,mask].shape[0], 
-                                                                             self.coef['Cm', keybm][:,mask].shape[1],
+                                                                             self.coef['sesquivariate-m', keybm][:,mask].shape[0], 
+                                                                             self.coef['sesquivariate-m', keybm][:,mask].shape[1],
                                                                              )), 
-                                                   self.coef['Cm', keybm][:,mask],
+                                                   self.coef['sesquivariate-m', keybm][:,mask],
                                                    )
 
             if EXTRA_CHECK:
@@ -1400,23 +1431,23 @@ class additive_features_model:
                 assert np.allclose(quant[coor_upd], mmm_check) 
             
             # Computations of extra_part
-            if var == 'bu':
+            if var == 'low-rank-U':
                 # Very specific case of bu
                 extra_part[coor_upd] = self.xtra_part_bu(n, XtX, self.coef, coor_upd, mask, gp_pen, MMt)
                 if dataset == 'training': # Special case for bu because both bu and bv are updated at the same time
-                    grad[coor_upd] =(quant[coor_upd] + extra_part[coor_upd]) @  self.coef[('bv',key)]#[mask]
+                    grad[coor_upd] =(quant[coor_upd] + extra_part[coor_upd]) @  self.coef[('low-rank-V',key)]#[mask]
             else:
                 # Specific case of Cb
-                if var == 'Cb':
+                if var == 'sesquivariate-b':
                     extra_part[coor_upd] = self.xtra_part_cb(n, XtX, self.coef, coor_upd, mask, gp_pen, MMt)
                 # Specific case fo Cm
-                elif var == 'Cm':
+                elif var == 'sesquivariate-m':
                     extra_part[coor_upd] = self.xtra_part_cm(n, XtX, self.coef, coor_upd, mask, gp_pen, MMt)                                                
                 # Specific case of Cu
-                elif var == 'Cu':
+                elif var == 'tensor-product-L':
                     extra_part[coor_upd] = self.xtra_part_cu(n, XtX, self.coef, coor_upd, mask, gp_pen, MMt)                                               
                 # Specific case of Cu
-                elif var == 'Cv':
+                elif var == 'tensor-product-R':
                     extra_part[coor_upd] = self.xtra_part_cv(n, XtX, self.coef, coor_upd, mask, gp_pen, MMt)
                         
                 else:
@@ -1426,13 +1457,13 @@ class additive_features_model:
                     grad[coor_upd] = quant[coor_upd] + extra_part[coor_upd]
             
             if EXTRA_CHECK:
-                if var == 'bu':
-                    assert self.coef[(var,key)][:,mask].shape ==(quant     [coor_upd]@self.coef[('bv',key)][mask]).shape 
-                    assert self.coef[(var,key)][:,mask].shape ==(extra_part[coor_upd]@self.coef[('bv',key)][mask]).shape    
-                elif var == 'Cu':
+                if var == 'low-rank-U':
+                    assert self.coef[(var,key)][:,mask].shape ==(quant     [coor_upd]@self.coef[('low-rank-V',key)][mask]).shape 
+                    assert self.coef[(var,key)][:,mask].shape ==(extra_part[coor_upd]@self.coef[('low-rank-V',key)][mask]).shape    
+                elif var == 'tensor-product-L':
                     assert self.coef[(var,key)][:,:,mask].shape == quant     [coor_upd].shape 
                     assert self.coef[(var,key)][:,:,mask].shape == extra_part[coor_upd].shape 
-                elif var == 'Cv':
+                elif var == 'tensor-product-R':
                     assert self.coef[(var,key)][:,:,mask].shape == quant     [coor_upd].shape 
                     assert self.coef[(var,key)][:,:,mask].shape == extra_part[coor_upd].shape 
                 else:
@@ -1474,8 +1505,14 @@ class additive_features_model:
             alpha_cat = 0
             for var in sorted(self.alpha):
                 if cat in self.alpha[var]:
-                    if cat in self.formula.loc[var if var != 'bu' else 'Blr'].index:
-                        if self.pen[var][cat] in {'ridge', 'smoothing_reg'}:
+                    if cat in self.formula.loc[var
+                                               if var != 'low-rank-U'
+                                               else
+                                               'low-rank-UVt'
+                                               ].index:
+                        if self.pen[var][cat] in {'ridge',
+                                                  'smoothing_reg',
+                                                  }:
                             assert not alpha_cat, 'it should not have already been found for the same cat and a penalization in ridge, r2sm, unless it is approximately lowrank but this is not implemented yet'
                             alpha_cat = self.alpha[var][cat]
             keys_for_cat = [(inpt, location) 
@@ -1543,7 +1580,9 @@ class additive_features_model:
         for coor_upd in grad.keys():
             var,key,ind = coor_upd
             mask =  d_masks.get(coor_upd, slice(None))
-            if var in {'Cu', 'Cv'}:
+            if var in {'tensor-product-L',
+                       'tensor-product-R',
+                       }:
                 assert coef_tmp[coor_upd].shape == self.coef[coor_upd[:2]][:,:,mask].shape, (coef_tmp[coor_upd].shape,
                                                                                              self.coef[coor_upd[:2]][:,:,mask].shape,
                                                                                              )
@@ -1595,7 +1634,9 @@ class additive_features_model:
                           )
             assert coef_tmp[coor_upd].shape == grad[coor_upd].shape,               ('pb_1', coef_tmp[coor_upd].shape, grad[coor_upd].shape)
             assert coef_tmp[coor_upd].shape == ridge_grad[coor_upd].shape,         ('pb_2', coef_tmp[coor_upd].shape, ridge_grad[coor_upd].shape)
-            if var in {'Cu', 'Cv'}:
+            if var in {'tensor-product-L',
+                       'tensor-product-R',
+                       }:
                 assert coef_tmp[coor_upd].shape == self.coef[(var,key)][:,:,mask].shape, ('pb_35', coef_tmp[coor_upd].shape, self.coef[(var,key)][:,:,mask].shape)
             else:
                 assert coef_tmp[coor_upd].shape == self.coef[(var,key)][:,mask].shape, ('pb_3', coef_tmp[coor_upd].shape, self.coef[(var,key)][:,mask].shape)
@@ -1605,15 +1646,14 @@ class additive_features_model:
         return f
     
 
-    #
     # Decomposition of the gradient computations 
     # because of the restrictions due to the sparse structure
     # and the use of the masks
     def custom_sum_einsum(self, XtX, coef, var2, key, mask, var_temp = None):
         var_upd    = (var_temp == var2)
-        cbcbm_upd  = (var_temp == 'Cb' and var2 == 'Cbm')
-        cbmcb_upd  = (var_temp == 'Cb' and var2 == 'Cb'  and type(key[0]) == tuple)
-        cbmcbm_upd = (var_temp == 'Cb' and var2 == 'Cbm' and type(key[0]) == tuple)
+        cbcbm_upd  = (var_temp == 'sesquivariate-b' and var2 == 'sesquivariate-bm')
+        cbmcb_upd  = (var_temp == 'sesquivariate-b' and var2 == 'sesquivariate-b'  and type(key[0]) == tuple)
+        cbmcbm_upd = (var_temp == 'sesquivariate-b' and var2 == 'sesquivariate-bm' and type(key[0]) == tuple)
         if EXTRA_CHECK:
             for key2 in self.keys[var2]:
                 if self.active_gp:
@@ -1654,61 +1694,7 @@ class additive_features_model:
                     ):
                     ans += XtX[key,key2] @ (coef[var2,key2][:,mask])
         return ans
-                 
 
-    def duality_gap(self, pred, grad, var):
-        raise NotImplementedError
-        if self.pen[var] in {'', 'ridge'} or self.normalized_alphas[var] == 0:
-            return self.cur_fit_training
-        else:
-            # On somme les duality gaps sur les différents postes
-            assert self.pen[var] == 'lasso'            
-            with_intercept = var in {'U', 'V'} and (self.UV_basis)
-            if with_intercept:
-                return self.cur_fit_training
-            grad     = {(s,k):v for (s,k),v in grad.items() if s == var}
-            # maximum coef in the gradient
-            d        = np.array([max(1, np.max([np.max(np.abs(v[:,j] if v.ndim == 2 else v[:,:,j])) for k, v in grad.items()])/self.normalized_alphas[var]) for j in range(self.k)])
-            c        = max(d)
-            # dual variable
-            dual_Z   = (1/self.n_training)*(pred - self.Y_training)/d
-            # value of the primal function
-            f        = self.evaluate_fit(self.coef) 
-            f       += self.evaluate_ridge(self.coef)
-            # value of the residuals
-            if var == 'B':
-                var_drop = 'B'
-            elif var in {'U', 'V'}:
-                var_drop = 'C'
-            res      = self.Y_training - self.predict(coef = self.coef, drop = {var_drop}) 
-            # value of the dual function
-            g        = np.einsum('nk,nk->', dual_Z, res) + 0.5*self.n_training*np.linalg.norm(dual_Z)**2
-            # scalar product
-            if var in {'B'}:
-                pr = np.sum([np.einsum('pk,pk->',   self.coef[(s,k)], grad[(s,k)]/d) for (s,k) in self.coef if s == var])
-            elif var in {'U', 'V'}:
-                pr = np.sum([np.einsum('prk,prk->', self.coef[(s,k)], grad[(s,k)]/d) for (s,k) in self.coef if s == var])
-            else:
-                raise ValueError
-            # regularization
-            reg = np.sum([v for k, v in self.cur_ind_reg.items() if k[0] == var])
-            ############
-            ## Checks ##
-            ############
-            for k, v in grad.items():
-                assert v.max()/c <= self.normalized_alphas[var] + 1e-14, (k, v.max(), c, self.normalized_alphas[var])
-                for j in range(self.k):
-                    if v.ndim == 2:
-                        assert v[:,j].max()/d[j] <= self.normalized_alphas[var] + 1e-14
-                    elif v.ndim == 3:
-                        assert v[:,:,j].max()/d[j] <= self.normalized_alphas[var] + 1e-14
-                    else: 
-                        raise ValueError                
-            P = f + g - pr
-            assert P >= - 1e-14
-            D = pr + reg
-            assert D >= - 1e-14
-            return P + D
 
     def evaluate_fit(self, coef, dataset = None, gp_matrix = None, gp_pen = None):
         assert dataset
@@ -1753,28 +1739,34 @@ class additive_features_model:
         new_extra_part = {}
         new_fit        = 0
         for coor_upd in quant.keys():
-            if coor_upd[0] in {'Cuv','bv','Blr', 'Cbm'}:
+            if coor_upd[0] in {'tensor-product-L.R','low-rank-V','low-rank-UVt', 'sesquivariate-bm'}:
                 raise ValueError
                 #continue
             var, key, ind = coor_upd
-            if var in {'B', 'Csp', 'bu', 'Cu', 'Cv', 'Cb', 'Cm'}:
-                if var == 'bu':
+            if var in {'unconstrained',
+                       'low-rank-U',
+                       'tensor-product-L',
+                       'tensor-product-R',
+                       'sesquivariate-b',
+                       'sesquivariate-m',
+                       }:
+                if var == 'low-rank-U':
                     new_extra_part[coor_upd] = self.xtra_part_bu(n, XtX, coef_tmp, coor_upd, mask, gp_pen, MMt)
-                elif var == 'Cb':
+                elif var == 'sesquivariate-b':
                     new_extra_part[coor_upd] = self.xtra_part_cb(n, XtX, coef_tmp, coor_upd, mask, gp_pen, MMt) 
-                elif var == 'Cm':
+                elif var == 'sesquivariate-m':
                     new_extra_part[coor_upd] = self.xtra_part_cm(n, XtX, coef_tmp, coor_upd, mask, gp_pen, MMt)
-                elif var == 'Cu':
+                elif var == 'tensor-product-L':
                     new_extra_part[coor_upd] = self.xtra_part_cu(n, XtX, coef_tmp, coor_upd, mask, gp_pen, MMt)
-                elif var == 'Cv':
+                elif var == 'tensor-product-R':
                     new_extra_part[coor_upd] = self.xtra_part_cv(n, XtX, coef_tmp, coor_upd, mask, gp_pen, MMt)
                 else:
                     new_extra_part[coor_upd] = self.xtra_part_cl(n, XtX, coef_tmp, coor_upd, mask, gp_pen, MMt)
                 if EXTRA_CHECK:
                     try:
-                        if var == 'bu':
-                            assert coef_tmp['Blr',coor_upd[1]].shape == new_extra_part[coor_upd].shape
-                            assert coef_tmp[coor_upd].shape == (quant[coor_upd][:,self.dikt_masks.get(('Blr', coor_upd[1]), slice(None))] @ coef_tmp['bv', key]).shape
+                        if var == 'low-rank-U':
+                            assert coef_tmp['low-rank-UVt',coor_upd[1]].shape == new_extra_part[coor_upd].shape
+                            assert coef_tmp[coor_upd].shape == (quant[coor_upd][:,self.dikt_masks.get(('low-rank-UVt', coor_upd[1]), slice(None))] @ coef_tmp['low-rank-V', key]).shape
                         else:
                             assert coef_tmp[coor_upd].shape == quant         [coor_upd].shape, (coef_tmp[coor_upd].shape, quant[coor_upd].shape)  
                             assert coef_tmp[coor_upd].shape == new_extra_part[coor_upd].shape, (coef_tmp[coor_upd].shape, quant[coor_upd].shape)
@@ -1788,7 +1780,7 @@ class additive_features_model:
                                          dataset = dataset,
                                          **kwargs,
                                          )
-            elif var in {'Cuv', 'Blr', 'Cbm'}:
+            elif var in {'tensor-product-L.R', 'low-rank-UVt', 'sesquivariate-bm'}:
                 pass
             else:
                 raise ValueError
@@ -1799,17 +1791,27 @@ class additive_features_model:
         reg    =  {}
         slope  =  {}
         offset =  {}
-        cond   = (np.sum([e[0] == 'Cb' for e in coef]) != 1) and len(coef) >= 10 and not EXTRA_CHECK
+        cond   = (np.sum([e[0] == 'sesquivariate-b' for e in coef]) != 1) and len(coef) >= 10 and not EXTRA_CHECK
         for i, (coor, M) in enumerate(coef.items()):
-            if   coor[0] in {'Blr', 'bv', 'Cuv', 'Cbm'}:
+            if   coor[0] in {'low-rank-UVt',
+                             'low-rank-V',
+                             'tensor-product-L.R',
+                             'sesquivariate-bm',
+                             }:
                 continue
-            elif coor[0] in {'B', 'Csp', 'bu', 'Cu', 'Cv', 'Cb', 'Cm'}:
+            elif coor[0] in {'unconstrained',
+                             'low-rank-U',
+                             'tensor-product-L',
+                             'tensor-product-R',
+                             'sesquivariate-b',
+                             'sesquivariate-m',
+                             }:
                 if cond:
                     print('\r'+'evaluate_ind_reg', i, '/', len(coef), end = '')
                 var, key, ind = coor
                 pen, alpha    = self.get_pen_alpha(var, key)
                 res           = self.penalization(M, pen, alpha, key) # Compute regularization of one column
-                if pen == 'n2cvxclasso':
+                if pen == 'clipped_abs_deviation':
                     reg[coor], slope[coor] ,offset[coor] = res
                 else:
                     reg[coor] = res
@@ -1823,13 +1825,13 @@ class additive_features_model:
     def evaluate_ind_ridge(self, coef):
         ridge = {}
         for coor, M in coef.items():
-            if coor[0] in {'Blr', 'bv', 'Cuv', 'Cbm'}:
+            if coor[0] in {'low-rank-UVt', 'low-rank-V', 'tensor-product-L.R', 'sesquivariate-bm'}:
                 continue
             var, key, ind  = coor
             inpt, location = key
             pen, alpha     = self.get_pen_alpha(var, key)
             reshape_tensor = (    type(inpt[0]) == tuple
-                              and var not in {'Cu', 'Cv', 'Cb', 'Cm'}
+                              and var not in {'tensor-product-L', 'tensor-product-R', 'sesquivariate-b', 'sesquivariate-m'}
                               )
             if pen == '':
                 pass
@@ -1873,7 +1875,7 @@ class additive_features_model:
                                                      mode = 'valid',
                                                      )
                             ridge[var,key,ind] = 0.5 * alpha * np.linalg.norm(conv1)**2
-                        if var in {'Cbm', 'Cb', 'Cm', 'Blr', 'bv'}:
+                        if var in {'sesquivariate-bm', 'sesquivariate-b', 'sesquivariate-m', 'low-rank-UVt', 'low-rank-V'}:
                             raise ValueError
                         if cc.shape[1] > 2:
                             ker2  = np.array([[[1 ],[ -2 ],[ 1]]])
@@ -1938,17 +1940,30 @@ class additive_features_model:
             var, key, ind = coor_upd
             mask          = d_masks.get(coor_upd, slice(None))
             pen, alpha    = self.get_pen_alpha(var, key)
-            if pen == 'n2cvxclasso':
+            if pen == 'clipped_abs_deviation_v2':
                 orig_mask  = self.orig_masks[coor_upd]
-                same_mask  = type(mask) == type(orig_mask) and (mask == orig_mask if type(mask) == type(slice(None)) else np.allclose(mask, orig_mask))
-                slope_mask = slice(None) if same_mask else [k for k in (orig_mask 
-                                                                        if type(orig_mask) == np.ndarray
-                                                                        else 
-                                                                        np.arange(self.coef[coor_upd[:2]].shape[1])
-                                                                        ) if k in mask]
+                same_mask  = (    type(mask) == type(orig_mask) 
+                              and (mask == orig_mask
+                                   if type(mask) == type(slice(None))
+                                   else
+                                   np.allclose(mask, orig_mask)
+                                   )
+                              )
+                slope_mask = (   slice(None)
+                              if same_mask
+                              else
+                              [k
+                               for k in (orig_mask 
+                                         if type(orig_mask) == np.ndarray
+                                         else 
+                                         np.arange(self.coef[coor_upd[:2]].shape[1])
+                                         )
+                               if k in mask
+                               ]
+                              )
                 alpha = self.slope_ind[coor_upd][slope_mask]
             if EXTRA_CHECK:
-                if var in {'Cu', 'Cv'}:
+                if var in {'tensor-product-L', 'tensor-product-R'}:
                     assert self.coef[var,key][:,:,mask].shape == grad[coor_upd].shape
                     assert self.coef[var,key][:,:,mask].shape == ridge_grad[coor_upd].shape
                 else:
@@ -1956,14 +1971,41 @@ class additive_features_model:
                     assert self.coef[var,key][:,mask].shape == ridge_grad[coor_upd].shape
                 if self.active_gp:
                     assert coor_upd in grad_gp
-            if var in {'Cu', 'Cv'}:
-                coef_tmp[coor_upd] = self.prox_op(self.coef[(var,key)][:,:,mask] - eta*(grad[coor_upd] + grad_gp.get(coor_upd,0) + ridge_grad[coor_upd]), pen, eta, alpha, coef_zero = self.coef[(var,key)][:,:,mask])
+            if var in {'tensor-product-L', 'tensor-product-R'}:
+                coef_tmp[coor_upd] = self.prox_operator(self.coef[(var,key)][:,:,mask]- eta*(grad[coor_upd]
+                                                                                             + grad_gp.get(coor_upd,0)
+                                                                                             + ridge_grad[coor_upd]
+                                                                                             ),
+                                                        pen,
+                                                        eta,
+                                                        alpha,
+                                                        coef_zero = self.coef[(var,key)][:,:,mask],
+                                                        )
                 assert coef_tmp[coor_upd].shape == self.coef[(var,key)][:,:,mask].shape 
             else:    
-                coef_tmp[coor_upd] = self.prox_op(self.coef[(var,key)][:,mask] - eta*(grad[coor_upd] + grad_gp.get(coor_upd,0) + ridge_grad[coor_upd]), pen, eta, alpha, coef_zero = self.coef[(var,key)][:,mask])
-            if EXTRA_CHECK and alpha == 0 and var not in {'Cu', 'Cv'}:
-                aa = self.coef[(var,key)][:,mask] - eta*(grad[coor_upd] + grad_gp.get(coor_upd,0) + ridge_grad[coor_upd])
-                bb = self.prox_op(self.coef[(var,key)][:,mask] - eta*(grad[coor_upd] + grad_gp.get(coor_upd,0) + ridge_grad[coor_upd]), pen, eta, alpha, coef_zero = self.coef[(var,key)][:,mask])
+                coef_tmp[coor_upd] = self.prox_operator(self.coef[(var,key)][:,mask] - eta*(  grad[coor_upd]
+                                                                                            + grad_gp.get(coor_upd,0)
+                                                                                            + ridge_grad[coor_upd]
+                                                                                            ),
+                                                        pen,
+                                                        eta,
+                                                        alpha,
+                                                        coef_zero = self.coef[(var,key)][:,mask]
+                                                        )
+            if EXTRA_CHECK and alpha == 0 and var not in {'tensor-product-L', 'tensor-product-R'}:
+                aa = self.coef[(var,key)][:,mask] - eta*(  grad[coor_upd]
+                                                         + grad_gp.get(coor_upd,0)
+                                                         + ridge_grad[coor_upd]
+                                                         )
+                bb = self.prox_operator(self.coef[(var,key)][:,mask] - eta*(  grad[coor_upd]
+                                                                            + grad_gp.get(coor_upd,0)
+                                                                            + ridge_grad[coor_upd]
+                                                                            ),
+                                        pen,
+                                        eta,
+                                        0,
+                                        coef_zero = self.coef[(var,key)][:,mask]
+                                        )
                 assert np.all(aa == bb)
         return coef_tmp
 
@@ -1991,124 +2033,108 @@ class additive_features_model:
         self.prison_coor    = {}
         self.life_sentences = set()
         self.nb_sentences   = {}
-        #method_init_UV = self.hprm.get('tf_method_init_UV')
-        #print('method_init_UV : ', method_init_UV)
         fac = 1e-4
         self.keys = {key : []
                      for key in self.formula.index.get_level_values('coefficient').unique()
                      }
-        if 'Blr' in self.keys.keys():   
+        if 'low-rank-UVt' in self.keys.keys():   
             for inpt, location in list(filter(lambda x : x not in self.mask, self.X_training.keys())):
                 if (inpt, location) in self.mask: 
                     print(colored('\n\nNo Mask when low-rank\n\n', 'red'))
                     raise ValueError
                     del self.mask[inpt,location]
                     print(colored('\n\nmask of {0} removed to include it in Blr\n\n'.format((inpt,location)), 'red', 'on_cyan'))
-                if inpt in self.formula.loc['Blr'].index:
-                    self.keys['Blr'].append((inpt,location))
+                if inpt in self.formula.loc['low-rank-UVt'].index:
+                    self.keys['low-rank-UVt'].append((inpt,location))
                     if not (hasattr(self, 'freeze_Blr') and self.freeze_Blr):
-                        if self.pen['bu'].get(inpt) != 'rlasso' and self.hprm['afm.algorithm.first_order.column_update'].get(inpt):
+                        if self.pen['low-rank-U'].get(inpt) != 'row_group_lasso' and self.hprm['afm.algorithm.first_order.column_update'].get(inpt):
                             raise ValueError('we do not want column update for Blr')
-                            keys_upd += [('bu',(inpt,location),(int(r),)) for r in self.mask.get((inpt,location), range(self.k))]
+                            keys_upd += [('low-rank-U',(inpt,location),(int(r),)) for r in self.mask.get((inpt,location), range(self.k))]
                         else:
-                            keys_upd += [('bu',(inpt,location),())]
-                    if ('bu', (inpt,location)) not in coef:
+                            keys_upd += [('low-rank-U',(inpt,location),())]
+                    if ('low-rank-U', (inpt,location)) not in coef:
                         mm   = slice(None)
                         lenV = self.k
-                        coef[('bu',(inpt,location))]    = np.random.randn(self.size[(inpt,location)], min(self.r_B[inpt], self.k))*fac
+                        coef[('low-rank-U',(inpt,location))]    = np.random.randn(self.size[(inpt,location)], min(self.r_B[inpt], self.k))*fac
                         if lenV > 0:
-                            coef['bv',(inpt,location)]        = np.zeros((self.k, min(self.r_B[inpt], self.k)))
-                            coef['bv',(inpt,location)][mm], _ = np.linalg.qr(np.random.randn(self.k, min(self.r_B[inpt], self.k)))
-                            coef['Blr',(inpt,location)]       = coef[('bu',(inpt,location))] @ coef[('bv',(inpt,location))].T
-        if 'B' in self.keys.keys():
+                            coef['low-rank-V',(inpt,location)]        = np.zeros((self.k, min(self.r_B[inpt], self.k)))
+                            coef['low-rank-V',(inpt,location)][mm], _ = np.linalg.qr(np.random.randn(self.k, min(self.r_B[inpt], self.k)))
+                            coef['low-rank-UVt',(inpt,location)]      = coef[('low-rank-U',(inpt,location))] @ coef[('low-rank-V',(inpt,location))].T
+        if 'unconstrained' in self.keys.keys():
             for inpt,location in self.X_training.keys():
-                if inpt in self.formula.loc['B'].index:
+                if inpt in self.formula.loc['unconstrained'].index:
                     if not ((inpt,location) in self.mask and type(self.mask[(inpt,location)]) == np.ndarray and self.mask[(inpt,location)].shape[0] == 0):
-                        self.keys['B'].append((inpt,location))
-                    if 'B' not in self.frozen_variables:
-                        if self.pen['B'].get(inpt) != 'rlasso' and self.hprm['afm.algorithm.first_order.column_update'].get(('B', inpt)):
-                            keys_upd += [('B',(inpt,location),(int(r),)) for r in self.mask.get((inpt,location), range(self.k))]
+                        self.keys['unconstrained'].append((inpt,location))
+                    if 'unconstrained' not in self.frozen_variables:
+                        if self.pen['unconstrained'].get(inpt) != 'row_group_lasso' and self.hprm['afm.algorithm.first_order.column_update'].get(('unconstrained', inpt)):
+                            keys_upd += [('unconstrained',(inpt,location),(int(r),)) for r in self.mask.get((inpt,location), range(self.k))]
                         else:
-                            keys_upd += [('B',(inpt,location),())]
-                    if ('B', (inpt,location)) not in coef:
-                        coef['B',(inpt,location)] = np.zeros((self.size[(inpt,location)], self.k))
-        if 'Cuv' in self.keys.keys():
+                            keys_upd += [('unconstrained',(inpt,location),())]
+                    if ('unconstrained', (inpt,location)) not in coef:
+                        coef['unconstrained',(inpt,location)] = np.zeros((self.size[(inpt,location)], self.k))
+        if 'tensor-product-L.R' in self.keys.keys():
             for (inpt,location) in list(filter(lambda x : type(x[0]) == tuple, self.X_training.keys())):
-                if inpt in self.formula.loc['Cuv'].index:
+                if inpt in self.formula.loc['tensor-product-L.R'].index:
                     if str(inpt[1]) < str(inpt[0]):
                        continue
                     if not ((inpt,location) in self.mask and self.mask[inpt,location].shape[0] == 0):
-                        self.keys['Cuv'].append((inpt,location))
+                        self.keys['tensor-product-L.R'].append((inpt,location))
                     if not (hasattr(self, 'freeze_Cuv') and self.freeze_Cuv):
-                        if self.pen['Cu'].get(inpt) != 'rlasso' and self.hprm['afm.algorithm.first_order.column_update'].get(inpt):
-                            keys_upd +=   [('Cu',(inpt,location),(int(r),),) for r in self.mask.get((inpt,location), range(self.k))] 
+                        if self.pen['tensor-product-L'].get(inpt) != 'row_group_lasso' and self.hprm['afm.algorithm.first_order.column_update'].get(inpt):
+                            keys_upd +=   [('tensor-product-L',(inpt,location),(int(r),),) for r in self.mask.get((inpt,location), range(self.k))] 
                         else:
-                            keys_upd +=   [('Cu',(inpt,location),())]
-                        if self.pen['Cv'].get(inpt) != 'rlasso' and self.hprm['afm.algorithm.first_order.column_update'].get(inpt):
-                            keys_upd +=   [('Cv',(inpt,location),(int(r),),) for r in self.mask.get((inpt,location), range(self.k))]
+                            keys_upd +=   [('tensor-product-L',(inpt,location),())]
+                        if self.pen['tensor-product-R'].get(inpt) != 'row_group_lasso' and self.hprm['afm.algorithm.first_order.column_update'].get(inpt):
+                            keys_upd +=   [('tensor-product-R',(inpt,location),(int(r),),) for r in self.mask.get((inpt,location), range(self.k))]
                         else:
-                            keys_upd +=   [('Cv',(inpt,location),())]
-                    if ('Cu', (inpt,location)) not in coef or ('Cv', (inpt,location)) not in coef:
-                        # if   self.hprm['afm.algorithm.first_order.sparse_coef'] and False\
-                        # and (key in self.mask or 'classo' in self.pen.get('Cuv',{}).get(inpt)):
-                        #     assert 0, 'no sparse and einsum'
-                        # else:
+                            keys_upd +=   [('tensor-product-R',(inpt,location),())]
+                    if ('tensor-product-L', (inpt,location)) not in coef or ('tensor-product-R', (inpt,location)) not in coef:
                         rk = min(self.r_UV, self.size_tensor_bivariate[inpt,location][0], self.size_tensor_bivariate[inpt,location][1])
-                        coef['Cu',(inpt,location) ]  = np.zeros((self.size_tensor_bivariate[inpt,location][0], rk, self.k))
-                        coef['Cu',(inpt,location) ][:,:,self.mask.get((inpt,location),None)] = np.random.randn(*coef['Cu',(inpt,location)][:,:,self.mask.get((inpt,location),None)].shape) 
-                        coef['Cv',(inpt,location) ]  = np.zeros((self.size_tensor_bivariate[inpt,location][1], rk, self.k))
-                        coef['Cv',(inpt,location) ][:,:,self.mask.get((inpt,location),None)] = np.random.randn(*coef['Cv',(inpt,location)][:,:,self.mask.get((inpt,location),None)].shape)
-                        coef['Cuv',(inpt,location)] = np.einsum('prk,qrk->pqk',
-                                                    coef['Cu',(inpt,location)], 
-                                                    coef['Cv',(inpt,location)], 
+                        coef['tensor-product-L',(inpt,location) ]  = np.zeros((self.size_tensor_bivariate[inpt,location][0], rk, self.k))
+                        coef['tensor-product-L',(inpt,location) ][:,:,self.mask.get((inpt,location),None)] = np.random.randn(*coef['tensor-product-L',(inpt,location)][:,:,self.mask.get((inpt,location),None)].shape) 
+                        coef['tensor-product-R',(inpt,location) ]  = np.zeros((self.size_tensor_bivariate[inpt,location][1], rk, self.k))
+                        coef['tensor-product-R',(inpt,location) ][:,:,self.mask.get((inpt,location),None)] = np.random.randn(*coef['tensor-product-R',(inpt,location)][:,:,self.mask.get((inpt,location),None)].shape)
+                        coef['tensor-product-L.R',(inpt,location)] = np.einsum('prk,qrk->pqk',
+                                                    coef['tensor-product-L',(inpt,location)], 
+                                                    coef['tensor-product-R',(inpt,location)], 
                                                     ).reshape((-1, self.k))
-        if 'Cbm' in self.keys.keys():
+        if 'sesquivariate-bm' in self.keys.keys():
             for (inpt_b,location_b) in (  list(filter(lambda x : '#' not in x, self.X_training.keys()))
                                         + list(map(lambda x : x[0], list(filter(lambda x : '#' in x, self.X_training.keys()))))
                                         ):
-                if inpt_b in self.formula.loc['Cb'].index:
-                    if not ((inpt_b,location_b) in self.mask and self.mask[inpt_b,location_b].shape[0] == 0) and not ((inpt_b,location_b) in self.keys['Cb']):
-                        self.keys['Cb' ].append((inpt_b,location_b))
+                if inpt_b in self.formula.loc['sesquivariate-b'].index:
+                    if not ((inpt_b,location_b) in self.mask and self.mask[inpt_b,location_b].shape[0] == 0) and not ((inpt_b,location_b) in self.keys['sesquivariate-b']):
+                        self.keys['sesquivariate-b' ].append((inpt_b,location_b))
                     if not (hasattr(self, 'freeze_Cb') and self.freeze_Cb):
-                        if self.pen['Cb'].get(inpt_b) != 'rlasso' and self.hprm['afm.algorithm.first_order.column_update'].get(inpt_b):
+                        if self.pen['sesquivariate-b'].get(inpt_b) != 'row_group_lasso' and self.hprm['afm.algorithm.first_order.column_update'].get(inpt_b):
                             for r in self.mask.get((inpt_b,location_b), range(self.k)):
-                                if ('Cb',(inpt_b,location_b),(int(r),),) not in keys_upd:
-                                    keys_upd += [('Cb',(inpt_b,location_b),(int(r),),) ]
+                                if ('sesquivariate-b',(inpt_b,location_b),(int(r),),) not in keys_upd:
+                                    keys_upd += [('sesquivariate-b',(inpt_b,location_b),(int(r),),) ]
                         else:
-                            if ('Cb',(inpt_b,location_b),()) not in keys_upd:
-                                keys_upd += [('Cb',(inpt_b,location_b),())]
+                            if ('sesquivariate-b',(inpt_b,location_b),()) not in keys_upd:
+                                keys_upd += [('sesquivariate-b',(inpt_b,location_b),())]
     
-                    if ('Cb', (inpt_b,location_b)) not in coef:
-                        # if  (self.hprm['afm.algorithm.first_order.sparse_coef'] and False\
-                        #      and (key_b in self.mask or 'classo' in self.pen.get('Cb',{}).get(inpt_b))
-                        #      ):
-                        #     assert 0, 'no sparse and einsum'
-                        # else:
-                        coef['Cb',(inpt_b,location_b)] = np.zeros((self.size[inpt_b,location_b], self.k))
+                    if ('sesquivariate-b', (inpt_b,location_b)) not in coef:
+                        coef['sesquivariate-b',(inpt_b,location_b)] = np.zeros((self.size[inpt_b,location_b], self.k))
             for key in list(filter(lambda x : '#' in x, self.X_training.keys())):
                 key_b = key[0]
-                if inpt in self.formula.loc['Cbm'].index + tuple(['#'.join(e[::-1]) for e in self.formula.loc['Cbm']]):
-                    if not (key in self.mask and self.mask[inpt,location].shape[0] == 0) and not (key in self.keys['Cbm']):
-                        self.keys['Cbm'].append(key)
+                if inpt in self.formula.loc['sesquivariate-bm'].index + tuple(['#'.join(e[::-1]) for e in self.formula.loc['sesquivariate-bm']]):
+                    if not (key in self.mask and self.mask[inpt,location].shape[0] == 0) and not (key in self.keys['sesquivariate-bm']):
+                        self.keys['sesquivariate-bm'].append(key)
                     if not (hasattr(self, 'freeze_Cm') and self.freeze_Cm):
-                        if self.pen['Cm'].get(inpt) != 'rlasso' and self.hprm['afm.algorithm.first_order.column_update'].get(inpt):
+                        if self.pen['sesquivariate-m'].get(inpt) != 'row_group_lasso' and self.hprm['afm.algorithm.first_order.column_update'].get(inpt):
                             for r in self.mask.get(key, range(self.k)):
-                                if ('Cm',key,(int(r),),) not in keys_upd:
-                                    keys_upd += [('Cm',key,(int(r),),) ]
+                                if ('sesquivariate-m',key,(int(r),),) not in keys_upd:
+                                    keys_upd += [('sesquivariate-m',key,(int(r),),) ]
                         else:
-                            if ('Cm',key,()) not in keys_upd:
-                                keys_upd += [('Cm',key,())]  
-                    if ('Cm', key) not in coef:
-                        # if  (self.hprm['afm.algorithm.first_order.sparse_coef'] and False\
-                        #      and (key in self.mask or 'classo' in self.pen.get('Cm',{}).get(inpt))
-                        #      ):
-                        #     assert 0, 'no sparse and einsum'
-                        # else:
+                            if ('sesquivariate-m',key,()) not in keys_upd:
+                                keys_upd += [('sesquivariate-m',key,())]  
+                    if ('sesquivariate-m', key) not in coef:
                         assert self.size_tensor_bivariate[inpt,location][0] == self.size[key_b], 'key : {0} - key_b : {1}'.format(key, key_b)
-                        coef['Cm',key]   = np.zeros((self.size_tensor_bivariate[inpt,location][1], self.k))
-                        coef['Cbm',key]  = np.einsum('pk,qk->pqk',
-                                                    coef['Cb',key_b], 
-                                                    coef['Cm',key], 
+                        coef['sesquivariate-m',key]   = np.zeros((self.size_tensor_bivariate[inpt,location][1], self.k))
+                        coef['sesquivariate-bm',key]  = np.einsum('pk,qk->pqk',
+                                                    coef['sesquivariate-b',key_b], 
+                                                    coef['sesquivariate-m',key], 
                                                     ).reshape((-1, self.k))                  
         assert len(keys_upd) == len(set(keys_upd)), (len(keys_upd), len(set(keys_upd)))
         print('Finished initialization')
@@ -2122,33 +2148,25 @@ class additive_features_model:
             if self.hprm['gp_matrix'] == 'cst':
                 self.post_to_reg = {pp:'nat' for k, pp in enumerate(self.hprm['posts_names'])}
             elif self.hprm['gp_matrix'] in {'nat', 'rteReg', 'admReg', 'districts'}:
-                assert self.hprm['zone'] == 'full', 'zone is not full - should thing about it otherwise'
+                assert self.hprm['zone'] == 'full', 'zone is not full - should think about it differently'
                 raise NotImplementedError
-#                if  self.hprm['gp_matrix'] == 'nat':
-#                    self.post_to_reg = misc.get_dikt_nat(self.hprm) 
-#                elif self.hprm['gp_matrix'] == 'rteReg': 
-#                    self.post_to_reg = misc.get_dikt_reg_rte(self.hprm)
-#                elif self.hprm['gp_matrix'] == 'admReg':
-#                    self.post_to_reg = misc.get_dikt_reg_admin(self.hprm)
-#                elif self.hprm['gp_matrix'] == 'districts':
-#                    self.post_to_reg = misc.get_dikt_districts(self.hprm)
             elif self.hprm['gp_matrix'] == 'eye':
                 self.post_to_reg = {pp:pp for k, pp in enumerate(self.hprm['posts_names'])}
             else:
                 raise ValueError
-            self.idxPost_to_reg = {
-                                   k : self.post_to_reg[self.hprm['posts_names'][k]]
+            self.idxPost_to_reg = {k : self.post_to_reg[self.hprm['posts_names'][k]]
                                    for k in range(len(self.hprm['posts_names']))
                                    }
-            self.reg_to_tuples = {
-                                  reg : tuple(sorted([ii 
+            self.reg_to_tuples = {reg : tuple(sorted([ii 
                                                       for ii, post in enumerate(self.hprm['posts_names'])
                                                       if self.idxPost_to_reg[ii] == reg
                                                       ])
                                               )
                                   for reg in set(self.post_to_reg.values())
                                   }
-            self.tuples_to_reg = {v:k for k, v in self.reg_to_tuples.items()}
+            self.tuples_to_reg = {v:k
+                                  for k, v in self.reg_to_tuples.items()
+                                  }
             self.gp_matrix = np.zeros((self.k, self.k))
             for reg, indices in self.reg_to_tuples.items():
                 for k in indices: 
@@ -2163,7 +2181,7 @@ class additive_features_model:
             for k in range(self.k):
                 self.gp_matrix[self.rolling_away_ind[self.hprm['posts_names'][k]][:self.hprm['gp_matrix']],k] = 1
         else:
-            raise NotImplementedError     
+            raise ValueError('Incorrect gp_matrix : {0}'.format(self.hprm['gp_matrix']))     
 
 
     def make_orig_masks(self):
@@ -2184,7 +2202,7 @@ class additive_features_model:
                 d_masks[coor_upd] = np.array(ind)
             if type(d_masks[coor_upd]) == np.ndarray and len(d_masks[coor_upd]) == 0:
                 self.keys_upd.remove(coor_upd)
-            if var == 'bu': 
+            if var == 'low-rank-U': 
                 del d_masks[coor_upd]
         return d_masks
     
@@ -2192,9 +2210,11 @@ class additive_features_model:
     def part_fit(self, coef, coor_upd, quant, extra_part, mask = slice(None), dataset = None, indi = False):
         # Decomposed computation of the data-fitting term
         var, key = coor_upd[:2]
-        if var == 'bu':
-            cof = coef['Blr', key]
-        elif var in {'Cu', 'Cv'}:
+        if var == 'low-rank-U':
+            cof = coef['low-rank-UVt', key]
+        elif var in {'tensor-product-L',
+                     'tensor-product-R',
+                     }:
             cof = coef[coor_upd] if coor_upd in coef else coef[var, key][:,:,mask]
         else:
             cof = coef[coor_upd] if coor_upd in coef else coef[var, key][:,mask]
@@ -2220,37 +2240,25 @@ class additive_features_model:
             # Compute the penalizations
             if pen == '':  
                 return 0
-            elif pen in {'ridge', 'smoothing_reg', 'factor_smoothing_reg'}:  
+            elif pen in {'ridge',
+                         'smoothing_reg',
+                         'factor_smoothing_reg',
+                         }:  
                 return 0
             elif pen == 'lasso':
                 return mu*np.sum(np.abs(M))                 
-            elif pen == 'rlasso':
+            elif pen == 'row_group_lasso':
                 assert M.ndim == 2
                 if type(M) in {np.ndarray, np.matrix}:
                     return mu*np.sum([np.linalg.norm(M[i])        for i in range(M.shape[0])]) 
                 else:
                     return mu*np.sum([sp.sparse.linalg.norm(M[i]) for i in range(M.shape[0])])
-            elif pen == 'classo':
+            elif pen == 'col_group_lasso':
                 if type(M) in {np.ndarray, np.matrix}:
                     return mu*np.sum([np.linalg.norm(M[:,i])        for i in range(M.shape[1])])    
                 else:
                     return mu*np.sum([sp.sparse.linalg.norm(M[:,i]) for i in range(M.shape[1])])
-            elif pen == 'ncvxclasso' :
-                alpha, beta, gamma = mu
-                assert gamma > 0
-                assert alpha > beta
-                p, rcol  = M.shape
-                reg   = 0
-                for j in range(rcol):
-                    if type(M) in {np.ndarray, np.matrix}:
-                        c_norm = np.linalg.norm(M[:,j])
-                    else:
-                        c_norm = sp.sparse.linalg.norm(M[:,j])
-                    pen1   = alpha*c_norm
-                    pen2   = beta *c_norm + gamma
-                    reg += min(pen1,pen2)
-                return reg
-            elif pen == 'n2cvxclasso' :
+            elif pen == 'clipped_abs_deviation' :
                 alpha, beta, gamma = mu
                 p, rcol  = M.shape
                 reg    = 0
@@ -2267,14 +2275,15 @@ class additive_features_model:
                     slope [j] = alpha if pen1 < pen2 else beta
                     offset[j] = 0     if pen1 < pen2 else gamma
                 return reg, slope, offset                
-            elif pen == 'enet':
+            elif pen == 'elastic_net':
+                alpha, theta = mu
                 if type(M) in {np.ndarray, np.matrix}:
-                    return mu*(self.share_enet*np.sum(np.abs(M))     + ((1 - self.share_enet)/2)*np.linalg.norm(M)**2)
+                    return theta*(alpha*np.sum(np.abs(M))     + ((1 - alpha)/2)*np.linalg.norm(M)**2)
                 else:
-                    return mu*(self.share_enet*np.sum(np.abs(M))     + ((1 - self.share_enet)/2)*sp.sparse.linalg.norm(M)**2)
-            elif pen == 'tv':
+                    return theta*(alpha*np.sum(np.abs(M))     + ((1 - alpha)/2)*sp.sparse.linalg.norm(M)**2)
+            elif pen == 'total_variation':
                 return mu*np.sum(np.abs(M[1:] - M[:-1]))  
-            elif pen == 'tf':
+            elif pen == 'trend_filtering':
                 return mu*np.sum(np.abs(M[2:] - 2*M[1:-1] + M[:-2]))
             else:
                 raise ValueError('Bad Penalization')
@@ -2363,7 +2372,7 @@ class additive_features_model:
                                            else np.arange(self.k)
                                            ) 
                                  if (*coor[:2],k) not in sub_prison
-                                 or np.linalg.norm(self.coef[coor[:2]][:,:,k] if coor[0] in {'Cu','Cv'} else self.coef[coor[:2]][:,k]) > 0  #  Do not give up column that moved while in prison  
+                                 or np.linalg.norm(self.coef[coor[:2]][:,:,k] if coor[0] in {'tensor-product-L','tensor-product-R'} else self.coef[coor[:2]][:,k]) > 0  #  Do not give up column that moved while in prison  
                                  ]).astype(int)
             if   type(orig_mask) == type(slice(None)) and new_mask.shape[0]/self.k > self.prop_active_set:
                 new_mask = orig_mask
@@ -2450,11 +2459,11 @@ class additive_features_model:
             if len(coor) == 3:
                 var, key, ind = coor
                 cc            = coef[coor]
-                if coor[0] == 'Cbm':
-                    if   ('Cb',coor[1][0],coor[2]) in coef:
-                        mask = self.dikt_masks.get(('Cb',coor[1][0],coor[2]), slice(None))
-                    elif ('Cm',)+coor[1:] in coef:
-                        mask = self.dikt_masks.get(('Cm',)+coor[1:], slice(None))
+                if coor[0] == 'sesquivariate-bm':
+                    if   ('sesquivariate-b',coor[1][0],coor[2]) in coef:
+                        mask = self.dikt_masks.get(('sesquivariate-b',coor[1][0],coor[2]), slice(None))
+                    elif ('sesquivariate-m',)+coor[1:] in coef:
+                        mask = self.dikt_masks.get(('sesquivariate-m',)+coor[1:], slice(None))
                     else:
                         raise KeyError                
                 else:    
@@ -2518,6 +2527,7 @@ class additive_features_model:
         for e in ['self.epoch_stopping_criteria', 'self.epoch_print_info']:
             print('   ', '{0:25}'.format(e[5:]), eval(e))
             
+            
     def print_progress(self, ):
         n_app = 5
         info = [
@@ -2534,33 +2544,30 @@ class additive_features_model:
         tools.progress.show([self.iteration, self.max_iter], *info)
 
 
-    def prox_op(self, X, pen, eta, mu, flag = False, coef_zero = None):
-        # Proximal operator
+    def prox_operator(self, X, pen, eta, mu, coef_zero = None):
         if pen == '':    
             X_tmp = X
-        elif pen in {'ridge', 'smoothing_reg', 'factor_smoothing_reg'}:    
+        elif pen in {'ridge',
+                     'smoothing_reg',
+                     'factor_smoothing_reg',
+                     }:    
             X_tmp = X
+        elif pen == 'clipped_abs_deviation' :
+            X_tmp     = tools.proximal.prox_clipped_abs_deviation(X, eta, mu, coef_zero = coef_zero)
+        elif pen == 'col_group_lasso' :
+            X_tmp     = tools.proximal.prox_col_group_lasso(X, eta*mu)
+        elif pen == 'elastic_net' :
+            X_tmp     = tools.proximal.prox_elastic_net(X, eta, mu)
         elif pen == 'lasso' :
-            X_tmp     = tools.proximal.prox_L1(X, eta*mu, coef_zero = coef_zero)
-        elif pen == 'rlasso' :
-            X_tmp     = tools.proximal.prox_row_lasso(X, eta*mu)
-        elif pen == 'classo' :
-            X_tmp     = tools.proximal.prox_col_lasso(X, eta*mu)
-        elif pen == 'ncvxclasso' :
-            assert type(mu) == tuple
-            X_tmp     = tools.proximal.prox_ncvx_classo(X, tuple([eta*e for e in mu]), coef_zero = coef_zero)
-        elif pen == 'n2cvxclasso' :
-            X_tmp     = tools.proximal.prox_ncvx_classo_v2(X, eta, mu, coef_zero = coef_zero)
-        elif pen == 'ridge' :
-            X_tmp     = tools.proximal.prox_L2(X, mu)
-        elif pen == 'enet' :
-            X_tmp     = tools.proximal.prox_enet(X, eta*mu, self.share_enet)
-        elif pen == 'tv':
-            X_tmp = tools.proximal.prox_TV(X, eta*mu)
-        elif pen == 'tf' :
-            X_tmp = tools.proximal.prox_TF(X, eta*mu)
+            X_tmp     = tools.proximal.prox_lasso(X, eta*mu)
+        elif pen == 'row_group_lasso' :
+            X_tmp     = tools.proximal.prox_row_group_lasso(X, eta*mu)
+        elif pen == 'total_variation':
+            X_tmp = tools.proximal.prox_total_variation(X, eta*mu)
+        elif pen == 'trend_filtering' :
+            X_tmp = tools.proximal.prox_trend_filtering(X, eta*mu)
         else:
-            raise ValueError('bad penalization')
+            raise ValueError('bad penalization : {0}'.format(pen))
         return X_tmp
                 
                 
@@ -2572,8 +2579,7 @@ class additive_features_model:
     
            
     def sort_keys(self, keys, masks):
-        cat_owned = {}
-        # Sort the categories of covariates
+        cat_owned   = {}
         keys_shared = []
         keys_owned  = []
         for inpt, location in keys: 
@@ -2631,14 +2637,6 @@ class additive_features_model:
             # Small grad
             norm_grad        = self.compute_grad_norm(dikt_fit_grad)
             norm_grad_small  = (norm_grad < self.norm_grad_min) and not (self.bcd ) and self.hprm['afm.algorithm.first_order.early_stop_small_grad']#or self.vr)
-            # Duality gap
-            if self.dual_gap:
-                assert 0
-                grad = self.compute_grad(self.coef)
-                pred = self.predict()
-                assert pred.shape == self.Y_training.shape
-                if 'B' in self.formula.index.get_level_values('coefficient').unique():
-                    self.gap_B.append(self.duality_gap(pred, grad, 'B'))
        
         if early_stop      : print('\nEARLY STOPPING : ' , 'old mean', old_mean_ft, ' - recent mean', new_mean_ft)
         if small_decrease  : print('\nSMALL DECREASE : ' , tools.format_nb.round_nb(self.decr_obj))
@@ -2651,15 +2649,15 @@ class additive_features_model:
             if type(coef_tmp[coor_upd]) == np.matrix:
                 coef_tmp[coor_upd] = np.asarray(coef_tmp[coor_upd])
             assert type(coef_tmp[coor_upd]) == np.ndarray
-            if coor_upd[0] == 'Cbm':
-                if   ('Cb',coor_upd[1][0],coor_upd[2]) in coef_tmp:
-                    mask = d_masks.get(('Cb',coor_upd[1][0],coor_upd[2]), slice(None))
-                elif ('Cm',)+coor_upd[1:] in coef_tmp:
-                    mask = d_masks.get(('Cm',)+coor_upd[1:], slice(None))
+            if coor_upd[0] == 'sesquivariate-bm':
+                if   ('sesquivariate-b',coor_upd[1][0],coor_upd[2]) in coef_tmp:
+                    mask = d_masks.get(('sesquivariate-b',coor_upd[1][0],coor_upd[2]), slice(None))
+                elif ('sesquivariate-m',)+coor_upd[1:] in coef_tmp:
+                    mask = d_masks.get(('sesquivariate-m',)+coor_upd[1:], slice(None))
                 else:
                     assert 0
-            elif coor_upd[0] == 'Cuv':
-                mask = d_masks.get(('Cu',)+coor_upd[1:], slice(None))
+            elif coor_upd[0] == 'tensor-product-L.R':
+                mask = d_masks.get(('tensor-product-L',)+coor_upd[1:], slice(None))
             else:
                 mask = d_masks.get(coor_upd, slice(None))
             if type(new_ind_slope.get(coor_upd, None)) != type(None):
@@ -2676,7 +2674,17 @@ class additive_features_model:
                 self.slope_ind [coor_upd][inner_mask] = new_ind_slope [coor_upd]
                 self.offset_ind[coor_upd][inner_mask] = new_ind_offset[coor_upd]
             var,(inpt,location) = coor_upd[:2]
-            assert var in {'A', 'B', 'Blr', 'bu', 'bv', 'Csp', 'Cuv', 'Cu', 'Cv', 'Cb', 'Cm', 'Cbm'}
+            assert var in {'unconstrained',
+                           'low-rank-UVt',
+                           'low-rank-U',
+                           'low-rank-V',
+                           'tensor-product-L.R',
+                           'tensor-product-L',
+                           'tensor-product-R',
+                           'sesquivariate-b',
+                           'sesquivariate-m',
+                           'sesquivariate-bm',
+                           }
             if self.active_set and not self.hprm['afm.algorithm.first_order.column_update'].get(inpt):
                 orig_mask = self.orig_masks.get(coor_upd, slice(None))
                 ind_posts = mask if type(mask) == np.ndarray else (orig_mask if type(orig_mask) == np.ndarray else np.arange(self.k))
@@ -2686,7 +2694,9 @@ class additive_features_model:
                             assert 0
                 norm_diff    = (  np.linalg.norm((coef_tmp[coor_upd]
                                                   - (self.coef[var,(inpt,location)][:,:,mask] 
-                                                     if var in {'Cu','Cv'}
+                                                     if var in {'tensor-product-L',
+                                                                'tensor-product-R',
+                                                                }
                                                      else
                                                      self.coef[var,(inpt,location)][:,mask]
                                                      )
@@ -2701,38 +2711,38 @@ class additive_features_model:
                 convicts_tmp = np.arange(ind_posts.shape[0])[norm_diff == 0]
                 for i, r in enumerate(convicts):
                     if not np.linalg.norm(self.coef[var,(inpt,location)][:,:,r]
-                                          if var in {'Cu','Cv'}
+                                          if var in {'tensor-product-L','tensor-product-R'}
                                           else
                                           self.coef[var,(inpt,location)][:,r]
                                           ) < np.finfo(float).eps:
-                        if np.linalg.norm(coef_tmp[coor_upd][:,:,convicts_tmp[i]] if var in {'Cu','Cv'} else coef_tmp[coor_upd][:,convicts_tmp[i]]) == 0:
+                        if np.linalg.norm(coef_tmp[coor_upd][:,:,convicts_tmp[i]] if var in {'tensor-product-L','tensor-product-R'} else coef_tmp[coor_upd][:,convicts_tmp[i]]) == 0:
                             assert 0
                     if (*coor_upd[:2], r) not in self.prison_coor:
                         self.punished_coor.add((*coor_upd[:2], r))
             if EXTRA_CHECK:
-                if var == 'bv':
+                if var == 'low-rank-V':
                     assert self.coef[var,(inpt,location)][mask].shape     == coef_tmp[coor_upd].shape
-                elif var in {'Cu','Cv'}:
+                elif var in {'tensor-product-L','tensor-product-R'}:
                     assert self.coef[var,(inpt,location)][:,:,mask].shape == coef_tmp[coor_upd].shape
                 else:
                     assert self.coef[var,(inpt,location)][:,mask].shape   == coef_tmp[coor_upd].shape
                 self.coef_prec[var,(inpt,location)] = self.coef[var,(inpt,location)].copy()
             shape_before = self.coef[var, (inpt,location)].shape
-            if var == 'bv':
+            if var == 'low-rank-V':
                 self.coef[var,(inpt,location)][mask]      = coef_tmp[coor_upd]
-            if var in {'Cu','Cv'}:
+            if var in {'tensor-product-L','tensor-product-R'}:
                 self.coef[var, (inpt,location)][:,:,mask] = coef_tmp[coor_upd]
             else:
                 self.coef[var, (inpt,location)][:,mask]   = coef_tmp[coor_upd]
             assert shape_before == self.coef[var, (inpt,location)].shape
             if EXTRA_CHECK:
-                if   var == 'bu':
+                if   var == 'low-rank-U':
                     assert self.coef[var,(inpt,location)].shape == coef_tmp[coor_upd].shape
                     assert np.allclose(self.coef[var,(inpt,location)], coef_tmp[coor_upd])
-                elif var == 'bv':
+                elif var == 'low-rank-V':
                     assert self.coef[var,(inpt,location)][mask].shape == coef_tmp[coor_upd].shape
                     assert np.allclose(self.coef[var,(inpt,location)][mask], coef_tmp[coor_upd])
-                elif var in {'Cu','Cv'}:
+                elif var in {'tensor-product-L','tensor-product-R'}:
                     assert self.coef[var,(inpt,location)][:,:,mask].shape == coef_tmp[coor_upd].shape
                     assert np.allclose(self.coef[var,(inpt,location)][:,:,mask], coef_tmp[coor_upd])
                 else:
@@ -2740,8 +2750,8 @@ class additive_features_model:
                     assert np.allclose(self.coef[var,(inpt,location)][:,mask], coef_tmp[coor_upd])
                 if self.active_set and not self.hprm['afm.algorithm.first_order.column_update'].get(inpt):
                     for i, rr in enumerate(convicts):
-                        if not np.allclose(self.coef     [var,(inpt,location)][:,:,rr] if var in {'Cu','Cv'} else self.coef[var,(inpt,location)][:,rr], 
-                                           self.coef_prec[var,(inpt,location)][:,:,rr] if var in {'Cu','Cv'} else self.coef[var,(inpt,location)][:,rr],
+                        if not np.allclose(self.coef     [var,(inpt,location)][:,:,rr] if var in {'tensor-product-L','tensor-product-R'} else self.coef[var,(inpt,location)][:,rr], 
+                                           self.coef_prec[var,(inpt,location)][:,:,rr] if var in {'tensor-product-L','tensor-product-R'} else self.coef[var,(inpt,location)][:,rr],
                                            ):
                             print('mask', mask)
                             print('ind_post', ind_posts)
@@ -2754,25 +2764,25 @@ class additive_features_model:
         # Update the Cbm coefficient matrics
         # It corresponds to the sesquivariate structural constraint
         for var, key, ind in list(coef.keys()):
-            if var in {'Cb','Cm'}:
+            if var in {'sesquivariate-b','sesquivariate-m'}:
                 mm = self.dikt_masks.get((var, key, ind), slice(None))
-                if var == 'Cb':
+                if var == 'sesquivariate-b':
                     for var2, key2 in self.coef:
-                        if var2 == 'Cbm' and key2[0] == key:
-                            if ('Cbm', key2) in self.coef:
-                                coef['Cbm', key2, ind] = np.einsum('pk,qk->pqk',
+                        if var2 == 'sesquivariate-bm' and key2[0] == key:
+                            if ('sesquivariate-bm', key2) in self.coef:
+                                coef['sesquivariate-bm', key2, ind] = np.einsum('pk,qk->pqk',
                                                                    coef[var, key, ind],
-                                                                   self.coef['Cm', key2][:,mm],
+                                                                   self.coef['sesquivariate-m', key2][:,mm],
                                                                    ).reshape((-1, coef[var, key, ind].shape[1]))
-                                assert coef['Cbm', key2, ind].shape == self.coef['Cbm', key2][:,mm].shape
-                elif var == 'Cm':
-                    assert ('Cbm',key) in self.coef
-                    if ('Cbm',key) in self.coef:
-                        coef['Cbm', key, ind] = np.einsum('pk,qk->pqk',
-                                                          self.coef['Cb', key[0]][:,mm],
+                                assert coef['sesquivariate-bm', key2, ind].shape == self.coef['sesquivariate-bm', key2][:,mm].shape
+                elif var == 'sesquivariate-m':
+                    assert ('sesquivariate-bm',key) in self.coef
+                    if ('sesquivariate-bm',key) in self.coef:
+                        coef['sesquivariate-bm', key, ind] = np.einsum('pk,qk->pqk',
+                                                          self.coef['sesquivariate-b', key[0]][:,mm],
                                                           coef[var, key, ind],
                                                           ).reshape((-1, coef[var, key, ind].shape[1]))
-                        assert coef['Cbm', key, ind].shape == self.coef['Cbm', key][:,mm].shape
+                        assert coef['sesquivariate-bm', key, ind].shape == self.coef['sesquivariate-bm', key][:,mm].shape
         return coef   
                         
     
@@ -2780,16 +2790,16 @@ class additive_features_model:
         # Update the Cuv coefficient matrics
         # It corresponds to the low-rank structural constraint
         for var, key, ind in list(coef.keys()):
-            if var in {'Cu','Cv'}:
+            if var in {'tensor-product-L','tensor-product-R'}:
                 mm = self.dikt_masks.get((var, key, ind), slice(None))
-                if var == 'Cu':
-                    coef['Cuv', key, ind] = np.einsum('prk,qrk->pqk',
+                if var == 'tensor-product-L':
+                    coef['tensor-product-L.R', key, ind] = np.einsum('prk,qrk->pqk',
                                                       coef[var, key, ind],
-                                                      self.coef['Cv', key][:,:,mm],
+                                                      self.coef['tensor-product-R', key][:,:,mm],
                                                       ).reshape((-1, coef[var, key, ind].shape[2]))
-                elif var == 'Cv':
-                    coef['Cuv', key, ind] = np.einsum('prk,qrk->pqk',
-                                                      self.coef['Cu', key][:,:,mm],
+                elif var == 'tensor-product-R':
+                    coef['tensor-product-L.R', key, ind] = np.einsum('prk,qrk->pqk',
+                                                      self.coef['tensor-product-L', key][:,:,mm],
                                                       coef[var, key, ind],
                                                       ).reshape((-1, coef[var, key, ind].shape[2]))
         return coef  
@@ -2803,16 +2813,16 @@ class additive_features_model:
         if self.iteration <= 10:
             print('svd'*svd + 'qr'*(1-svd))
         for var, key, ind in list(coef.keys()):
-            mm = self.dikt_masks.get(('bv', key), slice(None))
-            if var == 'bu':
+            mm = self.dikt_masks.get(('low-rank-V', key), slice(None))
+            if var == 'low-rank-U':
                 assert not ind
-                if svd or ('bv', None) not in coef:
-                    coef['bv', key] = self.best_orth_bv(coef, mask = mm)
+                if svd or ('low-rank-V', None) not in coef:
+                    coef['low-rank-V', key] = self.best_orth_bv(coef, mask = mm)
                 else:
                     assert 0 # Should be ckecked before use
                     Q, R = self.best_qr(coef, mask = mm)
-                    coef['bv', key] = Q
-                coef['Blr', key] = coef[var, key, ind] @ coef['bv', key].T
+                    coef['low-rank-V', key] = Q
+                coef['low-rank-UVt', key] = coef[var, key, ind] @ coef['low-rank-V', key].T
         return coef
 
     
@@ -2883,7 +2893,11 @@ class additive_features_model:
         
     def xtra_part_bu(self, n, XtX, coef, coor_upd, mask, gp_pen, MMt):
         key = coor_upd[1]
-        xxx = (1/n)*XtX[key,key] @ (coef[('Blr',*coor_upd[1:])] if ('Blr',*coor_upd[1:]) in coef else coef['Blr',coor_upd[1]][:,mask])# VtV = I
+        xxx = (1/n)*XtX[key,key] @ (coef[('low-rank-UVt',*coor_upd[1:])]
+                                    if ('low-rank-UVt',*coor_upd[1:]) in coef
+                                    else
+                                    coef['low-rank-UVt',coor_upd[1]][:,mask]
+                                    )
         if gp_pen:
                 xxx = gp_pen * xxx @ MMt[mask][:,mask]
         return xxx
@@ -2891,8 +2905,8 @@ class additive_features_model:
     
     def xtra_part_cb(self, n, XtX, coef, coor_upd, mask, gp_pen, MMt):
         cbb =   (1/n)*XtX[coor_upd[1],coor_upd[1]] @ (coef[coor_upd] if coor_upd in coef else coef[coor_upd[:2]][:,mask])
-        cbm = 2*(1/n)*np.sum([XtX[coor_upd[1],keybm] @ (coef['Cbm', keybm, coor_upd[-1]] if ('Cbm', keybm, coor_upd[-1]) in coef else coef['Cbm', keybm][:,mask])
-                              for keybm in self.keys['Cbm'] if keybm[0] == coor_upd[1]
+        cbm = 2*(1/n)*np.sum([XtX[coor_upd[1],keybm] @ (coef['sesquivariate-bm', keybm, coor_upd[-1]] if ('sesquivariate-bm', keybm, coor_upd[-1]) in coef else coef['sesquivariate-bm', keybm][:,mask])
+                              for keybm in self.keys['sesquivariate-bm'] if keybm[0] == coor_upd[1]
                               if (coor_upd[1],keybm) in XtX
                               ], 
                               axis = 0,
@@ -2900,20 +2914,20 @@ class additive_features_model:
         if not gp_pen:
             cc = (coef[coor_upd] if coor_upd in coef else coef[coor_upd[:2]][:,mask])
             cmm = np.zeros(cc.shape)
-            for keybm2 in self.keys['Cbm']:
+            for keybm2 in self.keys['sesquivariate-bm']:
                 if keybm2[0] == coor_upd[1]:
-                    for keybm1 in self.keys['Cbm']:
+                    for keybm1 in self.keys['sesquivariate-bm']:
                         if keybm1[0] == coor_upd[1]:
                             if (keybm1,keybm2) in XtX:
                                 cmm += (1/n)*np.einsum('pqk,qk->pk', 
-                                                       (XtX[keybm1,keybm2] @ (coef['Cbm', keybm2, coor_upd[-1]]
-                                                        if ('Cbm', keybm2, coor_upd[-1]) in coef 
+                                                       (XtX[keybm1,keybm2] @ (coef['sesquivariate-bm', keybm2, coor_upd[-1]]
+                                                        if ('sesquivariate-bm', keybm2, coor_upd[-1]) in coef 
                                                         else 
-                                                        coef['Cbm', keybm2][:,mask])).reshape((-1,
-                                                                                               coef.get(('Cm', keybm1), self.coef['Cm', keybm1])[:,mask].shape[0], 
-                                                                                               coef.get(('Cm', keybm1), self.coef['Cm', keybm1])[:,mask].shape[1],
+                                                        coef['sesquivariate-bm', keybm2][:,mask])).reshape((-1,
+                                                                                               coef.get(('sesquivariate-m', keybm1), self.coef['sesquivariate-m', keybm1])[:,mask].shape[0], 
+                                                                                               coef.get(('sesquivariate-m', keybm1), self.coef['sesquivariate-m', keybm1])[:,mask].shape[1],
                                                                                                )),
-                                                       coef.get(('Cm', keybm1), self.coef['Cm', keybm1])[:,mask],
+                                                       coef.get(('sesquivariate-m', keybm1), self.coef['sesquivariate-m', keybm1])[:,mask],
                                                        )
         if gp_pen:
             cbb = gp_pen * cbb @ MMt[mask][:,mask]
@@ -2922,14 +2936,14 @@ class additive_features_model:
             else:
                 assert cbm == 0
             cmm =   (1/n)*np.sum([np.einsum('pqk,qk->pk', 
-                                            (XtX[keybm1,keybm2] @ (coef['Cbm', keybm2, coor_upd[-1]] if ('Cbm', keybm2, coor_upd[-1]) in coef else coef['Cbm', keybm2][:,mask])@ MMt[mask][:,mask]).reshape((-1, 
-                                                                                                                                                                                                                 coef.get(('Cm', keybm1), self.coef['Cm', keybm1])[:,mask].shape[0], 
-                                                                                                                                                                                                                 coef.get(('Cm', keybm1), self.coef['Cm', keybm1])[:,mask].shape[1],
+                                            (XtX[keybm1,keybm2] @ (coef['sesquivariate-bm', keybm2, coor_upd[-1]] if ('sesquivariate-bm', keybm2, coor_upd[-1]) in coef else coef['sesquivariate-bm', keybm2][:,mask])@ MMt[mask][:,mask]).reshape((-1, 
+                                                                                                                                                                                                                 coef.get(('sesquivariate-m', keybm1), self.coef['sesquivariate-m', keybm1])[:,mask].shape[0], 
+                                                                                                                                                                                                                 coef.get(('sesquivariate-m', keybm1), self.coef['sesquivariate-m', keybm1])[:,mask].shape[1],
                                                                                                                                                                                                                  )),
-                                            coef.get(('Cm', keybm1), self.coef['Cm', keybm1])[:,mask],
+                                            coef.get(('sesquivariate-m', keybm1), self.coef['sesquivariate-m', keybm1])[:,mask],
                                             )
-                                  for keybm2 in self.keys['Cbm'] if keybm2[0] == coor_upd[1]
-                                  for keybm1 in self.keys['Cbm'] if keybm1[0] == coor_upd[1]
+                                  for keybm2 in self.keys['sesquivariate-bm'] if keybm2[0] == coor_upd[1]
+                                  for keybm1 in self.keys['sesquivariate-bm'] if keybm1[0] == coor_upd[1]
                                   if (keybm1,keybm2) in XtX
                                   ],
                                  axis = 0, 
@@ -2939,15 +2953,15 @@ class additive_features_model:
     
     
     def xtra_part_cm(self, n, XtX, coef, coor_upd, mask, gp_pen, MMt):
-        ccc = (1/n)*XtX[coor_upd[1],coor_upd[1]] @ (coef[('Cbm',*coor_upd[1:])] if ('Cbm',*coor_upd[1:]) in coef else coef['Cbm',coor_upd[1]][:,mask])#[:,mask_right]
+        ccc = (1/n)*XtX[coor_upd[1],coor_upd[1]] @ (coef[('sesquivariate-bm',*coor_upd[1:])] if ('sesquivariate-bm',*coor_upd[1:]) in coef else coef['sesquivariate-bm',coor_upd[1]][:,mask])#[:,mask_right]
         if gp_pen:
                 ccc = gp_pen * ccc @ MMt[mask][:,mask]
         xxx = np.einsum('pqk,pk->qk',
-                        ccc.reshape((coef.get(('Cb', coor_upd[1][0]), self.coef['Cb', coor_upd[1][0]])[:,mask].shape[0],
+                        ccc.reshape((coef.get(('sesquivariate-b', coor_upd[1][0]), self.coef['sesquivariate-b', coor_upd[1][0]])[:,mask].shape[0],
                                      -1,
-                                     coef.get(('Cb', coor_upd[1][0]), self.coef['Cb', coor_upd[1][0]])[:,mask].shape[1],
+                                     coef.get(('sesquivariate-b', coor_upd[1][0]), self.coef['sesquivariate-b', coor_upd[1][0]])[:,mask].shape[1],
                                      )),
-                        coef.get(('Cb', coor_upd[1][0]), self.coef['Cb', coor_upd[1][0]])[:,mask],
+                        coef.get(('sesquivariate-b', coor_upd[1][0]), self.coef['sesquivariate-b', coor_upd[1][0]])[:,mask],
                         )
         return xxx
  
@@ -2961,29 +2975,29 @@ class additive_features_model:
     
     
     def xtra_part_cu(self, n, XtX, coef, coor_upd, mask, gp_pen, MMt):
-        ccc = (1/n)*XtX[coor_upd[1],coor_upd[1]] @ (coef[('Cuv',*coor_upd[1:])] if ('Cuv',*coor_upd[1:]) in coef else coef['Cuv',coor_upd[1]][:,mask])#[:,mask_right]
+        ccc = (1/n)*XtX[coor_upd[1],coor_upd[1]] @ (coef[('tensor-product-L.R',*coor_upd[1:])] if ('tensor-product-L.R',*coor_upd[1:]) in coef else coef['tensor-product-L.R',coor_upd[1]][:,mask])#[:,mask_right]
         if gp_pen:
                 ccc = gp_pen * ccc @ MMt[mask][:,mask]
         xxx = np.einsum('pqk,qrk->prk',
                         ccc.reshape((-1,
-                                     coef.get(('Cv', coor_upd[1]), self.coef[('Cv', coor_upd[1])])[:,:,mask].shape[0],
-                                     coef.get(('Cv', coor_upd[1]), self.coef[('Cv', coor_upd[1])])[:,:,mask].shape[2],
+                                     coef.get(('tensor-product-R', coor_upd[1]), self.coef[('tensor-product-R', coor_upd[1])])[:,:,mask].shape[0],
+                                     coef.get(('tensor-product-R', coor_upd[1]), self.coef[('tensor-product-R', coor_upd[1])])[:,:,mask].shape[2],
                                      )),
-                        coef.get(('Cv', coor_upd[1]), self.coef[('Cv', coor_upd[1])])[:,:,mask],
+                        coef.get(('tensor-product-R', coor_upd[1]), self.coef[('tensor-product-R', coor_upd[1])])[:,:,mask],
                         )
         return xxx
     
     
     def xtra_part_cv(self, n, XtX, coef, coor_upd, mask, gp_pen, MMt):
-        ccc = (1/n)*XtX[coor_upd[1],coor_upd[1]] @ (coef[('Cuv',*coor_upd[1:])] if ('Cuv',*coor_upd[1:]) in coef else coef['Cuv',coor_upd[1]][:,mask])
+        ccc = (1/n)*XtX[coor_upd[1],coor_upd[1]] @ (coef[('tensor-product-L.R',*coor_upd[1:])] if ('tensor-product-L.R',*coor_upd[1:]) in coef else coef['tensor-product-L.R',coor_upd[1]][:,mask])
         if gp_pen:
                 ccc = gp_pen * ccc @ MMt[mask][:,mask]
         xxx = np.einsum('pqk,prk->qrk',
-                        ccc.reshape((coef.get(('Cu', coor_upd[1]), self.coef[('Cu', coor_upd[1])])[:,:,mask].shape[0],
+                        ccc.reshape((coef.get(('tensor-product-L', coor_upd[1]), self.coef[('tensor-product-L', coor_upd[1])])[:,:,mask].shape[0],
                                      -1,
-                                     coef.get(('Cu', coor_upd[1]), self.coef[('Cu', coor_upd[1])])[:,:,mask].shape[2],
+                                     coef.get(('tensor-product-L', coor_upd[1]), self.coef[('tensor-product-L', coor_upd[1])])[:,:,mask].shape[2],
                                      )),
-                        coef.get(('Cu', coor_upd[1]), self.coef[('Cu', coor_upd[1])])[:,:,mask],
+                        coef.get(('tensor-product-L', coor_upd[1]), self.coef[('tensor-product-L', coor_upd[1])])[:,:,mask],
                         )
         return xxx
                     

@@ -15,11 +15,11 @@ def set_afm(hprm):
     # Design and optimization problem
     assert hprm['learning.model'] == 'afm'
     hprm.update({
-                  'afm.features.natural_splines'            : True, # Activate to extrapolate linearly
-                  'afm.features.order_splines'              : 1,    # 1 for piecewise linear
+                  'afm.features.natural_splines'            : True,    # Activate to extrapolate linearly
+                  'afm.features.order_splines'              : 1,       # 1 for piecewise linear
                   'afm.features.bivariate.combine_function' : np.prod, # Use product or minimum of splines for interactions
-                  'afm.features.sparse_x1'                  : True, # Store the univariate covariates in a sparse format
-                  'afm.features.sparse_x2'                  : True, # Store the interaction covariates in a sparse format
+                  'afm.features.sparse_x1'                  : True,    # Store the univariate covariates in a sparse format
+                  'afm.features.sparse_x2'                  : True,    # Store the interaction covariates in a sparse format
                    })
 
     
@@ -30,16 +30,6 @@ def set_afm(hprm):
                                                                                        None, #default.afm.dikt_formula['nat'], 
                                                                                        )['bivariate']
                                                           ), # Choose the granularity for the different inputs ie the number of splines
-                  })
-    
-    # Low-rank structure
-    hprm.update({
-                  'afm.constraints.ranks_B'     : {# Rank of the low-rank (substations wise) components for each input
-                                                   'wh' : 4, 
-                                                   'yd' : 4, 
-                                                    },
-                  'afm.constraints.ranks_UV'      : 1,    # Rank of the coefficient matrices for the interactions (individually per post) 
-                  'afm.regularization.share_enet' : 0.95, # Coefficient for the elastic-net penalty
                   })
             
     # Sum-consistent model        
@@ -56,8 +46,8 @@ def set_afm(hprm):
     # Algorithm
     hprm.update({
                   'afm.algorithm'                           : 'L-BFGS', # 'L-BFGS' # 'FirstOrder'
-                  #'afm.algorithm.sparse_coef'               : False, # Memory size of coef does not seem to be a problem, at least when there is no interactions
                   'afm.algorithm.sparse_coef_after_optim'   : True,  # After the optimization, store the coefficients in a sparse format
+                  #'afm.algorithm.sparse_coef'               : False, # Memory size of coef does not seem to be a problem, at least when there is no interactions
                   # First-order descent algorithm
                   'afm.algorithm.first_order.frozen_variables'          : {},
                   'afm.algorithm.first_order.early_stop_validation'     : False, # Use performance on validation set as a stopping criteria 
@@ -89,12 +79,6 @@ def set_afm(hprm):
                                                                                                 ], 
                                                                   )
                                 ),
-                  #'tf_init_B'                 : False,
-                  #'tol_B'                     : 1e-10,
-                  #'tf_init_C'                 : False,
-                  #'tol_C'                     : 1e-10,
-                  #'tf_sesq'                   : False, # Optimization in two steps to introduce 2nd order interactions
-                  #'tf_method_init_UV'         : 'w_uni', # 'haar' 'random' 'w_uni'
                   })
             
     return hprm

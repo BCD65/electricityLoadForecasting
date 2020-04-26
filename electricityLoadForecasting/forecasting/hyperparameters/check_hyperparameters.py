@@ -1,13 +1,10 @@
 
-"""
-Script used to check consistency in the parameters
-"""
-
 import types
 
 
 def check_hyperparameters(hprm):
-    
+
+
     if hprm['sites.zone'] == 'all' and hprm['sites.aggregation'] == 'sum':
         assert hprm['weather.zone']        == 'all', hprm['weather.zone']
         assert hprm['weather.aggregation'] == 'national_weighted_mean', hprm['weather.aggregation']   
@@ -26,13 +23,18 @@ def check_hyperparameters(hprm):
         assert not set_diff, set_diff
          
 
-
     if hprm['learning.model'] == 'gam':
         for inpt in hprm['gam.univariate_functions']:
             assert inpt in hprm['inputs.selection'], inpt
         for inpt1, inpt2 in hprm['gam.bivariate_functions']:
             assert inpt1 in hprm['inputs.selection'], inpt1
             assert inpt2 in hprm['inputs.selection'], inpt2
+            
+            
+    if hprm['learning.model'] in ['gam',
+                                  'mars',
+                                  ]:
+        assert hprm['learning.model.separation.sites'] == True
 
                   
     for k, v in hprm.items():
