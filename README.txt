@@ -9,9 +9,9 @@ conda create --name elec python=3.7 pip
 conda activate elec
 pip install -e .
 # [Optional] However, the packages xgboost, spams and rpy2 have to be installed separately :
-conda install -c conda-forge python-spams xgboost sklearn-contrib-py-earth ipdb 
+conda install -c conda-forge python-spams xgboost sklearn-contrib-py-earth ipdb openblas
 # [Optional] Also, rpy2 in Python and the mgcv library in R should be available if the GAM are to be tested.
-conda install -c r r r-mgcv
+#conda install -c r r r-mgcv
 pip install rpy2==3.3.1
 
 ================================================================
