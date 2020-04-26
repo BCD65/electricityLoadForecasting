@@ -9,7 +9,7 @@ def set_gam(hprm):
     
     hprm.update({
                  'gam.univariate_functions'   : {
-                                                 ('daylight',        '',           '')                          : ('s', ''),
+                                                 ('daylight',        '',           '')                          : ('',  ''),
                                                  ('holidays',        '',           '')                          : ('',  ''),
                                                  ('holidays',        'lag',        pd.DateOffset(hours = 24))   : ('',  ''),
                                                  ('holidays',        'lag',      - pd.DateOffset(hours = 24))   : ('',  ''),
@@ -22,7 +22,7 @@ def set_gam(hprm):
                                                  ('temperature',     'minimum',    pd.DateOffset(hours = 24))   : ('s', ''),
                                                  ('temperature',     'maximum',    pd.DateOffset(hours = 24))   : ('s', ''),
                                                  ('timestamp',       '',           '')                          : ('',  ''), 
-                                                 ('week_day_binary', '',           '')                          : ('',  ''), 
+                                                 ('week_day',        'binary',     '')                          : ('',  ''), 
                                                  #('week_hour',       '',           '')                          : ('s', 'k = 7, bs = "cc"'), 
                                                  ('xmas',            '',           '')                          : ('',  ''),
                                                  ('year_day',        '',           '')                          : ('s', ''),

@@ -5,10 +5,10 @@ import re
 import pandas as pd
 import subprocess
 import warnings
-try:
-    warnings.simplefilter(action="ignore", category=FutureWarning)
+try: # pip install rpy2==3.3.1
+    #warnings.simplefilter(action="ignore", category=FutureWarning)
     from rpy2.robjects import pandas2ri, r
-    warnings.resetwarnings()
+    #warnings.resetwarnings()
 except ModuleNotFoundError:
     pass
 #
@@ -24,6 +24,7 @@ def fit_and_predict(inputs_training, Y_training, inputs_validation, hprm, assign
                                     index   = inputs_validation.index, 
                                     columns = Y_training.columns,
                                     )
+        
     for ii, site_name in enumerate(Y_training.columns):
         print('\r{0}/{1}'.format(ii, Y_training.shape[1]), end = '\n')
         site_inputs_training = {(qty, *prm) : (inputs_training[(qty, *prm)]
@@ -57,27 +58,26 @@ def call_fitter(inputs_training, y_training, inputs_validation, hprm):
                 exist_ok = True,
                 )
     
-    data_training   = {**{re.sub('_+', '_', '_'.join([qty, 
-                                                      transform[:3] if bool(transform) else '',
-                                                      str(prm.hours if hasattr(prm, 'hours') else prm) if bool(prm) else '',
-                                                      str(ii) if data.shape[1] > 1 else '',
-                                                      ])).strip('_') : data.iloc[:,ii].values
+    data_training   = {**{simplify_inpt_name(qty, transform, prm, inpt_nb = str(ii) if data.shape[1] > 1 else '') : data.iloc[:,ii].values
                           for (qty, transform, prm), data in inputs_training.items()
                           for ii in range(data.shape[1])
                           },
                        'target' : y_training.values,
                        }
     
-    data_validation = {**{re.sub('_+', '_', '_'.join([qty, 
-                                                      transform[:3] if bool(transform) else '',
-                                                      str(prm.hours if hasattr(prm, 'hours') else prm) if bool(prm) else '',
-                                                      str(ii) if data.shape[1] > 1 else '',
-                                                      ])).strip('_') : data.iloc[:,ii].values
-                          for (qty, transform, prm), data in inputs_validation.items()
-                          for ii in range(data.shape[1])
-                          },
+    data_validation = {simplify_inpt_name(qty, transform, prm, inpt_nb = str(ii) if data.shape[1] > 1 else '') : data.iloc[:,ii].values
+                       for (qty, transform, prm), data in inputs_validation.items()
+                       for ii in range(data.shape[1])
                        }
-        
+    
+    univariate_formula = {simplify_inpt_name(qty, transform, prm) : v
+                          for (qty, transform, prm), v in hprm['gam.univariate_functions'].items()
+                          }
+    
+    bivariate_formula  = {simplify_inpt_name(qty, transform, prm) : v
+                          for (qty, transform, prm), v in hprm['gam.bivariate_functions'].items()
+                          }
+            
     ### Convert arrays
     pandas2ri.activate()
     df_train = pandas2ri.py2rpy(pd.DataFrame.from_dict(data_training))
@@ -90,9 +90,8 @@ def call_fitter(inputs_training, y_training, inputs_validation, hprm):
     r.assign("data_test",  df_test)
     r("save(data_test,  file='{0}/temp_dat_for_r_test.gzip',  compress=TRUE)".format(path_R_files))
     
-    string_formula = make_gam_formula(
-                                      hprm['gam.univariate_functions'], 
-                                      hprm['gam.bivariate_functions'], 
+    string_formula = make_gam_formula(univariate_formula, 
+                                      bivariate_formula,
                                       data_training.keys(), 
                                       hprm,
                                       )
@@ -118,6 +117,15 @@ def call_fitter(inputs_training, y_training, inputs_validation, hprm):
     y_hat_validation = y_hat_validation.values
     
     return y_hat_training, y_hat_validation
+
+
+def simplify_inpt_name(qty, transform, prm, inpt_nb = ''):
+    ans = re.sub('_+', '_', '_'.join([qty, 
+                                      transform[:3] if bool(transform) else '',
+                                      str(prm.hours if hasattr(prm, 'hours') else prm) if bool(prm) else '',
+                                      inpt_nb,
+                                      ])).strip('_')
+    return ans
 
 
 def make_gam_formula(univariate_functions, bivariate_functions, list_keys, hprm):

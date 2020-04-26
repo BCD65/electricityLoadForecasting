@@ -127,11 +127,11 @@ class Experience(object):
         if self.hprm['learning.model'] == 'afm':
             inputs_selection  = [e
                                  for coef, inpts in self.hprm['afm.formula'].index
-                                 for e in [inpts
+                                 for e in (inpts
                                            if type(inpts[0]) == tuple
                                            else
                                            [inpts]
-                                           ]
+                                           )
                                  ]
         elif self.hprm['learning.model'] == 'gam':
             inputs_selection = (  list(self.hprm['gam.univariate_functions'].keys())
@@ -144,7 +144,7 @@ class Experience(object):
             inputs_selection = self.hprm['{0}.inputs'.format(self.hprm['learning.model'])]
 
         
-        for name_input, transformation, parameter in inputs_selection:
+        for name_input, transformation, parameter in set(inputs_selection):
             transformed_inputs = inputs.transform_input(basket_original_data[name_input], 
                                                         transformation,
                                                         parameter,

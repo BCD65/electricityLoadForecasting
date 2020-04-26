@@ -51,13 +51,15 @@ def make_dikt_files(hprm, nb_sites = None, nb_weather = None, dt_training = None
 
       
     #=========================================#
-    ###             Model                   ###
+    ###            Benchmarks               ###
     #=========================================#  
     
-    if hprm['learning.model'] not in {'afm'}:
+    if hprm['learning.model'] not in {'afm',
+                                      'gam',
+                                      }:
     
         str_inputs = {}
-        for variable in hprm['inputs.selection']:
+        for variable in self.hprm['{0}.inputs'.format(self.hprm['learning.model'])]:
             list_attr = []
             for e in variable:
                 if bool(e):
@@ -67,24 +69,32 @@ def make_dikt_files(hprm, nb_sites = None, nb_weather = None, dt_training = None
                         list_attr.append(str(e))
             str_inputs[variable] = list_attr
     
-        dikt['experience.whole'] = (
-                                    str_dataset,
+        dikt['experience.whole'] = (str_dataset,
                                     str_split_training,
-                                    str_split_validation,
                                     str_learning,
                                     *list(str_inputs.values()),
+                                    str_split_validation,
                                     )
-        # Specific to GAM
-        if hprm['learning.model'] in {'gam'}:
-            formula_uni = tuple([e
-                                 for inpt, (func, prm) in hprm['gam.univariate_functions'].items()
-                                 for e in [func, inpt, prm]
-                                 ])
-            formula_biv = tuple([e
-                                 for (inpt1, inpt2), (func, prm) in hprm['gam.bivariate_functions'].items()
-                                 for e in [func, inpt1, inpt2, prm]
-                                 ])
-            dikt['experience.whole'] += (formula_uni, formula_biv)
+
+    #=========================================#
+    ###               GAM                   ###
+    #=========================================#  
+    if hprm['learning.model'] == 'gam':
+        formula_uni = tuple([e
+                             for inpt, (func, prm) in hprm['gam.univariate_functions'].items()
+                             for e in [func, str(inpt), prm]
+                             ])
+        formula_biv = tuple([e
+                             for (inpt1, inpt2), (func, prm) in hprm['gam.bivariate_functions'].items()
+                             for e in [func, str(inpt1), str(inpt2), prm]
+                             ])
+        dikt['experience.whole'] = (str_dataset,
+                                    str_split_training,
+                                    str_learning,
+                                    formula_uni,
+                                    formula_biv,
+                                    str_split_validation,
+                                    )
         
         
     #=========================================#
@@ -114,13 +124,13 @@ def make_dikt_files(hprm, nb_sites = None, nb_weather = None, dt_training = None
                             ]
         str_inter    = (hprm['afm.features.bivariate.combine_function'].__name__ if bool(bivariate_data) else '')
         str_data     = [str_dataset,
+                        str_split_training,
                         str_learning,
                         (natural_splines,
                          order_splines,
                          boundary_scaling,
                          all_products,
                          ),
-                        str_split_training,
                         ]
         dikt['features.training.univariate']   =  str_data + univariate_data
         dikt['features.validation.univariate'] =  str_data + univariate_data  + [str_split_validation]

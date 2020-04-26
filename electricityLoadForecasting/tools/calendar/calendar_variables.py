@@ -71,7 +71,7 @@ def binary_daytime(samples_dt):
     sun          = pd.DataFrame(list(map(lambda dd : city.sun(date = dd, local = False), samples_dt.date))) # This takes a lot of time !!!
     daylights    = np.logical_and(samples_dt > sun['sunrise'],
                                   samples_dt < sun['sunset'],
-                                  )
+                                  ).astype(int)
     return daylights
  
     

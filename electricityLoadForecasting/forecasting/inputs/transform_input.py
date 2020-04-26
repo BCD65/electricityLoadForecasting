@@ -9,6 +9,10 @@ def transform_input(data, transformation, parameter):
     if transformation == '':
         assert parameter == ''
         ans = data
+    elif transformation == 'binary':
+        unique_values = data.squeeze().unique()
+        ans           = pd.concat([data == e for e in unique_values], axis = 1) .astype(int)
+        ans.columns   = unique_values
     elif transformation == 'lag':
         assert type(parameter) == pd.DateOffset
         ans = data.set_index(data.index + parameter).reindex(data.index, method = 'bfill')

@@ -21,7 +21,7 @@ def choose_model(hprm, model = None):
     hprm['learning.model.separation.input'] = ()
     
     # Loop over the sites to learn the models independently
-    hprm['learning.model.separation.sites'] = True
+    hprm['learning.model.separation.sites'] = False
 
     return hprm
 
