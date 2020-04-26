@@ -122,9 +122,29 @@ class Experience(object):
                                                                      'transformation',
                                                                      'parameter',
                                                                      'location',
-                                                                     ],
-                                                           ))
-        for name_input, transformation, parameter in self.hprm['inputs.selection']:
+                                                                     ]))
+        
+        if self.hprm['learning.model'] == 'afm':
+            inputs_selection  = [e
+                                 for coef, inpts in self.hprm['afm.formula'].index
+                                 for e in [inpts
+                                           if type(inpts[0]) == tuple
+                                           else
+                                           [inpts]
+                                           ]
+                                 ]
+        elif self.hprm['learning.model'] == 'gam':
+            inputs_selection = (  list(self.hprm['gam.univariate_functions'].keys())
+                                + [e 
+                                   for (inpt1,inpt2) in self.hprm['gam.bivariate_functions'].keys()
+                                   for e in [inpt1,inpt2]
+                                   ] 
+                                )
+        else:
+            inputs_selection = self.hprm['{0}.inputs'.format(self.hprm['learning.model'])]
+
+        
+        for name_input, transformation, parameter in inputs_selection:
             transformed_inputs = inputs.transform_input(basket_original_data[name_input], 
                                                         transformation,
                                                         parameter,
@@ -133,6 +153,7 @@ class Experience(object):
                                                         columns = pd.MultiIndex.from_product([[name_input], [transformation], [parameter], transformed_inputs.columns]),
                                                         index   = transformed_inputs.index,
                                                         ))
+            
         self.inputs.sort_index(axis = 1, inplace = True)
         self.target    = self.data['df_sites']
   

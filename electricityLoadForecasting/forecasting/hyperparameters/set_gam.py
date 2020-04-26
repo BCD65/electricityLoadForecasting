@@ -1,4 +1,6 @@
 
+import pandas as pd
+
 """
 Hyperparameters for GAM
 """
@@ -7,17 +9,23 @@ def set_gam(hprm):
     
     hprm.update({
                  'gam.univariate_functions'   : {
-                                                 #'holidays'       : ('', ''),
-                                                 #'hour'           : ('s', 'bs = "cc"'), 
-                                                 'temperature'     : ('s', ''), 
-                                                 'temperature_max' : ('s', ''), 
-                                                 'temperature_min' : ('s', ''), 
-                                                 'temperature_dif' : ('s', ''), 
-                                                 'temperature_smo' : ('s', ''), 
-                                                 'target_lag'      : ('s', ''), 
-                                                 'week_hour'       : ('s', 'k = 7, bs = "cc"'), 
-                                                 #'year_day'       : ('s', ''), 
-                                                 #'timestamp'      : ('', ''), 
+                                                 ('daylight',        '',           '')                          : ('s', ''),
+                                                 ('holidays',        '',           '')                          : ('',  ''),
+                                                 ('holidays',        'lag',        pd.DateOffset(hours = 24))   : ('',  ''),
+                                                 ('holidays',        'lag',      - pd.DateOffset(hours = 24))   : ('',  ''),
+                                                 ('hour',            '',           '')                          : ('s', ''), 
+                                                 ('nebulosity',      '',           '')                          : ('s', ''),
+                                                 ('target',          'lag',        pd.DateOffset(hours = 24))   : ('s', ''),
+                                                 ('temperature',     '',           '')                          : ('s', ''), 
+                                                 ('temperature',     'lag',        pd.DateOffset(hours = 24))   : ('s', ''),
+                                                 ('temperature',     'smoothing',  0.99)                        : ('s', ''),
+                                                 ('temperature',     'minimum',    pd.DateOffset(hours = 24))   : ('s', ''),
+                                                 ('temperature',     'maximum',    pd.DateOffset(hours = 24))   : ('s', ''),
+                                                 ('timestamp',       '',           '')                          : ('',  ''), 
+                                                 ('week_day_binary', '',           '')                          : ('',  ''), 
+                                                 #('week_hour',       '',           '')                          : ('s', 'k = 7, bs = "cc"'), 
+                                                 ('xmas',            '',           '')                          : ('',  ''),
+                                                 ('year_day',        '',           '')                          : ('s', ''),
                                                  },
                  'gam.bivariate_functions'    : {
                                                  #('hour',      'week_day')  : ('ti', 'bs = c("cc", "tp"), k = c(24, 7)'),
@@ -27,31 +35,3 @@ def set_gam(hprm):
                                                  },
                    })
     return hprm
-
-##gam_selected_variables
-#selected_variables = (
-#                      'dado',
-#                      'dbdo',
-#                      'dl',
-#                      'do',
-#                      'h',
-#                      'meteo',
-#                      'meteolag',
-#                      'meteomax',
-#                      'meteomin', 
-#                      'meteosmo', 
-#                      'nebu',
-#                      'ones',
-#                      'stamp',
-#                      'targetlag',
-#                      #'wh',
-#                      'wd',
-#                      'wd_bin',
-#                      'we',
-#                      'xmas',
-#                      'yd',
-#                      #'meteodif',
-#                      #'meteosmo', 
-#                      #'sbrk',
-#                      #'wd',
-#                      )

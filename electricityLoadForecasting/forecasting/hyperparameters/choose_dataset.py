@@ -24,11 +24,7 @@ def choose_dataset(hprm):
                  'sites.aggregation'         : None,
                  'sites.trash'               : [],# Eliminate additional sites from the dataset
                  })
-    assert hprm['sites.aggregation'] in [
-                                         None,
-                                         'sum',
-                                         ]
-                 
+
     hprm.update({
                  # Choose the weather data
                  'weather.zone'              : 'all',
@@ -60,6 +56,22 @@ def choose_dataset(hprm):
                  'training_set.first_sample' : pd.to_datetime('2013-01-07 00:00', format = '%Y/%m/%d %H:%M').tz_localize('UTC'),
                  'training_set.length'       : pd.DateOffset(years = 3),
                  'validation_set.length'     : pd.DateOffset(years = 1),
-                 })
 
+
+                 # Shared information
+                 'inputs.nb_sites_per_site'   : 1,
+                 'inputs.nb_weather_per_site' : 2,
+                 
+                 ### Fixed values
+                 'inputs.cyclic' : {
+                                    'hour'        : 24,
+                                    'week_hour'   : 168,
+                                    'year_day'    : 365,
+                                    },
+                 })
+    
+    assert hprm['sites.aggregation'] in [
+                                         None,
+                                         'sum',
+                                         ]    
     return hprm
