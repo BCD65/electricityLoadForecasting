@@ -9,7 +9,7 @@ try:
     assert extras # Only used with RTE database
 except ModuleNotFoundError:
     inputs = os.path.join(os.path.expanduser("~"),
-                          'electricityLoadForecastingInputs',
+                          'ELFInputs',
                           )
 
 def path_database(dataset):
@@ -48,7 +48,7 @@ def path_database(dataset):
 ##############################   Outputs   ####################################
 
 outputs = os.path.join(os.path.expanduser("~"),
-                       'electricityLoadForecastingOutputs',
+                       'ELFOutputs',
                        )
 
 ###############################################################################

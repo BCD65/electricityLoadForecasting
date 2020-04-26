@@ -22,12 +22,6 @@ def choose_model(hprm, model = None):
     
     # Loop over the sites to learn the models independently
     hprm['learning.model.separation.sites'] = False
-                                   
-    # # Learn the benchmark models for the sites independently (duplicate)
-    # hprm['learning.model.benchmarks.independent_models'] = True
-    
-    # # Customize the inputs for the benchmark models (duplicate)
-    # hprm['learning.model.benchmarks.individual_inputs'] = False
 
     return hprm
 

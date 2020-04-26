@@ -52,7 +52,7 @@ dikt_formula = {
                                                   ('unconstrained', ('temperature',   'minimum',    pd.DateOffset(hours = 24)),     16,       'smoothing_reg', 1e-1, None),
                                                   ('unconstrained', ('timestamp',     '',           ''),                            'p1',     'ridge',         1e-3, None),
                                                   ('unconstrained', ('week_hour',     '',           ''),                            168,      'ridge',         1e-8, None),
-                                                  ('unconstrained', ('wind_speed',    '',           ''),                            16,       'smoothing_reg', 1e-5, None),
+                                                  #('unconstrained', ('wind_speed',    '',           ''),                            16,       'smoothing_reg', 1e-5, None),
                                                   ('unconstrained', ('xmas',          '',           ''),                            'p1',     '',              1e-8, None),
                                                   ('unconstrained', ('year_day',      '',           ''),                            128,      'smoothing_reg', 1e-3, None),
                                                   # Bivariate features
