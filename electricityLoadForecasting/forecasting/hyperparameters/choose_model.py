@@ -8,7 +8,7 @@ def choose_model(hprm, model = None):
     if model is not None:
         hprm['learning.model'] = model
     else:
-        hprm['learning.model'] = 'gam'
+        hprm['learning.model'] = 'afm'
                                    # 'afm'  Main standard bivariate linear model
                                    # 'mars'
                                    # 'random_forests' 
