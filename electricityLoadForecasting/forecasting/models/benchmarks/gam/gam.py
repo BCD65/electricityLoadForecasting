@@ -5,11 +5,8 @@ import re
 import numpy as np
 import pandas as pd
 import subprocess
-#import warnings
 try: # pip install rpy2==3.3.1
-    #warnings.simplefilter(action="ignore", category=FutureWarning)
     from rpy2.robjects import pandas2ri, r
-    #warnings.resetwarnings()
 except ModuleNotFoundError:
     pass
 #
@@ -47,20 +44,6 @@ def fit_and_predict(inputs_training,
         site_inputs_training.columns   = site_inputs_training.columns.remove_unused_levels()
         site_inputs_validation.columns = site_inputs_validation.columns.remove_unused_levels()
         
-        # {(qty, *prm) : (inputs_training[(qty, *prm)]
-        #                                        if (qty not in assignments)
-        #                                        else
-        #                                        inputs_training[(qty, *prm)][assignments[qty][site_name]]
-        #                                        ) 
-        #                         for (qty, *prm) in inputs_training.columns.droplevel(-1).drop_duplicates()
-        #                         }
-        # site_inputs_validation = {(qty, *prm) : (inputs_validation[(qty, *prm)]
-        #                                          if (qty not in assignments)
-        #                                          else
-        #                                          inputs_validation[(qty, *prm)][assignments[qty][site_name]]
-        #                                          ) 
-        #                           for (qty, *prm) in inputs_validation.columns.droplevel(-1).drop_duplicates()
-        #                           }
         Y_hat_training[site_name], Y_hat_validation[site_name] = call_fitter(site_inputs_training,
                                                                              Y_training[site_name],
                                                                              site_inputs_validation, 
@@ -86,20 +69,12 @@ def call_fitter(site_inputs_training,
     data_training   = {**{simplify_inpt_name(inpt, trsfm, prm, location) : site_inputs_training[inpt, trsfm, prm, location].values
                           for inpt, trsfm, prm, location in site_inputs_training
                           },
-                       # **{simplify_inpt_name(qty, transform, prm, inpt_nb = str(ii) if data.shape[1] > 1 else '') : data.iloc[:,ii].values
-                       #    for (qty, transform, prm), data in site_inputs_training.items()
-                       #    for ii in range(data.shape[1])
-                       #    },
                        'target' : y_training.values,
                        }
     
     data_validation = {simplify_inpt_name(inpt, trsfm, prm, location) : site_inputs_validation[inpt, trsfm, prm, location].values
                        for inpt, trsfm, prm, location in site_inputs_validation
                        }
-                      # {simplify_inpt_name(qty, transform, prm, inpt_nb = str(ii) if data.shape[1] > 1 else '') : data.iloc[:,ii].values
-                      #  for (qty, transform, prm), data in site_inputs_validation.items()
-                      #  for ii in range(data.shape[1])
-                      #  }
             
     # Convert arrays
     pandas2ri.activate()
@@ -192,10 +167,6 @@ def make_gam_formula(list_cols,
     ### Univariate part
     for col in list_cols:
         *inpt, location = col
-        # category = '_'.join([e
-        #                      for e in key.split('_')
-        #                      if e[0].isalpha()
-        #                      ])
         simple_cat = simplify_inpt_name(*inpt)
         if simple_cat in univariate_formula:
             formula += (formula[-1]!='~')*'+' 
@@ -209,17 +180,11 @@ def make_gam_formula(list_cols,
                 
     ### Bivariate part
     for col1 in list_cols:
-        
-        # category1 = '_'.join([e
-        #                       for e in key1.split('_')
-        #                       if e[0].isalpha()
-        #                       ])
         for col2 in list_cols:
             *inpt1, location1 = col1
             *inpt2, location2 = col2
             simple_cat1 = simplify_inpt_name(*inpt1)
             simple_cat2 = simplify_inpt_name(*inpt2)
-            #category2 = '_'.join(key2.split('_')[:2])
             if (simple_cat1, simple_cat2) in bivariate_formula:
                 if len(bivariate_formula[simple_cat1, simple_cat2]) == 1:
                     assert bivariate_formula[simple_cat1, simple_cat2][0] == 'by'
