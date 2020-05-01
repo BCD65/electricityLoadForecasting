@@ -39,7 +39,6 @@ def format_file_names(txt):
                     '>'              : '',
                     ':'              : '',
                     '='              : '',
-                    '\*'             : '',
                     ' '              : '_',
                     '-'              : 'm',
                     'administrative' : 'adm',
@@ -74,6 +73,7 @@ def format_file_names(txt):
                     '\*'          : '',
                     
                     ### regex
+                    '/+'                     : '/',
                     '_+'                     : '_',
                     '(_{0})+'.format(os.sep) : os.sep,
                     '{0}_*'.format(os.sep)   : os.sep,

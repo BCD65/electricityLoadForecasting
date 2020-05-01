@@ -21,11 +21,11 @@ path_data  = os.path.join(paths.outputs, 'Data')
 EXTRA_CHECK = 1
 
 dikt_var_temp = {
-                 'low-rank-U' : 'low-rank-UVt', 
+                 'low-rank-U'       : 'low-rank-UVt', 
                  'tensor-product-L' : 'tensor-product-L.R',
                  'tensor-product-R' : 'tensor-product-L.R',
-                 'sesquivariate-b' : 'sesquivariate-b',
-                 'sesquivariate-m' : 'sesquivariate-bm',
+                 'sesquivariate-b'  : 'sesquivariate-b',
+                 'sesquivariate-m'  : 'sesquivariate-bm',
                  }
 
 class additive_features_model:
@@ -1539,12 +1539,16 @@ class additive_features_model:
                 if np.linalg.norm(X_tilde_cat) == 0:
                     self.normalization[cat] = 1
                 else:
-                    self.normalization[cat] = np.sqrt((X_tilde_cat**2).mean() - X_tilde_cat.mean()**2)
+                    self.normalization[cat] = np.sqrt( (X_tilde_cat**2).mean()
+                                                      - X_tilde_cat.mean()**2
+                                                      )
             else:
                 if X_tilde_cat.data.shape[0] == 0:
                     self.normalization[cat] = 1
                 else:
-                    self.normalization[cat] = np.sqrt((X_tilde_cat.data**2).mean() - X_tilde_cat.data.mean()**2)
+                    self.normalization[cat] = np.sqrt( (X_tilde_cat.toarray()**2).mean() 
+                                                      - X_tilde_cat.toarray().mean()**2
+                                                      )
             self.normalization[cat] += (self.normalization[cat] == 0)
             assert self.normalization[cat] > 0
         del X_cat, X_tilde_cat, cats_in_alpha

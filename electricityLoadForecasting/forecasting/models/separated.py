@@ -1,5 +1,5 @@
 
-
+import os
 import numpy as np
 import copy as cp
 from termcolor import colored
@@ -21,16 +21,16 @@ def separated(exp):
     #         exp.hprm, 
     #         exp.dikt, 
     #         #exp.posts_names, 
-    #         exp.data_train, 
-    #         exp.target_train, 
-    #         exp.dates_train,
+    #         exp.data_training, 
+    #         exp.target_training, 
+    #         exp.dates_training,
     #         exp.data_validation,  
     #         exp.target_validation,  
     #         exp.dates_validation, 
     #         )
     
     if exp.hprm.get('learning.model.separation.sites'):
-        (exp.prediction_train,
+        (exp.prediction_training,
          exp.prediction_validation,
          exp.model_pred,
          exp.ans_kw,
@@ -39,7 +39,7 @@ def separated(exp):
                                        #exp.posts_names
                                        )
     elif exp.hprm.get('learning.model.separation.input'):
-        (exp.prediction_train,
+        (exp.prediction_training,
          exp.prediction_validation,
          exp.model_pred,
          exp.ans_kw,
@@ -90,21 +90,19 @@ def learn_sites_independently(hprm,
     return prediction_training, prediction_validation
 
 
-#%%
-
 def learn_input_separated_models(exp,
-                                 name_inpt,
+                                 inpt,
                                  nb_submodels, 
                                  ):
     assert type(nb_submodels) == int
         
     prediction_training    = np.zeros(exp.target_training.shape)
     prediction_validation  = np.zeros(exp.target_validation.shape)
-    witness_training       = np.zeros(exp.target_train.shape)
+    witness_training       = np.zeros(exp.target_training.shape)
     witness_validation     = np.zeros(exp.target_validation.shape)
     
-    inpt_training     = exp.inputs_training  [name_inpt]
-    inpt_validation   = exp.inputs_validation[name_inpt]
+    inpt_training     = exp.inputs_training  [inpt]
+    inpt_validation   = exp.inputs_validation[inpt]
     
     min_value = inpt_training.min()
     max_value = inpt_training.max()
@@ -119,11 +117,11 @@ def learn_input_separated_models(exp,
         local_exp = cp.deepcopy(exp)
         local_exp.hprm['learning.model.separation.input'] = ()
         for k, v in local_exp.dikt_files.items():
-            w = v.split(os.sep)
-            w[0] += '_'.join([name_inpt,
-                              str(round(interval[0],5)),
-                              str(round(interval[1],5)),
-                              ])
+            w     = v.split(os.sep)
+            w[0] += tools.format_file_names('_'.join([str(inpt),
+                                                      str(round(interval[0].item(),5)),
+                                                      str(round(interval[1].item(),5)),
+                                                      ]))
             local_exp.dikt_files[k] = os.sep.join(w)
             
         ind_training    = np.logical_and(np.logical_or(inpt_training >= interval[0],
@@ -132,14 +130,14 @@ def learn_input_separated_models(exp,
                                          np.logical_or(inpt_training <  interval[1],
                                                        ii == len(intervals) - 1,
                                                        ),
-                                         ).reshape(-1)
+                                         ).values.reshape(-1)
         ind_validation  = np.logical_and(np.logical_or(inpt_validation >= interval[0],
                                                        ii == 0,
                                                        ),
                                          np.logical_or(inpt_validation <  interval[1],
                                                        ii == len(intervals) - 1,
                                                        ),
-                                         ).reshape(-1)
+                                         ).values.reshape(-1)
         local_exp.target_training   = exp.target_training.loc[ind_training]
         local_exp.inputs_training   = exp.inputs_training.loc[ind_training] 
         local_exp.target_validation = exp.target_validation.loc[ind_validation]

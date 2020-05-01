@@ -138,10 +138,12 @@ class Experience(object):
                                 + [e 
                                    for (inpt1,inpt2) in self.hprm['gam.bivariate_functions'].keys()
                                    for e in [inpt1,inpt2]
-                                   ] 
+                                   ]
                                 )
         else:
             inputs_selection = self.hprm['{0}.inputs'.format(self.hprm['learning.model'])]
+        if bool(self.hprm['learning.model.separation.input']):
+            inputs_selection += [self.hprm['learning.model.separation.input'][0]]
 
         
         for name_input, transformation, parameter in set(inputs_selection):

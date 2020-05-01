@@ -45,8 +45,20 @@ def make_dikt_files(hprm, nb_sites = None, nb_weather = None, dt_training = None
                              )
         
     str_learning = (hprm['learning.model'],
-                    'independent_learning' if not hprm['learning.model.separation.sites'] else '',
-                    '_'.join(['separation', *hprm['learning.model.separation.input']]) if hprm['learning.model.separation.input'] else '',
+                    ('independent_learning'
+                     if not hprm['learning.model.separation.sites']
+                     else
+                     ''
+                     ),
+                    ('_'.join(['separation',
+                               *[str(e)
+                                 for e in hprm['learning.model.separation.input']
+                                 ],
+                               ])
+                     if hprm['learning.model.separation.input']
+                     else
+                     ''
+                     ),
                     )
 
       

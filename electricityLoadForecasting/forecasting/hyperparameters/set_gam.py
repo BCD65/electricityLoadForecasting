@@ -13,7 +13,7 @@ def set_gam(hprm):
                                                  ('holidays',        '',           '')                          : ('',  ''),
                                                  ('holidays',        'lag',        pd.DateOffset(hours = 24))   : ('',  ''),
                                                  ('holidays',        'lag',      - pd.DateOffset(hours = 24))   : ('',  ''),
-                                                 ('hour',            '',           '')                          : ('s', ''), 
+                                                 #('hour',            '',           '')                          : ('s', ''), 
                                                  ('nebulosity',      '',           '')                          : ('s', ''),
                                                  ('target',          'lag',        pd.DateOffset(hours = 24))   : ('s', ''),
                                                  ('temperature',     '',           '')                          : ('s', ''), 
@@ -28,11 +28,11 @@ def set_gam(hprm):
                                                  ('year_day',        '',           '')                          : ('s', ''),
                                                  },
                  'gam.bivariate_functions'    : {
-                                                  (('hour',            '',           ''),
-                                                   ('week_day',        'binary',     ''))                         : ('by',), 
+                                                  # (('hour',            '',           ''),
+                                                  #  ('week_day',        'binary',     ''))                         : ('by',), 
                                                  
-                                                  (('hour',            '',           ''),
-                                                   ('year_day',        '',           ''))                         : ('ti', 'bs = c("tp", "tp")'), 
+                                                  # (('hour',            '',           ''),
+                                                  #  ('year_day',        '',           ''))                         : ('ti', 'bs = c("tp", "tp")'), 
                                                  
                                                   (('year_day',        '',           ''),
                                                   ('week_day',        'binary',     ''))                         : ('by',), 
