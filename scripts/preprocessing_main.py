@@ -39,7 +39,10 @@ def main_sites():
                                                                        bool_plot_corrections = eCO2mix.config.bool_plot_corrections, 
                                                                        bool_plot_trash       = eCO2mix.config.bool_plot_trash
                                                                        )
-    print(colored('{0} sites have been dropped'.format(len(trash_sites)), 'red'))
+    print(colored('{0} site{1} have been dropped'.format(len(trash_sites),
+                                                         's' if len(trash_sites) > 1 else '',
+                                                         ),
+                  'red'))
     coordinates_sites = eCO2mix.process.get_coordinates_sites()
     
     # Checks
