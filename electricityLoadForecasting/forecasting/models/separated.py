@@ -150,8 +150,8 @@ def learn_input_separated_models(exp,
         #model_pred      .append(None)
         #ans_kw          .append(None)
         
-    assert not (witness_train!=1).sum()
-    assert not (witness_validation !=1).sum()
+    assert not (witness_training   != 1).sum()
+    assert not (witness_validation != 1).sum()
     exp.prediction_training   = prediction_training
     exp.prediction_validation = prediction_validation
 
