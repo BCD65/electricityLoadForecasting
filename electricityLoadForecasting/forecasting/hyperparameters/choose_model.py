@@ -18,9 +18,7 @@ def choose_model(hprm, model = None):
                                    # 'gam'
 
     # Learn independent models for the different values of an input (e.g. the hour)
-    hprm['learning.model.separation.input'] = (('hour', '', ''),
-                                               24,
-                                               ) # ()
+    hprm['learning.model.separation.input'] = () # () # (('hour', '', ''),24,)
     
     # Loop over the sites to learn the models independently
     hprm['learning.model.separation.sites'] = False

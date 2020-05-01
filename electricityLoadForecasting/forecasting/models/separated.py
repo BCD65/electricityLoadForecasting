@@ -39,14 +39,10 @@ def separated(exp):
                                        #exp.posts_names
                                        )
     elif exp.hprm.get('learning.model.separation.input'):
-        (exp.prediction_training,
-         exp.prediction_validation,
-         exp.model_pred,
-         exp.ans_kw,
-         )= learn_input_separated_models(exp,
-                                         exp.hprm['learning.model.separation.input'][0], 
-                                         exp.hprm['learning.model.separation.input'][1],               
-                                         )
+        learn_input_separated_models(exp,
+                                     exp.hprm['learning.model.separation.input'][0], 
+                                     exp.hprm['learning.model.separation.input'][1],               
+                                     )
     return exp
 
 
