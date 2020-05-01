@@ -59,7 +59,7 @@ def make_dikt_files(hprm, nb_sites = None, nb_weather = None, dt_training = None
                                       }:
     
         str_inputs = {}
-        for variable in self.hprm['{0}.inputs'.format(self.hprm['learning.model'])]:
+        for variable in hprm['{0}.inputs'.format(hprm['learning.model'])]:
             list_attr = []
             for e in variable:
                 if bool(e):
@@ -94,8 +94,7 @@ def make_dikt_files(hprm, nb_sites = None, nb_weather = None, dt_training = None
                                     formula_uni,
                                     formula_biv,
                                     str_split_validation,
-                                    )
-        
+                                    )        
         
     #=========================================#
     ###               afm                   ###
@@ -178,6 +177,7 @@ def make_dikt_files(hprm, nb_sites = None, nb_weather = None, dt_training = None
             dikt[k] = os.path.join(*['_'.join(sub_tuple)
                                      for sub_tuple in dikt[k]
                                      ])
+            dikt[k] = tools.format_file_names(dikt[k])
         else:
             dikt[k] = ''             
 
@@ -186,20 +186,21 @@ def make_dikt_files(hprm, nb_sites = None, nb_weather = None, dt_training = None
     #            Format                       #
     #=========================================#
     # Format strings that are too long - it should no longer occur
-    for key, ss in dikt.items():
-        too_long = np.sum([len(ee) > 250 for ee in ss.split(os.sep)])
+    for key in dikt:
+        too_long = np.sum([len(ee) > 255 for ee in dikt[key].split(os.sep)])
         if too_long:
-            list_chunks = ss.split(os.sep)
+            list_chunks = dikt[key].split(os.sep)
             new_list_chunks = []
             for ee in list_chunks:
-                for ii in range(len(ee)//250+1):
-                    new_list_chunks.append(ee[250*ii:250*(ii+1)])
+                for ii in range(len(ee)//255+1):
+                    new_list_chunks.append(ee[255*ii:255*(ii+1)])
             dikt[key] = os.sep.join(new_list_chunks)
         dikt[key] = tools.format_file_names(dikt[key])
-    
+        
     for ss in [
                'experience.whole',
                ]:
         print("dikt['{0}']\n{1}".format(ss, dikt[ss].replace(os.sep, '/\n\t\t\t')))
+            
     return dikt
 

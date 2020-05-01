@@ -10,7 +10,7 @@ setup(
                           'scripts/preprocessing_main.py',
                           ],
       author           = 'Ben',
-      author_email     = '',
+      author_email     = 'bcd6591[at]gmail.com',
       license          = 'MIT License',
       long_description = open('README.txt').read(),
       python_requires  = ">= 3.6",

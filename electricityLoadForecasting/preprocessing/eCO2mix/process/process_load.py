@@ -74,7 +74,9 @@ def load_raw_load_data(prefix = None):
         dikt_load = {}
         for year in config.YEARS_LOADS:
             for site in etc.coordinates_sites[config.LEVEL].index:
-                print('\ryear = {year} - site = {site}'.format(site = site, year = year), end = '')
+                print('\r' + 'year = {year} - site = {site}'.format(site = site, year = year) + ' '*10,
+                      end = '',
+                      )
                 try:
                     dikt_load[site, year] = read_raw_load_data(site = site, year = year)
                 except FileNotFoundError:

@@ -82,7 +82,7 @@ def compute_calendar_variables(samples_dt):
                                        'weekend'       : (samples_dt.dayofweek > 4).astype(int),
                                        'week_hour'     :  samples_dt.hour + 24 * samples_dt.dayofweek,
                                        'hour'          :  samples_dt.hour,
-                                       'timestamp'     : list(map(lambda dd : dd.timestamp(), samples_dt)),                                       
+                                       'timestamp'     : list(map(lambda dd : dd.timestamp()/3600, samples_dt)),                                       
                                        'holidays'      : list(map(binary_holidays,     samples_dt)),
                                        'summer_break'  : list(map(binary_summer_break, samples_dt)),
                                        'xmas'          : list(map(binary_christmas,    samples_dt)),
