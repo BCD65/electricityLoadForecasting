@@ -155,9 +155,8 @@ def start_lbfgs(model):
                                                  )
         model.concat_shared_validation  = model.concat_validation[:,model.concat_slice_shared]
 
-    model.precompute = model.hprm['afm.algorithm.lbfgs.precompute']
-
-    model.ny2_training      = (1/model.n_training)*np.linalg.norm(model.Y_training)**2
+    model.precompute   = model.hprm['afm.algorithm.lbfgs.precompute']
+    model.ny2_training = (1/model.n_training)*np.linalg.norm(model.Y_training)**2
     if model.active_gp:
         model.ny2_sum_training  = {tuple_indices : (1/model.n_training)*np.linalg.norm(model.Y_training[:,list(tuple_indices)].sum(axis = 1))**2
                                    for tuple_indices in model.partition_tuples

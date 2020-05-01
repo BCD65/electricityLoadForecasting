@@ -14,7 +14,7 @@ import shutil
 from termcolor import colored
 #
 from electricityLoadForecasting import tools
-from electricityLoadForecasting.dataPreparation import correction, detection, eCO2mix, files
+from electricityLoadForecasting.preprocessing import correction, detection, eCO2mix, files
 
 ###############################################################################
 
