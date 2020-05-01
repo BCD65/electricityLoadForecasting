@@ -176,12 +176,14 @@ def make_gam_formula(list_cols,
                      ):
         
     ### Formula
-    univariate_formula = {simplify_inpt_name(qty, transform, prm) : v
-                          for (qty, transform, prm), v in hprm['gam.univariate_functions'].items()
+    univariate_formula = {simplify_inpt_name(*inpt) : v
+                          for inpt, v in hprm['gam.univariate_functions'].items()
                           }
     
-    bivariate_formula  = {simplify_inpt_name(qty, transform, prm) : v
-                          for (qty, transform, prm), v in hprm['gam.bivariate_functions'].items()
+    bivariate_formula  = {(simplify_inpt_name(*inpt1),
+                           simplify_inpt_name(*inpt2),
+                           ) : v
+                          for (inpt1, inpt2), v in hprm['gam.bivariate_functions'].items()
                           }
 
     ### Init
@@ -222,7 +224,7 @@ def make_gam_formula(list_cols,
                 if len(bivariate_formula[simple_cat1, simple_cat2]) == 1:
                     assert bivariate_formula[simple_cat1, simple_cat2][0] == 'by'
                     formula += (formula[-1]!='~')*'+' 
-                    if nb_unique[simple_cat1] > 1:
+                    if nb_unique[col1] > 1:
                         formula += 's'
                     formula += '({0},by={1})'.format(simplify_inpt_name(*col1),
                                                      simplify_inpt_name(*col2),
@@ -230,14 +232,14 @@ def make_gam_formula(list_cols,
                 elif len(bivariate_formula[simple_cat1, simple_cat2]) == 2:
                     formula += (formula[-1]!='~')*'+' 
                     formula += '{0}({1},{2}{3})'.format(bivariate_formula[simple_cat1, simple_cat2][0],
-                                                  simplify_inpt_name(*col1),
-                                                  simplify_inpt_name(*col2),
-                                                  (',' + bivariate_formula[simple_cat1, simple_cat2][1] 
-                                                   if bivariate_formula[simple_cat1, simple_cat2][1] 
-                                                   else 
-                                                   ''
-                                                   ), 
-                                                  )
+                                                        simplify_inpt_name(*col1),
+                                                        simplify_inpt_name(*col2),
+                                                        (',' + bivariate_formula[simple_cat1, simple_cat2][1] 
+                                                         if bivariate_formula[simple_cat1, simple_cat2][1] 
+                                                         else 
+                                                         ''
+                                                         ), 
+                                                        )
                 else:
                     raise ValueError
 

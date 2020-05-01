@@ -85,8 +85,8 @@ def make_dikt_files(hprm, nb_sites = None, nb_weather = None, dt_training = None
                              for e in [func, str(inpt), prm]
                              ])
         formula_biv = tuple([e
-                             for (inpt1, inpt2), (func, prm) in hprm['gam.bivariate_functions'].items()
-                             for e in [func, str(inpt1), str(inpt2), prm]
+                             for (inpt1, inpt2), func in hprm['gam.bivariate_functions'].items()
+                             for e in [func[0], str(inpt1), str(inpt2), *func[1:]]
                              ])
         dikt['experience.whole'] = (str_dataset,
                                     str_split_training,

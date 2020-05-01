@@ -34,6 +34,7 @@ def format_file_names(txt):
                     ### standard caracters
                     ','              : '',
                     "'"              : '',
+                    '"'              : '',
                     '<'              : '',
                     '>'              : '',
                     ':'              : '',

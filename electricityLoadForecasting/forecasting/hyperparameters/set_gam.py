@@ -28,10 +28,17 @@ def set_gam(hprm):
                                                  ('year_day',        '',           '')                          : ('s', ''),
                                                  },
                  'gam.bivariate_functions'    : {
-                                                 #('hour',      'week_day')  : ('ti', 'bs = c("cc", "tp"), k = c(24, 7)'),
-                                                 #('hour',      'year_day')  : ('ti', 'bs = c("cc", "tp")'), 
-                                                 #('week_day',  'year_day')  : ('ti', 'bs = c("tp", "tp")'), 
-                                                 #('targetlag', 'week_day')  : ('ti', 'bs = c("tp", "tp")'), 
+                                                  (('hour',            '',           ''),
+                                                   ('week_day',        'binary',     ''))                         : ('by',), 
+                                                 
+                                                  (('hour',            '',           ''),
+                                                   ('year_day',        '',           ''))                         : ('ti', 'bs = c("tp", "tp")'), 
+                                                 
+                                                  (('year_day',        '',           ''),
+                                                  ('week_day',        'binary',     ''))                         : ('by',), 
+                                                 
+                                                 (('target',          'lag',        pd.DateOffset(hours = 24)),
+                                                  ('week_day',        'binary',     ''))                         : ('by',), 
                                                  },
                    })
     return hprm
