@@ -177,7 +177,7 @@ class Experience(object):
         if not tools.config.load_performances:
             raise IOError('fail on purpose load performances')
         self.performances = tools.batch_load(os.path.join(paths.outputs,
-                                                          'Saved/Performances',
+                                                          'Performances',
                                                           ), 
                                              prefix    = self.dikt_files['experience.whole'], 
                                              data_name = 'performances', 
@@ -189,7 +189,7 @@ class Experience(object):
         if not tools.config.load_predictions:
             raise IOError('fail on purpose load predictions')
         self.predictions = tools.batch_load(os.path.join(paths.outputs,
-                                                         'Saved/Predictions',
+                                                         'Predictions',
                                                          ), 
                                             prefix    = self.dikt_files['experience.whole'], 
                                             data_name = 'predictions', 
@@ -263,7 +263,7 @@ class Experience(object):
                                 'weather'               : self.data['df_weather']
                                 }
         tools.batch_save(os.path.join(paths.outputs, 
-                                      'Saved/Predictions',
+                                      'Predictions',
                                       ), 
                          prefix    = self.dikt_files['experience.whole'], 
                          data      = self.prediction_dikt, 
@@ -320,7 +320,7 @@ class Experience(object):
         if not tools.config.save_performances:
             raise IOError('performances not saved on purpose')
         tools.batch_save(os.path.join(paths.outputs,
-                                      'Saved/Performances',
+                                      'Performances',
                                       ), 
                          prefix    = self.dikt_files['experience.whole'], 
                          data      = self.performances, 
@@ -330,7 +330,7 @@ class Experience(object):
         
         
     def print_performances(self):
-        print('Exp : ' + self.dikt_files['experience.whole'].replace('/', '/\n\t'))
+        print('Exp : ' + self.dikt_files['experience.whole'].replace(os.sep, os.sep+'\n\t'))
         print()
         print('Quantiles MAPE TEST : ')
         performances.print_quantiles(self.performances['model']['validation']['mapes'])

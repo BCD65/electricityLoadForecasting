@@ -17,7 +17,7 @@ dikt_formula = {
                  None,
                  ) : {
                       ### Univariate
-                      'univariate': pd.DataFrame([
+                      'unconstrained_univariate': pd.DataFrame([
                                                   # Univariate features
                                                   ('unconstrained', ('daylight',      '',           ''),                           'p1',    'ridge',         1e-8, None),
                                                   ('unconstrained', ('holidays',      '',           ''),                           'p1',    'ridge',         1e-8, None),
@@ -43,7 +43,7 @@ dikt_formula = {
                                                         ],
                                              ).set_index(['coefficient', 'input']),
                       ### Bivariate standard
-                      'bivariate': pd.DataFrame([
+                      'unconstrained_bivariate': pd.DataFrame([
                                                   # Univariate features
                                                   # ('unconstrained', ('target',        'lag',        pd.DateOffset(hours = 24)),     4,        'smoothing_reg', 1e-4, None),
                                                   ('unconstrained', ('temperature',   '',           ''),                            16,       'smoothing_reg', 1e-4, None),
@@ -81,32 +81,32 @@ dikt_formula = {
                                              ).set_index(['coefficient', 'input']),
                       ### Sesquivariate model
                       'sesquivariate': pd.DataFrame([
-                                                  # Univariate independent features
-                                                  ('unconstrained', ('temperature',   '',           ''),                            16,        'smoothing_reg', 1e-4, None),
-                                                  ('unconstrained', ('temperature',   'lag',        pd.DateOffset(hours = 24)),     16,        'smoothing_reg', 1e-2, None),
-                                                  ('unconstrained', ('temperature',   'maximum',    pd.DateOffset(hours = 24)),     16,        'smoothing_reg', 1e-2, None),
-                                                  ('unconstrained', ('temperature',   'minimum',    pd.DateOffset(hours = 24)),     16,        'smoothing_reg', 1e-1, None),
-                                                  ('unconstrained', ('timestamp',     '',           ''),                            'p1',      'ridge',         1e-3, None),
-                                                  ('unconstrained', ('xmas',          '',           ''),                            'p1',      '',              1e-8, None),
-                                                  # Bivariate independent features
-                                                  ('unconstrained', (('holidays',     '',           ''),
-                                                                     ('week_hour',    '',           '')),                          ('p1',84),  'smoothing_reg',  1e-8, None),
-                                                  ('unconstrained', (('holidays',     'lag',        pd.DateOffset(hours = 24)),
-                                                                     ('week_hour',    '',           '')),                          ('p1',84),  'smoothing_reg',  1e-8, None),
-                                                  ('unconstrained', (('holidays',     'lag',      - pd.DateOffset(hours = 24)),
-                                                                     ('week_hour',    '',           '')),                          ('p1',84),  'smoothing_reg',  1e-8, None),
-                                                  ('unconstrained', (('daylight',     '',           ''),
-                                                                     ('nebulosity',   '',           '')),                          ('p1',2),   'smoothing_reg',  1e-8, None),
-                                                  ('unconstrained', (('temperature',  '',           ''),
+                                                   # Univariate independent features
+                                                   ('unconstrained', ('temperature',   '',           ''),                            16,        'smoothing_reg', 1e-4, None),
+                                                   ('unconstrained', ('temperature',   'lag',        pd.DateOffset(hours = 24)),     16,        'smoothing_reg', 1e-2, None),
+                                                   ('unconstrained', ('temperature',   'maximum',    pd.DateOffset(hours = 24)),     16,        'smoothing_reg', 1e-2, None),
+                                                   ('unconstrained', ('temperature',   'minimum',    pd.DateOffset(hours = 24)),     16,        'smoothing_reg', 1e-1, None),
+                                                   ('unconstrained', ('timestamp',     '',           ''),                            'p1',      'ridge',         1e-3, None),
+                                                   ('unconstrained', ('xmas',          '',           ''),                            'p1',      '',              1e-8, None),
+                                                   # Bivariate independent features
+                                                   ('unconstrained', (('holidays',     '',           ''),
+                                                                      ('week_hour',    '',           '')),                          ('p1',84),  'smoothing_reg',  1e-8, None),
+                                                   ('unconstrained', (('holidays',     'lag',        pd.DateOffset(hours = 24)),
+                                                                      ('week_hour',    '',           '')),                          ('p1',84),  'smoothing_reg',  1e-8, None),
+                                                   ('unconstrained', (('holidays',     'lag',      - pd.DateOffset(hours = 24)),
+                                                                      ('week_hour',    '',           '')),                          ('p1',84),  'smoothing_reg',  1e-8, None),
+                                                   ('unconstrained', (('daylight',     '',           ''),
+                                                                      ('nebulosity',   '',           '')),                          ('p1',2),   'smoothing_reg',  1e-8, None),
+                                                   ('unconstrained', (('temperature',  '',           ''),
                                                                      ('year_day',     '',           '')),                          (16,128),   'smoothing_reg',  1e-4, None),
                                                   # Univariate linked features
-                                                  ('sesquivariate-b', ('target',        'lag',        pd.DateOffset(hours = 24)),     'p1',     'smoothing_reg',  1e-4, None),
-                                                  ('sesquivariate-b', ('week_hour',     '',           ''),                            168,      'ridge',          1e-8, None),
-                                                  ('sesquivariate-b', ('year_day',      '',           ''),                            128,      'smoothing_reg',  1e-3, None),
+                                                  ('sesquivariate_b', ('target',        'lag',        pd.DateOffset(hours = 24)),     'p1',     'smoothing_reg',  1e-4, None),
+                                                  ('sesquivariate_b', ('week_hour',     '',           ''),                            168,      'ridge',          1e-8, None),
+                                                  ('sesquivariate_b', ('year_day',      '',           ''),                            128,      'smoothing_reg',  1e-3, None),
                                                   # Bivariate linked features
-                                                  ('sesquivariate-bm', (('target',       'lag',       pd.DateOffset(hours = 24)),
+                                                  ('sesquivariate_bm', (('target',       'lag',       pd.DateOffset(hours = 24)),
                                                                         ('week_hour',    '',          '')),                         ('p1',168), 'ridge',          1e-6, None),
-                                                  ('sesquivariate-bm', (('week_hour',    '',          ''),
+                                                  ('sesquivariate_bm', (('week_hour',    '',          ''),
                                                                         ('year_day',     '',          '')),                         (168,128),  'smoothing_reg',  1e-5, None),
                                              ],
                                              columns = ['coefficient',
@@ -123,7 +123,7 @@ dikt_formula = {
                  None,
                  ) : {
                       ### Univariate
-                      'unconstrained-univariate': pd.DataFrame([
+                      'unconstrained_univariate': pd.DataFrame([
                                                   # Univariate features
                                                   ('unconstrained', ('daylight',      '',           ''),                           'p1',    'ridge',         1e-8, None),
                                                   ('unconstrained', ('holidays',      '',           ''),                           'p1',    'ridge',         1e-8, None),
@@ -149,7 +149,7 @@ dikt_formula = {
                                                         ],
                                              ).set_index(['coefficient', 'input']),
                       ### Bivariate standard
-                      'unconstrained-bivariate': pd.DataFrame([
+                      'unconstrained_bivariate': pd.DataFrame([
                                                   # Univariate features
                                                   ('unconstrained', ('target',        'lag',        pd.DateOffset(hours = 24)),     2,       'smoothing_reg', 1e-4, None),
                                                   ('unconstrained', ('temperature',   '',           ''),                            8,       'smoothing_reg', 1e-3, None),
@@ -205,13 +205,13 @@ dikt_formula = {
                                                   ('unconstrained', (('temperature',  '',           ''),
                                                                      ('year_day',     '',           '')),                          (8, 16),    'smoothing_reg', 1e2,  None),
                                                   # Univariate linked features
-                                                  ('sesquivariate-b', ('target',        'lag',        pd.DateOffset(hours = 24)),     2,        'smoothing_reg', 1e-4, None),
-                                                  ('sesquivariate-b', ('week_hour',     '',           ''),                            168,      'ridge',         1e-5, None),
-                                                  ('sesquivariate-b', ('year_day',      '',           ''),                            16,       'smoothing_reg', 1e2,  None),
+                                                  ('sesquivariate_b', ('target',        'lag',        pd.DateOffset(hours = 24)),     2,        'smoothing_reg', 1e-4, None),
+                                                  ('sesquivariate_b', ('week_hour',     '',           ''),                            168,      'ridge',         1e-5, None),
+                                                  ('sesquivariate_b', ('year_day',      '',           ''),                            16,       'smoothing_reg', 1e2,  None),
                                                   # Bivariate linked features
-                                                  ('sesquivariate-bm', (('target',       'lag',       pd.DateOffset(hours = 24)),
+                                                  ('sesquivariate_bm', (('target',       'lag',       pd.DateOffset(hours = 24)),
                                                                         ('week_hour',    '',          '')),                          (2,168),   'ridge',         1e-4, None),
-                                                  ('sesquivariate-bm', (('week_hour',    '',          ''),
+                                                  ('sesquivariate_bm', (('week_hour',    '',          ''),
                                                                         ('year_day',     '',          '')),                          (168,16),  'smoothing_reg', 1e-3, None),
                                              ],
                                              columns = ['coefficient',
@@ -222,8 +222,8 @@ dikt_formula = {
                                                         'structure',
                                                         ],
                                              ).set_index(['coefficient', 'input']),
-                      ### Low-rank model
-                      'low-rank': pd.DataFrame([
+                      ### low_rank model
+                      'low_rank': pd.DataFrame([
                                                   # Univariate features
                                                   ('unconstrained', ('target',        'lag',        pd.DateOffset(hours = 24)),     4,        'smoothing_reg',        1e-4, None),
                                                   ('unconstrained', ('temperature',   '',           ''),                            8,        'smoothing_reg',        1e-3, None),
@@ -239,10 +239,10 @@ dikt_formula = {
                                                                      ('week_hour',    '',           '')),                         ('p1',42),  'ridge',                1e-4, None),
                                                   ('unconstrained', (('temperature',  '',           ''),
                                                                      ('year_day',     '',           '')),                         (8,16),     'smoothing_reg',        1e2,  None),
-                                                  # Low-rank univariate features
-                                                  ('low-rank-UVt',  ('week_hour',     '',           ''),                           168,       'ridge',                1e-5, 4),
-                                                  ('low-rank-UVt',  ('year_day',      '',           ''),                           16,        'factor_smoothing_reg', 1e2,  4),
-                                                  # Low-rank bivariate features
+                                                  # low_rank univariate features
+                                                  ('low_rank_UVt',  ('week_hour',     '',           ''),                           168,       'ridge',                1e-5, 4),
+                                                  ('low_rank_UVt',  ('year_day',      '',           ''),                           16,        'factor_smoothing_reg', 1e2,  4),
+                                                  # low_rank bivariate features
                                                   ('unconstrained', (('holidays',     '',           ''),
                                                                      ('week_hour',    '',           '')),                         ('p1',168), 'factor_smoothing_reg',  1e-6, None),
                                                   ('unconstrained', (('holidays',     'lag',        pd.DateOffset(hours = 24)),
@@ -261,7 +261,7 @@ dikt_formula = {
                                                         ],
                                              ).set_index(['coefficient', 'input']),
                       ### Tensor product
-                      'tensor-product': pd.DataFrame([
+                      'tensor_product': pd.DataFrame([
                                                   # Univariate features
                                                   ('unconstrained', ('target',        'lag',        pd.DateOffset(hours = 24)),     4,         'smoothing_reg', 1e-4, None),
                                                   ('unconstrained', ('temperature',   '',           ''),                            8,         'smoothing_reg', 1e-3, None),
@@ -281,12 +281,12 @@ dikt_formula = {
                                                                      ('week_hour',    '',           '')),                          ('p1',168), 'smoothing_reg', 1e-6, None),
                                                   ('unconstrained', (('holidays',     'lag',      - pd.DateOffset(hours = 24)),
                                                                      ('week_hour',    '',           '')),                          ('p1',168), 'smoothing_reg', 1e-6, None),
-                                                  # Bivariate low-rank features
-                                                  ('tensor-product-L.R', (('target',       'lag',        pd.DateOffset(hours = 24)),
+                                                  # Bivariate low_rank features
+                                                  ('tensor_product_LR', (('target',       'lag',        pd.DateOffset(hours = 24)),
                                                                           ('week_hour',    '',           '')),                        ('p1',42),  'ridge',         1e-4, 2),
-                                                  ('tensor-product-L.R', (('temperature',  '',           ''),
+                                                  ('tensor_product_LR', (('temperature',  '',           ''),
                                                                           ('year_day',     '',           '')),                        (8,16),     'ridge',         1e2,  2),
-                                                  ('tensor-product-L.R', (('week_hour',    'lag',        pd.DateOffset(hours = 24)),
+                                                  ('tensor_product_LR', (('week_hour',    'lag',        pd.DateOffset(hours = 24)),
                                                                           ('year_day',     '',           '')),                        (168,16),   'ridge',         1e-3, 2),
                                              ],
                                              columns = ['coefficient',
@@ -336,10 +336,10 @@ dikt_formula = {
                       },
                 }
 
-# Choose which variables should be part of the low-rank components and ot the unstructured components
-# Blr        for low-rank (over the substations) formulation with a first-order descent algorithm
+# Choose which variables should be part of the low_rank components and ot the unstructured components
+# Blr        for low_rank (over the substations) formulation with a first-order descent algorithm
 # B          for independent models and unstructured coedfficients with a first-order descent algorithm
-# Cuv        for independent models and low-rank interactions
+# Cuv        for independent models and low_rank interactions
 # Cb         for independent models and the univariate part of the sesquivariate constraint
 # Cbm        for independent models and the sesquivariate constraint for the interactions
 
