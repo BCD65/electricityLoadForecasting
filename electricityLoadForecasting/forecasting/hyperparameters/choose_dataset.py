@@ -9,7 +9,7 @@ def choose_dataset(hprm):
    
     hprm.update({
                  # Choose the database
-                 'database' : 'RTE.substations',
+                 'database' : 'eCO2mix.France',
                  })
     assert hprm['database'] in [
                                 'eCO2mix.France',
@@ -21,7 +21,7 @@ def choose_dataset(hprm):
     hprm.update({
                  # Choose the electricity load data
                  'sites.zone'                : 'all', 
-                 'sites.aggregation'         : 'districts',
+                 'sites.aggregation'         : None,
                  'sites.trash'               : [],# Eliminate additional sites from the dataset
                  })
 
