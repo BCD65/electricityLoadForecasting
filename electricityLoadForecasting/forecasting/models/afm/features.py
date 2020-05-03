@@ -47,7 +47,7 @@ def compute_design(inputs,
         assert dikt_func   == None
         assert dikt_func12 == None
     elif db == 'validation':
-        assert bool(dikt_func)
+        assert dikt_func is not None
     else:
         raise ValueError('Incorret db')
     precompute = not (hprm['afm.algorithm'] == 'L-BFGS')        

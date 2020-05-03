@@ -613,7 +613,7 @@ class additive_features_model:
             if self.bcd:
                 (s,key,ind) = coor_upd
                 if self.cur_obj_training - tmp_obj_training <= 1e-14:
-                    if self.active_set and self.hprm['afm.algorithm.first_order.column_update'].get(key): 
+                    if self.active_set and self.col_upd.get((s,key)): 
                         self.punished_coor.add(coor_upd)   
                 else: # eta won't be created/updated if decrease too small
                     if s in {'unconstrained',
@@ -664,10 +664,14 @@ class additive_features_model:
                 self.decr_obj = self.cur_obj_training - tmp_obj_training
             self.cur_fit_training    = tmp_fit_training
             self.cur_fit_gp_training = tmp_fit_gp_training
-            self.cur_ridge        = tmp_ridge                       
-            self.cur_reg          = tmp_reg                        
+            self.cur_ridge           = tmp_ridge                       
+            self.cur_reg             = tmp_reg                        
             self.cur_obj_training    = tmp_obj_training              
-            self.update_coef(coef_tmp, self.dikt_masks, new_ind_slope = tmp_ind_slope, new_ind_offset = tmp_ind_offset)
+            self.update_coef(coef_tmp,
+                             self.dikt_masks,
+                             new_ind_slope  = tmp_ind_slope,
+                             new_ind_offset = tmp_ind_offset,
+                             )
             self.cur_ind_reg.update(tmp_ind_reg)
             self.cur_ind_ridge.update(tmp_ind_ridge)
             
@@ -952,13 +956,14 @@ class additive_features_model:
                                                                      )
                 if EXTRA_CHECK:
                     check_old_part_fit_training = self.evaluate_fit_bcd(coor_upd,
-                                                                        {(var,key,ind):(self.coef[var,key][:,:,mask_upd]
+                                                                        {(var,*specs):(self.coef[var,specs[0]][:,:,mask_upd]
                                                                                         if var in {'tensor_product_L','tensor_product_R'}
                                                                                         else
-                                                                                        self.coef[var,key][:,mask_upd]
+                                                                                        self.coef[var,specs[0]][:,mask_upd]
                                                                                         )
-                                                                         for (var,key,ind) in coef_tmp
-                                                                         }, quant_training,
+                                                                         for var,*specs in coef_tmp
+                                                                         },
+                                                                        quant_training,
                                                                         dataset = 'training',
                                                                         mask    = mask_upd,
                                                                         )
@@ -2076,7 +2081,6 @@ class additive_features_model:
         self.prison_coor    = {}
         self.life_sentences = set()
         self.nb_sentences   = {}
-        fac = 1e-4
         self.keys = {key : []
                      for key in self.formula.index.get_level_values('coefficient').unique()
                      }
@@ -2086,15 +2090,43 @@ class additive_features_model:
             for key in self.X_training.keys():
                 inpt,location = key
                 if inpt in self.formula.loc['unconstrained'].index:
-                    if not (key in self.mask and type(self.mask[key]) == np.ndarray and self.mask[key].shape[0] == 0):
+                    if not (    key in self.mask and type(self.mask[key]) == np.ndarray 
+                            and self.mask[key].shape[0] == 0
+                            ):
                         self.keys['unconstrained'].append(key)
                     if 'unconstrained' not in self.frozen_variables:
-                        if self.pen['unconstrained'].get(inpt) != 'row_group_lasso' and self.hprm['afm.algorithm.first_order.column_update'].get(('unconstrained', inpt)):
+                        if (    self.pen['unconstrained'].get(inpt) != 'row_group_lasso'
+                            and self.col_upd.get(('unconstrained', inpt))
+                            ):
                             keys_upd += [('unconstrained',key,(int(r),)) for r in self.mask.get(key, range(self.k))]
                         else:
                             keys_upd += [('unconstrained',key,())]
                     if ('unconstrained', key) not in coef:
                         coef['unconstrained',key] = np.zeros((self.size[key], self.k))
+                        
+        if 'low_rank_UVt' in self.keys.keys():   
+            for key in list(filter(lambda x : x not in self.mask, self.X_training.keys())):
+                inpt, location = key
+                if inpt in self.formula.loc['low_rank_UVt'].index:
+                    self.keys['low_rank_UVt'].append(key)
+                    if 'low_rank_UVt' not in self.frozen_variables:
+                        if (    self.pen['low_rank_U'].get(inpt) != 'row_group_lasso'
+                            and self.col_upd.get(('low_rank_U', inpt))
+                            ):
+                            raise ValueError('we do not want column update for Blr')
+                        else:
+                            keys_upd += [('low_rank_U',key,())]
+                    if ('low_rank_U', key) not in coef:
+                        mm   = slice(None)
+                        lenV = self.k
+                        rk   = int(min(self.formula.xs(key = ['low_rank_UVt',inpt])['structure'],
+                                       self.size[key],
+                                       ))
+                        coef[('low_rank_U',(inpt,location))] = 1e-4*np.random.randn(self.size[(inpt,location)], min(rk, self.k))
+                        if lenV > 0:
+                            coef['low_rank_V',(inpt,location)]        = np.zeros((self.k, min(rk, self.k)))
+                            coef['low_rank_V',(inpt,location)][mm], _ = np.linalg.qr(np.random.randn(self.k, min(rk, self.k)))
+                            coef['low_rank_UVt',(inpt,location)]      = coef[('low_rank_U',(inpt,location))] @ coef[('low_rank_V',(inpt,location))].T
                         
         if 'tensor_product_LR' in self.keys.keys():
             for key_uv in list(filter(lambda x : type(x[0][0]) == tuple, self.X_training.keys())):
@@ -2104,21 +2136,21 @@ class additive_features_model:
                             and type(self.mask[key_uv]) == np.ndarray 
                             and self.mask[key_uv].shape[0] == 0
                             ):
-                        self.keys['tensor_product_LR'].append((inpts,locations))
+                        self.keys['tensor_product_LR'].append(key_uv)
                     if 'tensor_product_LR' not in self.frozen_variables:
                         if (    self.pen['tensor_product_L'].get(inpts) != 'row_group_lasso'
-                            and self.hprm['afm.algorithm.first_order.column_update'].get('tensor_product_L', inpts)
+                            and self.col_upd.get(('tensor_product_L', inpts))
                             ):
-                            keys_upd +=   [('tensor_product_L',(inpts,locations),(int(r),),)
-                                           for r in self.mask.get((inpts,locations), range(self.k))
+                            keys_upd +=   [('tensor_product_L',key_uv,(int(r),),)
+                                           for r in self.mask.get(key_uv, range(self.k))
                                            ] 
                         else:
-                            keys_upd +=   [('tensor_product_L',(inpts,locations),())]
+                            keys_upd +=   [('tensor_product_L',key_uv,())]
                         if (    self.pen['tensor_product_R'].get(inpts) != 'row_group_lasso'
-                            and self.hprm['afm.algorithm.first_order.column_update'].get('tensor_product_R', inpts)
+                            and self.col_upd.get(('tensor_product_R', inpts))
                             ):
-                            keys_upd +=   [('tensor_product_R',(inpts,locations),(int(r),),)
-                                           for r in self.mask.get((inpts,locations), range(self.k))
+                            keys_upd +=   [('tensor_product_R',key_uv,(int(r),),)
+                                           for r in self.mask.get(key_uv, range(self.k))
                                            ]
                         else:
                             keys_upd +=   [('tensor_product_R',(inpts,locations),())]
@@ -2126,17 +2158,17 @@ class additive_features_model:
                         or ('tensor_product_R', (inpts,(locations,))) not in coef
                         ):
                         rk = int(min(self.formula.xs(key = ['tensor_product_LR',inpts])['structure'],
-                                     self.size_tensor_bivariate[inpts,locations][0],
-                                     self.size_tensor_bivariate[inpts,locations][1],
+                                     self.size_tensor_bivariate[key_uv][0],
+                                     self.size_tensor_bivariate[key_uv][1],
                                      ))
-                        coef['tensor_product_L',(inpts,locations) ]  = np.zeros((self.size_tensor_bivariate[inpts,locations][0], rk, self.k))
-                        coef['tensor_product_R',(inpts,locations) ]  = np.zeros((self.size_tensor_bivariate[inpts,locations][1], rk, self.k))
-                        coef['tensor_product_L',(inpts,locations) ][:,:,self.mask.get((inpts,locations),None)] = np.random.randn(*coef['tensor_product_L',(inpts,locations)][:,:,self.mask.get((inpts,locations),None)].shape) 
-                        coef['tensor_product_R',(inpts,locations) ][:,:,self.mask.get((inpts,locations),None)] = np.random.randn(*coef['tensor_product_R',(inpts,locations)][:,:,self.mask.get((inpts,locations),None)].shape)
-                        coef['tensor_product_LR',(inpts,locations)] = np.einsum('prk,qrk->pqk',
-                                                                                coef['tensor_product_L',(inpts,locations)], 
-                                                                                coef['tensor_product_R',(inpts,locations)], 
-                                                                                ).reshape((-1, self.k)) 
+                        coef['tensor_product_L', key_uv]  = np.zeros((self.size_tensor_bivariate[key_uv][0], rk, self.k))
+                        coef['tensor_product_R', key_uv]  = np.zeros((self.size_tensor_bivariate[key_uv][1], rk, self.k))
+                        coef['tensor_product_L', key_uv][:,:,self.mask.get(key_uv,None)] = 1e-3*np.random.randn(*coef['tensor_product_L',key_uv][:,:,self.mask.get(key_uv,None)].shape) 
+                        coef['tensor_product_R', key_uv][:,:,self.mask.get(key_uv,None)] = 1e-3*np.random.randn(*coef['tensor_product_R',key_uv][:,:,self.mask.get(key_uv,None)].shape)
+                        coef['tensor_product_LR',key_uv] = np.einsum('prk,qrk->pqk',
+                                                                     coef['tensor_product_L',key_uv], 
+                                                                     coef['tensor_product_R',key_uv], 
+                                                                     ).reshape((-1, self.k)) 
 
         if 'sesquivariate_bm' in self.keys.keys():
             # 'sesquivariate_b' coefficients
@@ -2147,7 +2179,7 @@ class additive_features_model:
                         self.keys['sesquivariate_b'].append(key_b)
                     if 'sesquivariate_b' not in self.frozen_variables:
                         if (    self.pen['sesquivariate_b'].get(inpt_b) != 'row_group_lasso'
-                            and self.hprm['afm.algorithm.first_order.column_update'].get(('sesquivariate_b', inpt_b))
+                            and self.col_upd.get(('sesquivariate_b', inpt_b))
                             ):
                             for r in self.mask.get(key_b, range(self.k)):
                                 if ('sesquivariate_b',key_b,(int(r),)) not in keys_upd:
@@ -2170,7 +2202,7 @@ class additive_features_model:
                         self.keys['sesquivariate_bm'].append(key_bm)
                     if 'sesquivariate_bm' not in self.frozen_variables:
                         if (    self.pen['sesquivariate_bm'].get((inpt_b,inpt_m)) != 'row_group_lasso'
-                            and self.hprm['afm.algorithm.first_order.column_update'].get(('sesquivariate_m', (inpt_b,inpt_m)))
+                            and self.col_upd.get(('sesquivariate_m', (inpt_b,inpt_m)))
                             ):
                             for r in self.mask.get(key_bm, range(self.k)):
                                 if ('sesquivariate_m',key_bm,(int(r),),) not in keys_upd:
@@ -2185,30 +2217,6 @@ class additive_features_model:
                                                                     coef['sesquivariate_b',(inpt_b,(location_b,))], 
                                                                     coef['sesquivariate_m',key_bm], 
                                                                     ).reshape((-1, self.k))
-                        
-        if 'low_rank_UVt' in self.keys.keys():   
-            for inpt, location in list(filter(lambda x : x not in self.mask, self.X_training.keys())):
-                if (inpt, location) in self.mask: 
-                    print(colored('\n\nNo Mask when low-rank\n\n', 'red'))
-                    raise ValueError
-                    del self.mask[inpt,location]
-                    print(colored('\n\nmask of {0} removed to include it in Blr\n\n'.format((inpt,location)), 'red', 'on_cyan'))
-                if inpt in self.formula.loc['low_rank_UVt'].index:
-                    self.keys['low_rank_UVt'].append((inpt,location))
-                    if not (hasattr(self, 'freeze_Blr') and self.freeze_Blr):
-                        if self.pen['low_rank_U'].get(inpt) != 'row_group_lasso' and self.hprm['afm.algorithm.first_order.column_update'].get(inpt):
-                            raise ValueError('we do not want column update for Blr')
-                            keys_upd += [('low_rank_U',(inpt,location),(int(r),)) for r in self.mask.get((inpt,location), range(self.k))]
-                        else:
-                            keys_upd += [('low_rank_U',(inpt,location),())]
-                    if ('low_rank_U', (inpt,location)) not in coef:
-                        mm   = slice(None)
-                        lenV = self.k
-                        coef[('low_rank_U',(inpt,location))]    = np.random.randn(self.size[(inpt,location)], min(self.r_B[inpt], self.k))*fac
-                        if lenV > 0:
-                            coef['low_rank_V',(inpt,location)]        = np.zeros((self.k, min(self.r_B[inpt], self.k)))
-                            coef['low_rank_V',(inpt,location)][mm], _ = np.linalg.qr(np.random.randn(self.k, min(self.r_B[inpt], self.k)))
-                            coef['low_rank_UVt',(inpt,location)]      = coef[('low_rank_U',(inpt,location))] @ coef[('low_rank_V',(inpt,location))].T
                         
         assert len(keys_upd) == len(set(keys_upd)), (len(keys_upd), len(set(keys_upd)))
         print('Finished initialization')
@@ -2397,7 +2405,7 @@ class additive_features_model:
                 if EXTRA_CHECK and 0:
                     assert len(self.prison_coor) <= len(self.keys_upd)*self.k
                     for (var,(inpt,location),post) in self.prison_coor:
-                        if not self.hprm['afm.algorithm.first_order.column_update'].get(inpt):
+                        if not self.col_upd.get((var,inpt)):
                             if not np.linalg.norm(self.coef[var,(inpt,location)][:,post]) == 0:
                                 assert 0 # A column can already be in prison but have moved during recent iterations because of a too small mask
                 self.dikt_masks = {coor:v 
@@ -2731,7 +2739,12 @@ class additive_features_model:
                 else:
                     assert 0
             elif coor_upd[0] == 'tensor_product_LR':
-                mask = d_masks.get(('tensor_product_L',)+coor_upd[1:], slice(None))
+                if   ('tensor_product_L',)+coor_upd[1:] in coef_tmp:
+                    mask = d_masks.get(('tensor_product_L',)+coor_upd[1:], slice(None))
+                elif ('tensor_product_R',)+coor_upd[1:] in coef_tmp:
+                    mask = d_masks.get(('tensor_product_R',)+coor_upd[1:], slice(None))
+                else:
+                    raise KeyError
             else:
                 mask = d_masks.get(coor_upd, slice(None))
             if type(new_ind_slope.get(coor_upd, None)) != type(None):
@@ -2759,7 +2772,7 @@ class additive_features_model:
                            'sesquivariate_m',
                            'sesquivariate_bm',
                            }
-            if self.active_set and not self.hprm['afm.algorithm.first_order.column_update'].get(inpt):
+            if self.active_set and not self.col_upd.get((var,inpt)):
                 orig_mask = self.orig_masks.get(coor_upd, slice(None))
                 ind_posts = mask if type(mask) == np.ndarray else (orig_mask if type(orig_mask) == np.ndarray else np.arange(self.k))
                 if EXTRA_CHECK and 0: # with prop active set, some coor can be both in prisons and active
@@ -2822,7 +2835,7 @@ class additive_features_model:
                 else:
                     assert self.coef[var,(inpt,location)][:,mask].shape == coef_tmp[coor_upd].shape
                     assert np.allclose(self.coef[var,(inpt,location)][:,mask], coef_tmp[coor_upd])
-                if self.active_set and not self.hprm['afm.algorithm.first_order.column_update'].get(inpt):
+                if self.active_set and not self.col_upd.get((var,inpt)):
                     for i, rr in enumerate(convicts):
                         if not np.allclose(self.coef     [var,(inpt,location)][:,:,rr] if var in {'tensor_product_L','tensor_product_R'} else self.coef[var,(inpt,location)][:,rr], 
                                            self.coef_prec[var,(inpt,location)][:,:,rr] if var in {'tensor_product_L','tensor_product_R'} else self.coef[var,(inpt,location)][:,rr],

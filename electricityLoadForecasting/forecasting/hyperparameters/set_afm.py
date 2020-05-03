@@ -61,8 +61,6 @@ def set_afm(hprm):
                                                                               for coef, keys in hprm['afm.formula'].index
                                                                               }
                                                                            }, # In the BCD procedure, activate to have column update instead of larger block updates
-                                                                           #'wh':True,
-                                                                           #'yd':True,
                   'afm.algorithm.first_order.tol'                       : 1e-8,  # Is compared with the decrease of the objective
                   'afm.algorithm.first_order.early_small_decrease'      : True,  # Use decrease of objective as a stopping criteria 
                   'afm.algorithm.first_order.early_stop_small_grad'     : True,  # Use norm of grad as a stopping criteria 
