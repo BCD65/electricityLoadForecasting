@@ -45,7 +45,7 @@ def set_afm(hprm):
                   })
     # Algorithm
     hprm.update({
-                  'afm.algorithm'                           : 'FirstOrder', # 'L-BFGS' # 'FirstOrder'
+                  'afm.algorithm'                           : 'L-BFGS', # 'L-BFGS' # 'FirstOrder'
                   'afm.algorithm.sparse_coef_after_optim'   : True,  # After the optimization, store the coefficients in a sparse format
                   #'afm.algorithm.sparse_coef'               : False, # Memory size of coef does not seem to be a problem, at least when there is no interactions
                   # First-order descent algorithm
