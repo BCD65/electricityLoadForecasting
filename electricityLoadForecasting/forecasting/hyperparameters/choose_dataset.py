@@ -9,7 +9,7 @@ def choose_dataset(hprm):
    
     hprm.update({
                  # Choose the database
-                 'database' : 'eCO2mix.administrative_regions',
+                 'database' : 'eCO2mix.France',
                  })
     assert hprm['database'] in [
                                 'eCO2mix.France',

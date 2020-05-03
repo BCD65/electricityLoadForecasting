@@ -28,7 +28,7 @@ def set_afm(hprm):
                                                                                         hprm['sites.aggregation'],
                                                                                         ),
                                                                                        None, #default.afm.dikt_formula['nat'], 
-                                                                                       )['test']
+                                                                                       )['unconstrained_bivariate']
                                                           ), # Choose the granularity for the different inputs ie the number of splines
                   })
             
