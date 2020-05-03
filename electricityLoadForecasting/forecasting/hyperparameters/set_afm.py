@@ -45,9 +45,9 @@ def set_afm(hprm):
                   })
     # Algorithm
     hprm.update({
-                  'afm.algorithm'                           : 'L-BFGS', # 'L-BFGS' # 'FirstOrder'
-                  'afm.algorithm.sparse_coef_after_optim'   : True,  # After the optimization, store the coefficients in a sparse format
-                  #'afm.algorithm.sparse_coef'               : False, # Memory size of coef does not seem to be a problem, at least when there is no interactions
+                  'afm.algorithm'                         : 'L-BFGS', # 'L-BFGS' # 'FirstOrder'
+                  'afm.algorithm.sparse_coef_after_optim' : True,  # After the optimization, store the coefficients in a sparse format
+
                   # First-order descent algorithm
                   'afm.algorithm.first_order.frozen_variables'          : {},
                   'afm.algorithm.first_order.early_stop_validation'     : False, # Use performance on validation set as a stopping criteria 
@@ -66,7 +66,7 @@ def set_afm(hprm):
                   'afm.algorithm.first_order.early_stop_small_grad'     : True,  # Use norm of grad as a stopping criteria 
                   'afm.algorithm.first_order.norm_grad_min'             : 1e-8, 
                   'afm.algorithm.first_order.dist_min'                  : 1e-8,
-                  #'afm.algorithm.first_order.early_stop_period'         : 10 ,
+
                   ### LBFGS
                   'afm.algorithm.lbfgs.precompute' : False, # Precompute XtX and XtY for LbfgS
                   **cp.deepcopy(default.afm.stopping_criteria.get((hprm['database'], 

@@ -1135,16 +1135,24 @@ class additive_features_model:
             pen, alpha     = self.get_pen_alpha(var, key)
             mask = d_masks.get(coor_upd, slice(None))
             if pen == 'ridge':
-                if coor_upd[0] in {'tensor_product_L', 'tensor_product_R'}:
+                if coor_upd[0] in {'tensor_product_L',
+                                   'tensor_product_R',
+                                   }:
                     dikt_ridge_grad[coor_upd] = alpha*self.coef[var,key][:,:,mask] if (pen == 'ridge') else np.zeros(self.coef[var,key][:,:,mask].shape)
                 else:
                     dikt_ridge_grad[coor_upd] = alpha*self.coef[var,key][:,  mask] if (pen == 'ridge') else np.zeros(self.coef[var,key][:,mask].shape)
             elif pen == 'smoothing_reg':
-                if coor_upd[0] in {'tensor_product_L', 'tensor_product_R'}:
+                if coor_upd[0] in {'tensor_product_L',
+                                   'tensor_product_R',
+                                   }:
                     raise NotImplementedError # coef has then 3 dimensions
                 M   = self.coef[var,key][:,mask]
                 reshape_tensor = (    type(inpt[0]) == tuple
-                                  and var not in {'tensor_product_L', 'tensor_product_R', 'sesquivariate_b', 'sesquivariate_m'}
+                                  and var not in {'tensor_product_L',
+                                                  'tensor_product_R',
+                                                  'sesquivariate_b',
+                                                  'sesquivariate_m',
+                                                  }
                                   )
                 if not reshape_tensor:
                     cc = M
@@ -2319,56 +2327,56 @@ class additive_features_model:
 
 
     def penalization(self, M, pen, mu, key):
-            # Compute the penalizations
-            if pen == '':  
-                return 0
-            elif pen in {'ridge',
-                         'smoothing_reg',
-                         'factor_smoothing_reg',
-                         }:  
-                return 0
-            elif pen == 'lasso':
-                return mu*np.sum(np.abs(M))                 
-            elif pen == 'row_group_lasso':
-                assert M.ndim == 2
-                if type(M) in {np.ndarray, np.matrix}:
-                    return mu*np.sum([np.linalg.norm(M[i])        for i in range(M.shape[0])]) 
-                else:
-                    return mu*np.sum([sp.sparse.linalg.norm(M[i]) for i in range(M.shape[0])])
-            elif pen == 'col_group_lasso':
-                if type(M) in {np.ndarray, np.matrix}:
-                    return mu*np.sum([np.linalg.norm(M[:,i])        for i in range(M.shape[1])])    
-                else:
-                    return mu*np.sum([sp.sparse.linalg.norm(M[:,i]) for i in range(M.shape[1])])
-            elif pen == 'clipped_abs_deviation' :
-                alpha, beta, gamma = mu
-                p, rcol  = M.shape
-                reg    = 0
-                slope  = np.zeros(rcol)
-                offset = np.zeros(rcol)
-                for j in range(rcol):
-                    if type(M) in {np.ndarray, np.matrix}:
-                        c_norm = np.linalg.norm(M[:,j])
-                    else:
-                        c_norm = sp.sparse.linalg.norm(M[:,j])
-                    pen1   = alpha*c_norm
-                    pen2   = beta *c_norm + gamma
-                    reg += min(pen1,pen2)
-                    slope [j] = alpha if pen1 < pen2 else beta
-                    offset[j] = 0     if pen1 < pen2 else gamma
-                return reg, slope, offset                
-            elif pen == 'elastic_net':
-                alpha, theta = mu
-                if type(M) in {np.ndarray, np.matrix}:
-                    return theta*(alpha*np.sum(np.abs(M))     + ((1 - alpha)/2)*np.linalg.norm(M)**2)
-                else:
-                    return theta*(alpha*np.sum(np.abs(M))     + ((1 - alpha)/2)*sp.sparse.linalg.norm(M)**2)
-            elif pen == 'total_variation':
-                return mu*np.sum(np.abs(M[1:] - M[:-1]))  
-            elif pen == 'trend_filtering':
-                return mu*np.sum(np.abs(M[2:] - 2*M[1:-1] + M[:-2]))
+        # Compute the penalizations
+        if pen == '':  
+            return 0
+        elif pen in {'ridge',
+                     'smoothing_reg',
+                     'factor_smoothing_reg',
+                     }:  
+            return 0
+        elif pen == 'lasso':
+            return mu*np.sum(np.abs(M))                 
+        elif pen == 'row_group_lasso':
+            assert M.ndim == 2
+            if type(M) in {np.ndarray, np.matrix}:
+                return mu*np.sum([np.linalg.norm(M[i])        for i in range(M.shape[0])]) 
             else:
-                raise ValueError('Bad Penalization')
+                return mu*np.sum([sp.sparse.linalg.norm(M[i]) for i in range(M.shape[0])])
+        elif pen == 'col_group_lasso':
+            if type(M) in {np.ndarray, np.matrix}:
+                return mu*np.sum([np.linalg.norm(M[:,i])        for i in range(M.shape[1])])    
+            else:
+                return mu*np.sum([sp.sparse.linalg.norm(M[:,i]) for i in range(M.shape[1])])
+        elif pen == 'clipped_abs_deviation' :
+            alpha, beta, gamma = mu
+            p, rcol  = M.shape
+            reg    = 0
+            slope  = np.zeros(rcol)
+            offset = np.zeros(rcol)
+            for j in range(rcol):
+                if type(M) in {np.ndarray, np.matrix}:
+                    c_norm = np.linalg.norm(M[:,j])
+                else:
+                    c_norm = sp.sparse.linalg.norm(M[:,j])
+                pen1   = alpha*c_norm
+                pen2   = beta *c_norm + gamma
+                reg += min(pen1,pen2)
+                slope [j] = alpha if pen1 < pen2 else beta
+                offset[j] = 0     if pen1 < pen2 else gamma
+            return reg, slope, offset                
+        elif pen == 'elastic_net':
+            alpha, theta = mu
+            if type(M) in {np.ndarray, np.matrix}:
+                return theta*(alpha*np.sum(np.abs(M))     + ((1 - alpha)/2)*np.linalg.norm(M)**2)
+            else:
+                return theta*(alpha*np.sum(np.abs(M))     + ((1 - alpha)/2)*sp.sparse.linalg.norm(M)**2)
+        elif pen == 'total_variation':
+            return mu*np.sum(np.abs(M[1:] - M[:-1]))  
+        elif pen == 'trend_filtering':
+            return mu*np.sum(np.abs(M[2:] - 2*M[1:-1] + M[:-2]))
+        else:
+            raise ValueError('Bad Penalization for FirstOrder algorithm')
 
         
     def pop_coordinates(self):

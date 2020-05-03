@@ -127,7 +127,7 @@ def grad_bfgs_regularization(model, coef, alphas):
     # Compute the gradient of the differentiable plenalizations
     # The slmoothing spline regularizations require the computations of the convolutions first
     grad = np.zeros(coef.shape)
-    for var in model.formula.index.get_level_values('coefficient'):
+    for var in model.formula.index.get_level_values('coefficient').unique():
         for inpt, location in model.col_key_large_matching.loc[model.concat_masks[:,0].indices 
                                                                if sp.sparse.issparse(model.concat_masks) 
                                                                else 

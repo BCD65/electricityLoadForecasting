@@ -335,14 +335,14 @@ def start_lbfgs(model):
     model.key_slice_matching_zero = {}
     for key in model.sorted_keys:
         for k in range(1):
-            idx = np.where(model.idx_key_matching[:,k] == key)[0]
+            idx = np.array([ii
+                            for ii in range(model.idx_key_matching.shape[0])
+                            if model.idx_key_matching[ii,k] == key
+                            ])
             assert idx.ndim == 1
             assert np.all(idx[1:] - idx[:-1] == 1)
             if np.prod(idx.shape[0]):
-                model.key_slice_matching_zero[key,k] = slice(
-                                                             np.where(model.idx_key_matching[:,k] == key)[0].min(), 
-                                                             np.where(model.idx_key_matching[:,k] == key)[0].max()+1, 
-                                                             )
+                model.key_slice_matching_zero[key,k] = slice(idx.min(), idx.max()+1)
     
     vec_coef_0 = np.zeros(((model.concat_shared_training.shape[1] + model.concat_large_masks_owned[:,0].sum())*model.k,1)).reshape((-1, 1)).copy()
 
