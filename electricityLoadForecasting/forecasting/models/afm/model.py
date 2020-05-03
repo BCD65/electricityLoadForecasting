@@ -11,6 +11,7 @@ import numbers
 from termcolor import colored
 #
 from electricityLoadForecasting import tools, paths
+from . import prox
 from . import lbfgs
 
 ###############################################################################
@@ -342,7 +343,9 @@ class additive_features_model:
                 self.cur_reg       = np.sum([v for k, v in self.cur_ind_reg.items()])
                 print('Compute ridge')
                 self.cur_ind_ridge = self.evaluate_ind_ridge({coor:(self.coef[coor[:2]][:,:,self.dikt_masks.get(coor, slice(None))]
-                                                                    if coor[0] in {'tensor_product_L','tensor_product_R'}
+                                                                    if coor[0] in {'tensor_product_L',
+                                                                                   'tensor_product_R',
+                                                                                   }
                                                                     else
                                                                     self.coef[coor[:2]][:,self.dikt_masks.get(coor, slice(None))]
                                                                     )
@@ -1611,11 +1614,27 @@ class additive_features_model:
                         self.normalized_alphas[var][cat] = self.alpha[var][cat]/self.normalization[cat]**2
                     else:
                         assert type(self.alpha[var][cat]) == tuple
-                        assert len(self.alpha[var][cat])  == 2
-                        assert self.pen[var][cat]         == 'block_smoothing_reg'
-                        self.normalized_alphas[var][cat] = (self.alpha[var][cat][0]/self.normalization[cat]**2, 
-                                                            self.alpha[var][cat][1], 
-                                                            )                      
+                        if (    len(self.alpha[var][cat]) == 2
+                            and self.pen[var][cat] == 'block_smoothing_reg'
+                            ):
+                            self.normalized_alphas[var][cat] = (self.alpha[var][cat][0]/self.normalization[cat]**2, 
+                                                                self.alpha[var][cat][1], 
+                                                                ) 
+                        elif (    len(self.alpha[var][cat]) == 2
+                              and self.pen[var][cat] == 'elastic_net'
+                              ):
+                            self.normalized_alphas[var][cat] = (self.alpha[var][cat][0], 
+                                                                self.alpha[var][cat][1]/self.normalization[cat]**2, 
+                                                                )    
+                        elif (    len(self.alpha[var][cat])  == 3
+                              and self.pen[var][cat] == 'clipped_abs_deviation'
+                              ):
+                            self.normalized_alphas[var][cat] = (self.alpha[var][cat][0]/self.normalization[cat]**2, 
+                                                                self.alpha[var][cat][1]/self.normalization[cat]**2, 
+                                                                self.alpha[var][cat][2],
+                                                                )
+                        else:
+                            raise ValueError    
         for var, dikt_cat_alpha in self.normalized_alphas.items():
             assert len(self.alpha[var]) == len(dikt_cat_alpha)
             for cat in self.alpha[var].keys():
@@ -1836,7 +1855,10 @@ class additive_features_model:
                                          dataset = dataset,
                                          **kwargs,
                                          )
-            elif var in {'tensor_product_LR', 'low_rank_UVt', 'sesquivariate_bm'}:
+            elif var in {'tensor_product_LR',
+                         'low_rank_UVt',
+                         'sesquivariate_bm',
+                         }:
                 pass
             else:
                 raise ValueError
@@ -1889,7 +1911,15 @@ class additive_features_model:
             reshape_tensor = (    type(inpt[0]) == tuple
                               and var not in {'tensor_product_L', 'tensor_product_R', 'sesquivariate_b', 'sesquivariate_m'}
                               )
-            if pen == '':
+            if pen in {'',
+                       'clipped_abs_deviation',
+                       'col_group_lasso',
+                       'elastic_net',
+                       'lasso',
+                       'row_group_lasso',
+                       'total_variation',
+                       'trend_filtering',
+                       }:
                 pass
             elif pen == 'ridge':
                 if type(M) in {np.ndarray, np.matrix}:
@@ -1996,7 +2026,7 @@ class additive_features_model:
             var, key, ind = coor_upd
             mask          = d_masks.get(coor_upd, slice(None))
             pen, alpha    = self.get_pen_alpha(var, key)
-            if pen == 'clipped_abs_deviation_v2':
+            if pen == 'clipped_abs_deviation':
                 orig_mask  = self.orig_masks[coor_upd]
                 same_mask  = (    type(mask) == type(orig_mask) 
                               and (mask == orig_mask
@@ -2328,12 +2358,11 @@ class additive_features_model:
 
     def penalization(self, M, pen, mu, key):
         # Compute the penalizations
-        if pen == '':  
-            return 0
-        elif pen in {'ridge',
-                     'smoothing_reg',
-                     'factor_smoothing_reg',
-                     }:  
+        if pen in {'',
+                   'ridge',
+                   'smoothing_reg',
+                   'factor_smoothing_reg',
+                   }:  
             return 0
         elif pen == 'lasso':
             return mu*np.sum(np.abs(M))                 
@@ -2350,7 +2379,7 @@ class additive_features_model:
                 return mu*np.sum([sp.sparse.linalg.norm(M[:,i]) for i in range(M.shape[1])])
         elif pen == 'clipped_abs_deviation' :
             alpha, beta, gamma = mu
-            p, rcol  = M.shape
+            p, rcol = M.shape
             reg    = 0
             slope  = np.zeros(rcol)
             offset = np.zeros(rcol)
@@ -2359,8 +2388,8 @@ class additive_features_model:
                     c_norm = np.linalg.norm(M[:,j])
                 else:
                     c_norm = sp.sparse.linalg.norm(M[:,j])
-                pen1   = alpha*c_norm
-                pen2   = beta *c_norm + gamma
+                pen1 = alpha*c_norm
+                pen2 =  beta*c_norm + gamma
                 reg += min(pen1,pen2)
                 slope [j] = alpha if pen1 < pen2 else beta
                 offset[j] = 0     if pen1 < pen2 else gamma
@@ -2368,9 +2397,13 @@ class additive_features_model:
         elif pen == 'elastic_net':
             alpha, theta = mu
             if type(M) in {np.ndarray, np.matrix}:
-                return theta*(alpha*np.sum(np.abs(M))     + ((1 - alpha)/2)*np.linalg.norm(M)**2)
+                return theta*(           alpha *np.sum(np.abs(M))     
+                              + ((1 - alpha)/2)*np.linalg.norm(M)**2
+                              )
             else:
-                return theta*(alpha*np.sum(np.abs(M))     + ((1 - alpha)/2)*sp.sparse.linalg.norm(M)**2)
+                return theta*(           alpha *np.sum(np.abs(M))     
+                              + ((1 - alpha)/2)*sp.sparse.linalg.norm(M)**2
+                              )
         elif pen == 'total_variation':
             return mu*np.sum(np.abs(M[1:] - M[:-1]))  
         elif pen == 'trend_filtering':
@@ -2643,19 +2676,19 @@ class additive_features_model:
                      }:    
             X_tmp = X
         elif pen == 'clipped_abs_deviation' :
-            X_tmp     = tools.proximal.prox_clipped_abs_deviation(X, eta, mu, coef_zero = coef_zero)
+            X_tmp = prox.prox_clipped_abs_deviation(X, eta, mu, coef_zero = coef_zero)
         elif pen == 'col_group_lasso' :
-            X_tmp     = tools.proximal.prox_col_group_lasso(X, eta*mu)
+            X_tmp = prox.prox_col_group_lasso(X, eta*mu)
         elif pen == 'elastic_net' :
-            X_tmp     = tools.proximal.prox_elastic_net(X, eta, mu)
+            X_tmp = prox.prox_elastic_net(X, eta, mu)
         elif pen == 'lasso' :
-            X_tmp     = tools.proximal.prox_lasso(X, eta*mu)
+            X_tmp = prox.prox_lasso(X, eta*mu)
         elif pen == 'row_group_lasso' :
-            X_tmp     = tools.proximal.prox_row_group_lasso(X, eta*mu)
+            X_tmp = prox.prox_row_group_lasso(X, eta*mu)
         elif pen == 'total_variation':
-            X_tmp = tools.proximal.prox_total_variation(X, eta*mu)
+            X_tmp = prox.prox_total_variation(X, eta*mu)
         elif pen == 'trend_filtering' :
-            X_tmp = tools.proximal.prox_trend_filtering(X, eta*mu)
+            X_tmp = prox.prox_trend_filtering(X, eta*mu)
         else:
             raise ValueError('bad penalization : {0}'.format(pen))
         return X_tmp
@@ -2701,11 +2734,11 @@ class additive_features_model:
             self.flag_stopping_criteria += self.epoch_stopping_criteria
             # Evolution of obj validation
             if self.compute_validation and self.iteration >= self.flag_compute_validation :
-                old_mean_ft      = self.fit_validation   [self.iteration - 2*self.epoch_stopping_criteria:self.iteration  - self.epoch_stopping_criteria].mean()
-                new_mean_ft      = self.fit_validation   [self.iteration - self.epoch_stopping_criteria:self.iteration].mean()
-                old_mean_gp_ft   = self.fit_gp_validation[self.iteration - 2*self.epoch_stopping_criteria:self.iteration  - self.epoch_stopping_criteria].mean()
-                new_mean_gp_ft   = self.fit_gp_validation[self.iteration - self.epoch_stopping_criteria:self.iteration].mean()
-                early_stop       = (old_mean_ft + old_mean_gp_ft < new_mean_ft + new_mean_gp_ft) and self.hprm['afm.algorithm.first_order.early_stop_validation']#and not (self.vr) 
+                old_mean_ft    = self.fit_validation   [self.iteration - 2*self.epoch_stopping_criteria:self.iteration  - self.epoch_stopping_criteria].mean()
+                new_mean_ft    = self.fit_validation   [self.iteration - self.epoch_stopping_criteria:self.iteration].mean()
+                old_mean_gp_ft = self.fit_gp_validation[self.iteration - 2*self.epoch_stopping_criteria:self.iteration  - self.epoch_stopping_criteria].mean()
+                new_mean_gp_ft = self.fit_gp_validation[self.iteration - self.epoch_stopping_criteria:self.iteration].mean()
+                early_stop     = (old_mean_ft + old_mean_gp_ft < new_mean_ft + new_mean_gp_ft) and self.hprm['afm.algorithm.first_order.early_stop_validation']#and not (self.vr) 
             # Same thing individually
             if self.compute_validation and self.iteration >= self.flag_compute_ind_validation:
                 if self.hprm['afm.algorithm.first_order.early_stop_ind_validation']:

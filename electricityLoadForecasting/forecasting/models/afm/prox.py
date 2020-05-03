@@ -14,8 +14,13 @@ except Exception:
 EXTRA_CHECK = 0
 
 
-def prox_clipped_abs_deviation(U, eta, mu, U_old = None, flag = False, coef_zero = None):
-    assert type(U) not in {np.matrix, np.ndarray}
+def prox_clipped_abs_deviation(U,
+                               eta,
+                               mu,
+                               U_old     = None,
+                               flag      = False,
+                               coef_zero = None,
+                               ):
     p, r = U.shape
     for j in range(U.shape[1]):
         slope = mu[j]*eta
@@ -71,8 +76,8 @@ def prox_col_group_lasso(U, mu):
 
 
 def prox_elastic_net(M, eta, mu):
-    alpha, theta = mu
-    if alpha*eta*theta != 0:
+    theta, alpha = mu
+    if eta*theta != 0:
         M = np.multiply(M, (1 - alpha*eta*theta/(np.abs(M) + (M == 0))).clip(min = 0))
         M = (1/(1 + alpha*eta*(1 - theta)))*M
     return M  
@@ -144,7 +149,6 @@ def prox_trend_filtering(M, mu):
     
     
 def tf2_1d(z, mu, order = 2):
-    raise NotImplementedError
     if z.shape[0] <= 2:
         return z
     if order != 2:
@@ -162,7 +166,8 @@ def tf2_1d(z, mu, order = 2):
                                     n,
                                     )
         x    = cvx.Variable(n)
-        obj  = cvx.Minimize(0.5 * cvx.sum_squares(z - x) + mu*cvx.norm(D * x, 1))
+        obj  = cvx.Minimize(  0.5 * cvx.sum_squares(z.reshape(x.shape) - x)
+                            + mu  * cvx.norm(D * x, 1))
         prob = cvx.Problem(obj)
         try:
             prob.solve(verbose=False)

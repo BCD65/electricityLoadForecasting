@@ -28,7 +28,7 @@ def set_afm(hprm):
                                                                                         hprm['sites.aggregation'],
                                                                                         ),
                                                                                        None, #default.afm.dikt_formula['nat'], 
-                                                                                       )['unconstrained_bivariate']
+                                                                                       )['test']
                                                           ), # Choose the granularity for the different inputs ie the number of splines
                   })
             
@@ -45,7 +45,7 @@ def set_afm(hprm):
                   })
     # Algorithm
     hprm.update({
-                  'afm.algorithm'                         : 'L-BFGS', # 'L-BFGS' # 'FirstOrder'
+                  'afm.algorithm'                         : 'FirstOrder', # 'L-BFGS' # 'FirstOrder'
                   'afm.algorithm.sparse_coef_after_optim' : True,  # After the optimization, store the coefficients in a sparse format
 
                   # First-order descent algorithm
