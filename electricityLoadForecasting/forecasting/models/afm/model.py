@@ -1738,13 +1738,17 @@ class additive_features_model:
                             )
                     ):                 
                     ss = self.orig_masks.get((var2,key2,()), slice(None))
-                    if not (   mask == 'dyn'
+                    if not (   (    type(mask) == str
+                                and mask == 'dyn'
+                                )
                             or (    var_temp == 'sesquivariate_b'
                                 and type(key[0][0]) == tuple
                                 )
                             ):
                         assert (XtX[key,key2] @ (coef[var2,key2][:,mask])).shape == (XtX[key,key] @ (coef[var_temp,key][:,mask])).shape
-        if mask == 'dyn':
+        if (    type(mask) == str
+            and mask == 'dyn'
+            ):
             assert self.gp_pen
             ans = np.zeros((self.size[key], self.k))
             for key2 in self.keys[var2]:
