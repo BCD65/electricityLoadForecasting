@@ -7,7 +7,7 @@ import zipfile
 import unidecode
 import pytz
 #
-import electricityLoadForecasting.tools as tools
+from electricityLoadForecasting import tools
 from .. import etc, config
 
 ###############################################################################
