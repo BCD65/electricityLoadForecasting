@@ -1,5 +1,6 @@
 
-================================================================
+Installation
+============
 
 # It can be installed with :
 cd ~/Downloads
@@ -15,7 +16,8 @@ pip install rpy2==3.3.1
 # [Optional] If you do not want to use the default R installation and the mgcv library :
 # conda install -c r r r-mgcv
 
-================================================================
+How to
+======
 
 The script preprocessing_main.py downloads, formats and saves public data from MeteoFrance and RTE websites. The load data and the weather data are saved in two separate multiindexed pandas dataframes. The objective is to have a public dataset that can then be used as the input of forecasting algorithms. In preprocessing/eCO2mix/config.py, you can choose either the national database 'France' or the 'administrative_regions'.
 
