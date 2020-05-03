@@ -21,7 +21,7 @@ def choose_dataset(hprm):
     hprm.update({
                  # Choose the electricity load data
                  'sites.zone'                : 'all', 
-                 'sites.aggregation'         : None,
+                 'sites.aggregation'         : 'districts',
                  'sites.trash'               : [],# Eliminate additional sites from the dataset
                  })
 
@@ -29,13 +29,15 @@ def choose_dataset(hprm):
                  # Choose the weather data
                  'weather.zone'              : 'all',
                  'weather.source'            : 'observed', 
+                 
                  'weather.aggregation'       : {('eCO2mix.France',                 None)     : 'mean',
                                                 ('eCO2mix.administrative_regions', None)     :  None, 
                                                 ('RTE.substations',                None)     :  None, 
-                                                ('RTE.substations',               'sum')     : 'national_weighted_mean', 
+                                                ('RTE.substations',               'sum')                    : 'national_weighted_mean', 
                                                 ('RTE.substations',               'administrative_regions') : 'regional_weighted_mean', 
-                                                ('RTE.substations',               'RTE_regions')            : None 
+                                                ('RTE.substations',               'RTE_regions')            :  None,
                                                 }.get((hprm['database'], hprm['sites.aggregation'])),
+                 
                  'weather.extra_latitude'    : {('eCO2mix.France',                 None)     : 5,
                                                 ('eCO2mix.administrative_regions', None)     : 0.1, 
                                                 ('RTE.substations',                None)     : 0.1, 
@@ -43,6 +45,7 @@ def choose_dataset(hprm):
                                                 ('RTE.substations',               'administrative_regions') : 5,
                                                 ('RTE.substations',               'RTE_regions')            : 5,
                                                 }.get((hprm['database'], hprm['sites.aggregation']), 0.1),
+                 
                  'weather.extra_longitude'   : {('eCO2mix.France',                 None)     : 8,
                                                 ('eCO2mix.administrative_regions', None)     : 0.1, 
                                                 ('RTE.substations' ,               None)     : 0.1, 
@@ -69,9 +72,15 @@ def choose_dataset(hprm):
                                     'year_day'    : 365,
                                     },
                  })
-    
-    assert hprm['sites.aggregation'] in [
-                                         None,
-                                         'sum',
-                                         ]    
+    if 'eCO2mix' in hprm['database']:
+        assert hprm['sites.aggregation'] in [ None,
+                                             'sum',
+                                             ]    
+    elif 'RTE' in hprm['database']:
+        assert hprm['sites.aggregation'] in [ None,
+                                             'sum',
+                                             'administrative_regions',
+                                             'RTE_regions',
+                                             'districts',
+                                             ] 
     return hprm

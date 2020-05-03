@@ -23,7 +23,9 @@ def subset_sites(coordinates_sites, zone):
         subset = subsample_Normandie(coordinates_sites.index)
         
     else:
-        subset = subsample_region(coordinates_sites.index, zone)
+        subset = subsample_region(coordinates_sites.index,
+                                  zone,
+                                  )
         
     return subset
             
@@ -57,7 +59,9 @@ def subsample_4_in_Paris(coordinates_sites):
     return subset
 
 
-def subsample_region(list_sites, zone):
+def subsample_region(list_sites,
+                     zone,
+                     ):
     dikt_regions_admin = get_dikt_regions_admin()
     dikt_regions_rte   = get_dikt_regions_rte()
     dikt_districts     = get_dikt_districts()

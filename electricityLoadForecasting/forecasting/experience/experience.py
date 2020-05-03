@@ -40,7 +40,9 @@ class Experience(object):
         self.data['df_coordinates_sites'].drop(labels = self.hprm['sites.trash'], axis = 0, inplace = True)
         
         # Subsample a region
-        subset_sites = tools.geography.subset_sites(self.data['df_sites'].columns, self.hprm['sites.zone'])
+        subset_sites = tools.geography.subset_sites(self.data['df_sites'].columns,
+                                                    self.hprm['sites.zone'],
+                                                    )
         self.data['df_sites']             = self.data['df_sites']                [subset_sites]
         self.data['df_coordinates_sites'] = self.data['df_coordinates_sites'].loc[subset_sites]
         
