@@ -7,7 +7,7 @@ setup(
       version          = '0.1.dev0',
       packages         = setuptools.find_packages(),
       scripts          = ['scripts/main_forecasting.py',
-                          'scripts/preprocessing_main.py',
+                          'scripts/preprocessing_eCO2mix.py',
                           ],
       author           = 'Ben',
       author_email     = 'bcd6591[at]gmail.com',

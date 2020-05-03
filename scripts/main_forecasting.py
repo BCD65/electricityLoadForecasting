@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 
-from electricityLoadForecasting.forecasting.experience      import main
+from electricityLoadForecasting.forecasting.experience import main
 
 
 if __name__ == "__main__":   
