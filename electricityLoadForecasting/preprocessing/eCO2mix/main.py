@@ -99,7 +99,7 @@ def main_weather():
 def main():
     df_filtered_load, coordinates_sites = main_sites()
     df_weather, coordinates_weather     = main_weather()
-    input('Hit any key (but ctrl+c) to delete temp variables and finish')
+    #input('Hit any key (but ctrl+c) to delete temp variables and finish')
     shutil.rmtree(os.path.join(etc.dikt_folders['tmp_data'],
                                config.LEVEL,
                                ), 
