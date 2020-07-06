@@ -2,6 +2,10 @@
 
 ================================================================
 
+# This work is presented in http://www.theses.fr/2019PESC1031/document
+
+================================================================
+
 # It can be installed with :
 cd ~/Downloads
 git clone https://github.com/BCD65/electricityLoadForecasting.git
